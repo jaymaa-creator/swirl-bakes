@@ -8,7 +8,8 @@ export default function Modal({ open, onClose, title, children, footer }) {
           <div className="text-base sm:text-lg font-semibold text-ink">{title}</div>
           <button
             onClick={onClose}
-            className="rounded-xl border border-line px-3 py-1.5 text-sm text-inkMuted hover:bg-[#F1E8DF]"
+            className="rounded-xl border border-line px-3 py-1.5 text-sm text-inkMuted hover:bg-[#F1E8DF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            aria-label="Close preorder modal"
           >
             Close
           </button>

@@ -91,7 +91,10 @@ export default function PreorderModal({
           <Field label="Saturday batch">
             <Select
               value={form.bakeWindow}
-              onChange={(e) => setForm((f) => ({ ...f, bakeWindow: e.target.value }))}
+              onChange={(e) => {
+                const nextBakeWindow = e.target.value;
+                setForm((f) => ({ ...f, bakeWindow: nextBakeWindow }));
+              }}
             >
               {saturdayDates.map((w) => (
                 <option key={w.value} value={w.value} disabled={!w.isOpen}>
@@ -133,7 +136,7 @@ export default function PreorderModal({
                           },
                         }))
                       }
-                      className="h-9 w-9 rounded-xl border border-line bg-surface text-ink hover:bg-[#F1E8DF]"
+                      className="h-9 w-9 rounded-xl border border-line bg-surface text-ink hover:bg-[#F1E8DF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                       aria-label={`Decrease ${m.name}`}
                     >
                       -
@@ -159,7 +162,7 @@ export default function PreorderModal({
                           },
                         }))
                       }
-                      className="h-9 w-9 rounded-xl border border-line bg-surface text-ink hover:bg-[#F1E8DF]"
+                      className="h-9 w-9 rounded-xl border border-line bg-surface text-ink hover:bg-[#F1E8DF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                       aria-label={`Increase ${m.name}`}
                     >
                       +

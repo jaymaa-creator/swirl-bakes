@@ -23,3 +23,35 @@ body {
     transparent 60%
   );
 }
+
+@keyframes ribbon-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ribbon {
+  overflow: hidden;
+}
+
+.ribbon-track {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ribbon-marquee 28s linear infinite;
+}
+
+.ribbon-group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.ribbon:hover .ribbon-track {
+  animation-play-state: paused;
+}

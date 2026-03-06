@@ -37,8 +37,8 @@ function loadInstagramScriptOnce() {
 export default function InstagramReelSection() {
   const sectionRef = useRef(null);
   const [isInView, setIsInView] = useState(false);
-  const [shouldRenderEmbed, setShouldRenderEmbed] = useState(false);
   const [scriptReady, setScriptReady] = useState(false);
+  const shouldRenderEmbed = isInView;
 
   useEffect(() => {
     if (!sectionRef.current || isInView) return undefined;
@@ -59,10 +59,17 @@ export default function InstagramReelSection() {
   useEffect(() => {
     if (!isInView) return;
 
-    setShouldRenderEmbed(true);
+    let cancelled = false;
     loadInstagramScriptOnce()
-      .then(() => setScriptReady(true))
-      .catch(() => setScriptReady(false));
+      .then(() => {
+        if (!cancelled) setScriptReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setScriptReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isInView]);
 
   useEffect(() => {

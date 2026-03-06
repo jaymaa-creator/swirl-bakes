@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import FaqSection from "./components/FaqSection";
 import LandingSection from "./components/LandingSection";
 import MenuSection from "./components/MenuSection";
@@ -23,7 +23,12 @@ import useOrderSummary from "./hooks/useOrderSummary";
 import usePreorderModalOpen from "./hooks/usePreorderModalOpen";
 
 export default function BakesLandingPage() {
-  const [modalOpen, setModalOpen] = useState(false);
+  const ribbonItems = [
+    "Fresh cinnamon rolls every Saturday",
+    "Pre-orders close Friday 7pm",
+    "Small-batch bakes in Singapore",
+    "Reserve early - limited batch",
+  ];
   const saturdayOptions = useMemo(
     () =>
       getOpenSaturdays(2, new Date()).map((date) => ({
@@ -33,7 +38,8 @@ export default function BakesLandingPage() {
       })),
     []
   );
-  const defaultBakeDate = saturdayOptions[0]?.value || "";
+  const defaultBakeDate = toSingaporeDateKey(getNearestOpenSaturday(new Date()));
+  const [modalOpen, setModalOpen] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -50,11 +56,15 @@ export default function BakesLandingPage() {
   const { isOpeningModal, openingTriggerId, handleOpenPreorder } =
     usePreorderModalOpen(setForm, setModalOpen);
 
-  const selectedBakeDate = fromSingaporeDateKey(form.bakeWindow);
+  const fallbackBakeWindow = saturdayOptions[0]?.value || defaultBakeDate;
+  const normalizedBakeWindow = saturdayOptions.some((option) => option.value === form.bakeWindow)
+    ? form.bakeWindow
+    : fallbackBakeWindow;
+  const selectedBakeDate = fromSingaporeDateKey(normalizedBakeWindow);
   const isSelectedBakeOpen = selectedBakeDate
     ? isSaturdayOpen(selectedBakeDate, new Date())
     : false;
-  const selectedBakeOption = saturdayOptions.find((option) => option.value === form.bakeWindow);
+  const selectedBakeOption = saturdayOptions.find((option) => option.value === normalizedBakeWindow);
   const displayBakeWindow = selectedBakeOption?.label || "";
 
   const { estimatedTotal, hasSelectedItems, waMessage, waLink, money } = useOrderSummary({
@@ -66,20 +76,6 @@ export default function BakesLandingPage() {
 
   useBodyScrollLock(modalOpen);
 
-  useEffect(() => {
-    const selectedOption = saturdayOptions.find((option) => option.value === form.bakeWindow);
-    const selectedIsOpen = selectedOption
-      ? isSaturdayOpen(fromSingaporeDateKey(selectedOption.value), new Date())
-      : false;
-
-    if (selectedOption && selectedIsOpen) return;
-
-    const nearestOpen = toSingaporeDateKey(getNearestOpenSaturday(new Date()));
-    if (nearestOpen === form.bakeWindow) return;
-
-    setForm((f) => ({ ...f, bakeWindow: nearestOpen }));
-  }, [form.bakeWindow, saturdayOptions]);
-
   const isHeaderLoading =
     isOpeningModal && openingTriggerId === "header-primary";
 
@@ -89,6 +85,76 @@ export default function BakesLandingPage() {
 
   return (
     <div className="min-h-screen bg-cream text-ink">
+      <div className="sticky top-0 z-40">
+        <div className="ribbon border-b border-line bg-[#F7EBDD]">
+          <div className="ribbon-track py-2 text-xs font-medium text-inkMuted sm:text-sm">
+            {[0, 1].map((dupIdx) => (
+              <div className="ribbon-group" aria-hidden={dupIdx === 1} key={dupIdx}>
+                {ribbonItems.map((item, idx) => (
+                  <React.Fragment key={`${dupIdx}-${item}`}>
+                    <span className="mx-6">{item}</span>
+                    {idx < ribbonItems.length - 1 ? (
+                      <span className="inline-flex items-center justify-center text-brandBrown" aria-hidden="true">
+                        <span className="sm:hidden">
+                          <CinnamonLoader size={20} />
+                        </span>
+                        <span className="hidden sm:inline-flex">
+                          <CinnamonLoader size={48} />
+                        </span>
+                      </span>
+                    ) : null}
+                  </React.Fragment>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <header className="border-b border-line bg-surface/90 backdrop-blur">
+          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <img
+                src="/logo.png" 
+                alt="Swirl Girl Bakes logo"
+                className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
+              />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold leading-none">{BRAND.name}</div>
+                <div className="truncate text-xs text-inkMuted">Baked in Singapore</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href="#menu"
+                className="hidden sm:inline-flex rounded-xl px-3 py-2 text-sm text-inkMuted hover:bg-[#F1E8DF]"
+              >
+                Menu
+              </a>
+              <a
+                href="#how"
+                className="hidden sm:inline-flex rounded-xl px-3 py-2 text-sm text-inkMuted hover:bg-[#F1E8DF]"
+              >
+                Batch process
+              </a>
+              <button
+                onClick={openHeaderPreorder}
+                disabled={isHeaderLoading}
+                className="relative inline-flex items-center whitespace-nowrap rounded-button bg-brandBrown px-3 py-2 text-xs font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:translate-y-0 disabled:shadow-soft sm:px-4 sm:py-2.5 sm:text-sm"
+              >
+                <span className={isHeaderLoading ? "opacity-0" : "opacity-100"}>
+                  {BRAND.primaryCTA}
+                </span>
+                {isHeaderLoading ? (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <CinnamonLoader size={18} className="text-white" />
+                  </span>
+                ) : null}
+              </button>
+            </div>
+          </div>
+        </header>
+      </div>
+
       {isOpeningModal ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-cream/90 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3">
@@ -97,50 +163,6 @@ export default function BakesLandingPage() {
           </div>
         </div>
       ) : null}
-
-      <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logo.png" 
-              alt="Swirl Girl Bakes logo"
-              className="h-10 w-10 rounded-xl object-contain"
-            />
-            <div>
-              <div className="text-sm font-semibold leading-none">{BRAND.name}</div>
-              <div className="text-xs text-inkMuted">Baked in Singapore</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href="#menu"
-              className="hidden sm:inline-flex rounded-xl px-3 py-2 text-sm text-inkMuted hover:bg-[#F1E8DF]"
-            >
-              Menu
-            </a>
-            <a
-              href="#how"
-              className="hidden sm:inline-flex rounded-xl px-3 py-2 text-sm text-inkMuted hover:bg-[#F1E8DF]"
-            >
-              Batch process
-            </a>
-            <button
-              onClick={openHeaderPreorder}
-              disabled={isHeaderLoading}
-              className="relative inline-flex items-center rounded-button bg-brandBrown px-4 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float disabled:translate-y-0 disabled:shadow-soft"
-            >
-              <span className={isHeaderLoading ? "opacity-0" : "opacity-100"}>
-                {BRAND.primaryCTA}
-              </span>
-              {isHeaderLoading ? (
-                <span className="absolute inset-0 flex items-center justify-center">
-                  <CinnamonLoader size={18} className="text-white" />
-                </span>
-              ) : null}
-            </button>
-          </div>
-        </div>
-      </header>
 
       <main className="space-y-10 sm:space-y-14">
         <LandingSection
@@ -180,7 +202,7 @@ export default function BakesLandingPage() {
       <PreorderModal
         open={modalOpen}
         onClose={closePreorderModal}
-        form={form}
+        form={{ ...form, bakeWindow: normalizedBakeWindow }}
         setForm={setForm}
         estimatedTotal={estimatedTotal}
         waLink={waLink}

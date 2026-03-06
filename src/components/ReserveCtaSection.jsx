@@ -16,12 +16,18 @@ export default function ReserveCtaSection({
         <div className="p-6 sm:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div>
             <div className="text-sm font-semibold">Ready to reserve this week’s batch?</div>
-            <div className="mt-2 text-inkMuted">Use the form to send your Saturday reservation on WhatsApp.</div>
+            <div className="mt-2 text-inkMuted">
+              Next batch closes Friday 7pm (SGT). Reserve on WhatsApp now to lock your slot.
+            </div>
+            <div className="mt-1 text-xs text-inkMuted">
+              We confirm availability, delivery details, and PayNow instructions before baking.
+            </div>
           </div>
           <button
             onClick={() => handleOpenPreorder(undefined, triggerId)}
             disabled={isLoading}
-            className="relative inline-flex justify-center rounded-button bg-brandBrown px-5 py-3.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float disabled:translate-y-0 disabled:shadow-soft"
+            className="relative inline-flex justify-center rounded-button bg-brandBrown px-5 py-3.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:translate-y-0 disabled:shadow-soft"
+            aria-label="Reserve this week's batch on WhatsApp"
           >
             <span className={isLoading ? "opacity-0" : "opacity-100"}>{brand.primaryCTA}</span>
             {isLoading ? (
