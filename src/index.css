@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global reset */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #F7F3EE;
+  color: #2B211B;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.warm-section-glow {
+  background-image: radial-gradient(
+    circle at 20% 10%,
+    rgba(196, 122, 58, 0.08),
+    transparent 60%
+  );
+}
