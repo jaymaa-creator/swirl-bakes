@@ -3,7 +3,7 @@ const BRAND = {
   tagline: "Small-batch Saturday bakes, made fresh in Singapore.",
   primaryCTA: "Reserve for Saturday",
   secondaryCTA: "Available this week",
-  waNumberE164: "+6581307973",
+  waNumberE164: "+6581307971",
   pickupAreas: ["Central", "East", "North", "North-East", "West"],
   deliveryOptions: [
     "Delivery (GrabExpress / Lalamove) - paid by customer",

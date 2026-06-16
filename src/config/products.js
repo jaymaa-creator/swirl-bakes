@@ -2,20 +2,23 @@ export const MENU = [
   {
     id: "cinnamon-rolls",
     name: "Cinnamon Rolls",
-    priceSgd: 0,
+    priceSgd: 5,
     note: "Baked fresh. Choose 2, 4, or 6 per order.",
     allergens: "Contains gluten, dairy, eggs.",
   },
   {
     id: "brown-butter-cookies",
     name: "Brown Butter Cookies",
-    priceSgd: 0,
+    priceSgd: 2,
     note: "Chewy, toasty brown-butter cookies. Choose 2, 4, or 6 per order.",
     allergens: "Contains gluten, dairy, eggs.",
   },
 ];
 
 export const QUANTITY_OPTIONS = [2, 4, 6];
+
+export const ALLERGEN_DISCLAIMER =
+  "Baked in a home kitchen that handles nuts, shellfish, and other allergens. We cannot guarantee items are free from cross-contamination. Please let us know of any allergies in your order notes.";
 
 export const FAQ = [
   {

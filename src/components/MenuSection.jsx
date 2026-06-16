@@ -1,4 +1,4 @@
-export default function MenuSection({ menu, quantityOptions, form, setForm }) {
+export default function MenuSection({ menu, quantityOptions, form, setForm, allergenDisclaimer }) {
   return (
     <section
       id="menu"
@@ -50,6 +50,9 @@ export default function MenuSection({ menu, quantityOptions, form, setForm }) {
             </div>
           ))}
         </div>
+        {allergenDisclaimer ? (
+          <p className="mt-6 text-xs text-inkMuted">{allergenDisclaimer}</p>
+        ) : null}
       </div>
     </section>
   );

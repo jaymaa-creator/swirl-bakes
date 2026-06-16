@@ -9,7 +9,7 @@ import SiteFooter from "./components/SiteFooter";
 import InstagramReelSection from "./components/InstagramReelSection";
 import CinnamonLoader from "./components/ui/CinnamonLoader";
 import BRAND from "./config/brand";
-import { FAQ, MENU, QUANTITY_OPTIONS } from "./config/products";
+import { ALLERGEN_DISCLAIMER, FAQ, MENU, QUANTITY_OPTIONS } from "./config/products";
 import {
   formatSgDate,
   fromSingaporeDateKey,
@@ -114,9 +114,11 @@ export default function BakesLandingPage() {
           <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <img
-                src="/logo.png" 
+                src="/logo.webp"
                 alt="Swirl Girl Bakes logo"
                 className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
+                loading="eager"
+                fetchPriority="low"
               />
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold leading-none">{BRAND.name}</div>
@@ -180,6 +182,7 @@ export default function BakesLandingPage() {
           quantityOptions={QUANTITY_OPTIONS}
           form={form}
           setForm={setForm}
+          allergenDisclaimer={ALLERGEN_DISCLAIMER}
         />
 
         <ProcessSection
@@ -212,6 +215,8 @@ export default function BakesLandingPage() {
         canSubmitOrder={hasSelectedItems && isSelectedBakeOpen}
         isBakeWindowOpen={isSelectedBakeOpen}
         menu={MENU}
+        quantityOptions={QUANTITY_OPTIONS}
+        allergenDisclaimer={ALLERGEN_DISCLAIMER}
         money={money}
         brand={BRAND}
       />

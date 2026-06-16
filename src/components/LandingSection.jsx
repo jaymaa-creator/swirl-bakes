@@ -27,13 +27,13 @@ export default function LandingSection({
       <div className="relative overflow-hidden rounded-card border border-line bg-surface shadow-card">
         <video
           ref={heroVideoRef}
-          src="/whatsapp-video-2026-03-06-151744.webm"
+          src="/hero-video-opt.webm"
           className="h-[520px] w-full object-cover sm:h-auto sm:aspect-[16/9]"
           autoPlay
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
           aria-hidden="true"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-brandBrown/20 via-brandBrown/30 to-brandBrown/45" />
@@ -42,9 +42,10 @@ export default function LandingSection({
             <div className="w-[78%] rounded-[24px] border border-white/24 bg-white/8 p-4 shadow-[0_16px_40px_rgba(43,33,27,0.2)] backdrop-blur-sm sm:w-full sm:max-w-3xl sm:rounded-[28px] sm:p-6 lg:p-8">
               <div className="mb-4 sm:mb-5">
                 <img
-                  src="/logo.png"
+                  src="/logo.webp"
                   alt="Swirl Girl Bakes main logo"
                   className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20"
+                  fetchPriority="high"
                 />
               </div>
               <div className="hidden flex-wrap gap-2 sm:flex">
