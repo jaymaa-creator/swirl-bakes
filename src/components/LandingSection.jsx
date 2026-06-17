@@ -57,7 +57,8 @@ export default function LandingSection({
                 {brand.tagline}
               </h1>
               <p className="mt-2 max-w-2xl text-[0.82rem] leading-relaxed text-white/95 sm:mt-4 sm:text-[1.12rem]">
-                Soft, gooey bakes made in one Saturday batch each week. No on-demand production.
+                Soft, gooey bakes made in one Saturday batch each week.
+                <br />
                 Reserve early, then we wake, bake and dispatch.
               </p>
             </div>

@@ -141,7 +141,7 @@ export default function BakesLandingPage() {
               <button
                 onClick={openHeaderPreorder}
                 disabled={isHeaderLoading}
-                className="relative inline-flex items-center whitespace-nowrap rounded-button bg-brandBrown px-3 py-2 text-xs font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:translate-y-0 disabled:shadow-soft sm:px-4 sm:py-2.5 sm:text-sm"
+                className="relative inline-flex touch-manipulation items-center whitespace-nowrap rounded-button bg-brandBrown px-3 py-2 text-xs font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:translate-y-0 disabled:shadow-soft sm:px-4 sm:py-2.5 sm:text-sm"
               >
                 <span className={isHeaderLoading ? "opacity-0" : "opacity-100"}>
                   {BRAND.primaryCTA}
