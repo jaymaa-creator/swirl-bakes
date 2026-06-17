@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { buildWhatsAppLink } from "../lib/orderMessaging";
 import Card from "./ui/Card";
 import Field from "./ui/Field";
@@ -28,7 +28,27 @@ export default function PreorderModal({
 }) {
   const [showAllergenPopup, setShowAllergenPopup] = useState(false);
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
-  const [allergenLoading, setAllergenLoading] = useState(false);
+  const [allergenCountdown, setAllergenCountdown] = useState(0);
+  const countdownRef = useRef(null);
+
+  useEffect(() => {
+    if (showAllergenPopup) {
+      setAllergenCountdown(5);
+      countdownRef.current = setInterval(() => {
+        setAllergenCountdown((n) => {
+          if (n <= 1) {
+            clearInterval(countdownRef.current);
+            return 0;
+          }
+          return n - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(countdownRef.current);
+      setAllergenCountdown(0);
+    }
+    return () => clearInterval(countdownRef.current);
+  }, [showAllergenPopup]);
 
   const [firstLine, ...rest] = waMessage.split("\n");
   const waMessageWithAck = [
@@ -48,13 +68,9 @@ export default function PreorderModal({
   }
 
   function handleAllergenConfirm() {
-    setAllergenLoading(true);
-    setTimeout(() => {
-      setAllergenAcknowledged(true);
-      setAllergenLoading(false);
-      setShowAllergenPopup(false);
-      window.open(waLinkWithAck, "_blank", "noreferrer");
-    }, 5000);
+    setAllergenAcknowledged(true);
+    setShowAllergenPopup(false);
+    window.open(waLinkWithAck, "_blank", "noreferrer");
   }
 
   return (
@@ -250,16 +266,15 @@ export default function PreorderModal({
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={handleAllergenConfirm}
-                disabled={allergenLoading}
-                className="relative inline-flex touch-manipulation items-center justify-center rounded-button bg-brandBrown px-5 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float disabled:translate-y-0 disabled:opacity-80"
+                disabled={allergenCountdown > 0}
+                className="relative inline-flex touch-manipulation items-center justify-center rounded-button bg-brandBrown px-5 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span className={allergenLoading ? "opacity-0" : "opacity-100"}>I understand, continue</span>
-                {allergenLoading ? (
-                  <span className="absolute inset-0 flex items-center justify-center gap-2">
-                    <CinnamonLoader size={18} className="text-white" />
-                    <span className="text-sm">Preparing WhatsApp…</span>
+                {allergenCountdown > 0 ? (
+                  <span className="flex items-center gap-2">
+                    <CinnamonLoader size={16} className="text-white" />
+                    Please read… ({allergenCountdown}s)
                   </span>
-                ) : null}
+                ) : "I understand, continue"}
               </button>
               <button
                 onClick={() => setShowAllergenPopup(false)}
