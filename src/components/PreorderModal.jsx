@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { buildWhatsAppLink } from "../lib/orderMessaging";
+import { ALLERGEN_NAMES } from "../config/products";
 import Card from "./ui/Card";
 import Field from "./ui/Field";
 import Input from "./ui/Input";
@@ -262,7 +263,16 @@ export default function PreorderModal({
           <div className="absolute inset-0 bg-brandBrown/50" onClick={() => setShowAllergenPopup(false)} />
           <div className="relative w-full max-w-sm rounded-2xl border border-line bg-surface p-6 shadow-[0_20px_40px_rgba(90,56,37,0.2)]">
             <div className="text-base font-semibold text-ink">Allergen notice</div>
-            <p className="mt-3 text-sm leading-relaxed text-inkMuted">{allergenDisclaimer}</p>
+            <p className="mt-3 text-sm leading-relaxed text-inkMuted">
+              Baked in a home kitchen. Allergens present in the kitchen may include:{" "}
+              {ALLERGEN_NAMES.map((name, i) => (
+                <span key={name}>
+                  <strong className="font-semibold text-ink">{name}</strong>
+                  {i < ALLERGEN_NAMES.length - 1 ? ", " : ". "}
+                </span>
+              ))}
+              We cannot guarantee any item is free from cross-contamination.
+            </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={handleAllergenConfirm}

@@ -17,8 +17,25 @@ export const MENU = [
 
 export const QUANTITY_OPTIONS = [2, 4, 6];
 
+export const ALLERGEN_NAMES = [
+  "Cereals containing gluten",
+  "Crustaceans",
+  "Eggs",
+  "Fish",
+  "Milk",
+  "Molluscs",
+  "Mustard",
+  "Nuts",
+  "Peanuts",
+  "Celery",
+  "Sesame",
+  "Soya",
+  "Sulphur dioxide & sulphites",
+  "Lupin",
+];
+
 export const ALLERGEN_DISCLAIMER =
-  "Baked in a home kitchen that handles nuts, shellfish, and other allergens. We cannot guarantee items are free from cross-contamination. Please let us know of any allergies in your order notes.";
+  `Baked in a home kitchen. Allergens present in the kitchen may include: ${ALLERGEN_NAMES.join(", ")}. We cannot guarantee any item is free from cross-contamination. Please let us know of any allergies in your order notes.`;
 
 export const FAQ = [
   {

@@ -1,3 +1,5 @@
+import { ALLERGEN_NAMES } from "../config/products";
+
 export default function MenuSection({ menu, quantityOptions, form, setForm, allergenDisclaimer }) {
   return (
     <section
@@ -51,7 +53,16 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
           ))}
         </div>
         {allergenDisclaimer ? (
-          <p className="mt-6 text-xs text-inkMuted">{allergenDisclaimer}</p>
+          <p className="mt-6 text-xs text-inkMuted">
+            Baked in a home kitchen. Allergens present in the kitchen may include:{" "}
+            {ALLERGEN_NAMES.map((name, i) => (
+              <span key={name}>
+                <strong className="font-semibold text-ink">{name}</strong>
+                {i < ALLERGEN_NAMES.length - 1 ? ", " : ". "}
+              </span>
+            ))}
+            We cannot guarantee any item is free from cross-contamination. Please let us know of any allergies in your order notes.
+          </p>
         ) : null}
       </div>
     </section>
