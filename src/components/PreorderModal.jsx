@@ -6,6 +6,7 @@ import Input from "./ui/Input";
 import Modal from "./ui/Modal";
 import Select from "./ui/Select";
 import Textarea from "./ui/Textarea";
+import CinnamonLoader from "./ui/CinnamonLoader";
 
 export default function PreorderModal({
   open,
@@ -27,6 +28,7 @@ export default function PreorderModal({
 }) {
   const [showAllergenPopup, setShowAllergenPopup] = useState(false);
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
+  const [allergenLoading, setAllergenLoading] = useState(false);
 
   const [firstLine, ...rest] = waMessage.split("\n");
   const waMessageWithAck = [
@@ -46,9 +48,13 @@ export default function PreorderModal({
   }
 
   function handleAllergenConfirm() {
-    setAllergenAcknowledged(true);
-    setShowAllergenPopup(false);
-    window.open(waLinkWithAck, "_blank", "noreferrer");
+    setAllergenLoading(true);
+    setTimeout(() => {
+      setAllergenAcknowledged(true);
+      setAllergenLoading(false);
+      setShowAllergenPopup(false);
+      window.open(waLinkWithAck, "_blank", "noreferrer");
+    }, 5000);
   }
 
   return (
@@ -73,15 +79,6 @@ export default function PreorderModal({
               >
                 Reserve via WhatsApp
               </a>
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(waMessageWithAck);
-                }}
-                disabled={!canSubmitOrder}
-                className="inline-flex justify-center rounded-button border border-line bg-surface px-5 py-3 text-sm font-medium text-brandBrown shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:border-brandCinnamon hover:bg-cream disabled:transform-none"
-              >
-                Copy order text
-              </button>
             </div>
             {!hasSelectedItems ? (
               <div className="text-xs text-inkMuted">Select at least one item.</div>
@@ -253,9 +250,16 @@ export default function PreorderModal({
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={handleAllergenConfirm}
-                className="inline-flex justify-center rounded-button bg-brandBrown px-5 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float"
+                disabled={allergenLoading}
+                className="relative inline-flex touch-manipulation items-center justify-center rounded-button bg-brandBrown px-5 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float disabled:translate-y-0 disabled:opacity-80"
               >
-                I understand, continue
+                <span className={allergenLoading ? "opacity-0" : "opacity-100"}>I understand, continue</span>
+                {allergenLoading ? (
+                  <span className="absolute inset-0 flex items-center justify-center gap-2">
+                    <CinnamonLoader size={18} className="text-white" />
+                    <span className="text-sm">Preparing WhatsApp…</span>
+                  </span>
+                ) : null}
               </button>
               <button
                 onClick={() => setShowAllergenPopup(false)}
