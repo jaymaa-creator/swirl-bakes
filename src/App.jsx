@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from "react";
+import ConfirmationSection from "./components/ConfirmationSection";
 import FaqSection from "./components/FaqSection";
+import Seo from "./components/Seo";
+import StorySection from "./components/StorySection";
 import LandingSection from "./components/LandingSection";
 import MenuSection from "./components/MenuSection";
 import PreorderModal from "./components/PreorderModal";
@@ -18,9 +21,11 @@ import {
   isSaturdayOpen,
   toSingaporeDateKey,
 } from "./lib/dates";
+import useAnalytics from "./hooks/useAnalytics";
 import useBodyScrollLock from "./hooks/useBodyScrollLock";
 import useOrderSummary from "./hooks/useOrderSummary";
 import usePreorderModalOpen from "./hooks/usePreorderModalOpen";
+import useScrollReveal from "./hooks/useScrollReveal";
 
 export default function BakesLandingPage() {
   const ribbonItems = [
@@ -40,6 +45,7 @@ export default function BakesLandingPage() {
   );
   const defaultBakeDate = toSingaporeDateKey(getNearestOpenSaturday(new Date()));
   const [modalOpen, setModalOpen] = useState(false);
+  const [hasStartedOrder, setHasStartedOrder] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -67,7 +73,7 @@ export default function BakesLandingPage() {
   const selectedBakeOption = saturdayOptions.find((option) => option.value === normalizedBakeWindow);
   const displayBakeWindow = selectedBakeOption?.label || "";
 
-  const { estimatedTotal, hasSelectedItems, waMessage, waLink, money } = useOrderSummary({
+  const { estimatedTotal, hasSelectedItems, waMessage, money } = useOrderSummary({
     form: { ...form, bakeWindow: displayBakeWindow },
     menu: MENU,
     brandName: BRAND.name,
@@ -75,16 +81,24 @@ export default function BakesLandingPage() {
   });
 
   useBodyScrollLock(modalOpen);
+  useScrollReveal();
+  useAnalytics();
 
-  const isHeaderLoading =
-    isOpeningModal && openingTriggerId === "header-primary";
+  const isHeaderLoading = isOpeningModal && openingTriggerId === "header-primary";
 
   const openHeaderPreorder = () => handleOpenPreorder(undefined, "header-primary");
 
   const closePreorderModal = () => setModalOpen(false);
 
+  const handleOrderIntent = () => {
+    setHasStartedOrder(true);
+    setModalOpen(false);
+    window.history.replaceState(null, "", "#confirmation");
+  };
+
   return (
     <div className="min-h-screen bg-cream text-ink">
+      <Seo brand={BRAND} menu={MENU} faq={FAQ} />
       <div className="sticky top-0 z-40">
         <div className="ribbon border-b border-line bg-[#F7EBDD]">
           <div className="ribbon-track py-2 text-xs font-medium text-inkMuted sm:text-sm">
@@ -111,18 +125,19 @@ export default function BakesLandingPage() {
         </div>
 
         <header className="border-b border-line bg-surface/90 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <img
                 src="/logo.webp"
                 alt="Swirl Girl Bakes logo"
                 className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
                 loading="eager"
-                fetchPriority="low"
+                fetchPriority="high"
+                decoding="async"
               />
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold leading-none">{BRAND.name}</div>
-                <div className="truncate text-xs text-inkMuted">Baked in Singapore</div>
+                <div className="truncate text-xs text-inkMuted">{BRAND.originLabel}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -137,6 +152,12 @@ export default function BakesLandingPage() {
                 className="hidden sm:inline-flex rounded-xl px-3 py-2 text-sm text-inkMuted hover:bg-[#F1E8DF]"
               >
                 Batch process
+              </a>
+              <a
+                href="#story"
+                className="hidden sm:inline-flex rounded-xl px-3 py-2 text-sm text-inkMuted hover:bg-[#F1E8DF]"
+              >
+                About
               </a>
               <button
                 onClick={openHeaderPreorder}
@@ -166,7 +187,7 @@ export default function BakesLandingPage() {
         </div>
       ) : null}
 
-      <main className="space-y-10 sm:space-y-14">
+      <main className="space-y-6 pb-6 sm:space-y-10 sm:pb-8">
         <LandingSection
           brand={BRAND}
           bakeWindows={saturdayOptions}
@@ -186,9 +207,14 @@ export default function BakesLandingPage() {
         />
 
         <ProcessSection
+          brand={BRAND}
           brandColors={BRAND.colors}
           deliveryOptions={BRAND.deliveryOptions}
         />
+
+        <div id="story">
+          <StorySection brand={BRAND} />
+        </div>
 
         <FaqSection faq={FAQ} />
 
@@ -198,6 +224,8 @@ export default function BakesLandingPage() {
           isOpeningModal={isOpeningModal}
           openingTriggerId={openingTriggerId}
         />
+
+        <ConfirmationSection brand={BRAND} isOrderStarted={hasStartedOrder} />
       </main>
 
       <SiteFooter brand={BRAND} />
@@ -208,7 +236,6 @@ export default function BakesLandingPage() {
         form={{ ...form, bakeWindow: normalizedBakeWindow }}
         setForm={setForm}
         estimatedTotal={estimatedTotal}
-        waLink={waLink}
         waMessage={waMessage}
         saturdayDates={saturdayOptions}
         hasSelectedItems={hasSelectedItems}
@@ -219,6 +246,7 @@ export default function BakesLandingPage() {
         allergenDisclaimer={ALLERGEN_DISCLAIMER}
         money={money}
         brand={BRAND}
+        onOrderIntent={handleOrderIntent}
       />
     </div>
   );

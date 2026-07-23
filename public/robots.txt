@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://swirl-girl.jaemcd95.workers.dev/sitemap.xml

@@ -22,6 +22,10 @@ export default {
         card: "24px",
         button: "18px",
       },
+      fontFamily: {
+        body: ['"Avenir Next"', '"Segoe UI"', '"Helvetica Neue"', "sans-serif"],
+        display: ['"Iowan Old Style"', '"Palatino Linotype"', '"Book Antiqua"', "Georgia", "serif"],
+      },
     },
   },
   plugins: [],

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { buildWhatsAppLink } from "../lib/orderMessaging";
-import { ALLERGEN_NAMES } from "../config/products";
 import Card from "./ui/Card";
 import Field from "./ui/Field";
 import Input from "./ui/Input";
@@ -15,7 +14,6 @@ export default function PreorderModal({
   form,
   setForm,
   estimatedTotal,
-  waLink,
   waMessage,
   saturdayDates,
   hasSelectedItems,
@@ -26,6 +24,7 @@ export default function PreorderModal({
   allergenDisclaimer,
   money,
   brand,
+  onOrderIntent,
 }) {
   const [showAllergenPopup, setShowAllergenPopup] = useState(false);
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
@@ -33,8 +32,7 @@ export default function PreorderModal({
   const countdownRef = useRef(null);
 
   useEffect(() => {
-    if (showAllergenPopup) {
-      setAllergenCountdown(5);
+    if (showAllergenPopup && allergenCountdown > 0) {
       countdownRef.current = setInterval(() => {
         setAllergenCountdown((n) => {
           if (n <= 1) {
@@ -46,10 +44,10 @@ export default function PreorderModal({
       }, 1000);
     } else {
       clearInterval(countdownRef.current);
-      setAllergenCountdown(0);
     }
+
     return () => clearInterval(countdownRef.current);
-  }, [showAllergenPopup]);
+  }, [showAllergenPopup, allergenCountdown]);
 
   const [firstLine, ...rest] = waMessage.split("\n");
   const waMessageWithAck = [
@@ -61,17 +59,32 @@ export default function PreorderModal({
   const waLinkWithAck = buildWhatsAppLink(brand.waNumberE164, waMessageWithAck);
 
   function handleWaClick(e) {
-    if (!canSubmitOrder) { e.preventDefault(); return; }
+    if (!canSubmitOrder) {
+      e.preventDefault();
+      return;
+    }
+
     if (!allergenAcknowledged) {
       e.preventDefault();
+      setAllergenCountdown(5);
       setShowAllergenPopup(true);
+      return;
     }
+
+    onOrderIntent?.();
   }
 
   function handleAllergenConfirm() {
     setAllergenAcknowledged(true);
+    setAllergenCountdown(0);
     setShowAllergenPopup(false);
+    onOrderIntent?.();
     window.open(waLinkWithAck, "_blank", "noreferrer");
+  }
+
+  function handleDismissAllergenPopup() {
+    setAllergenCountdown(0);
+    setShowAllergenPopup(false);
   }
 
   return (
@@ -96,6 +109,9 @@ export default function PreorderModal({
               >
                 Reserve via WhatsApp
               </a>
+            </div>
+            <div className="rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
+              Reservations close {brand.orderCutoffLabel}. You will receive confirmation, PayNow details, and pickup or dispatch timing before bake day.
             </div>
             {!hasSelectedItems ? (
               <div className="text-xs text-inkMuted">Select at least one item.</div>
@@ -260,19 +276,15 @@ export default function PreorderModal({
 
       {showAllergenPopup ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-brandBrown/50" onClick={() => setShowAllergenPopup(false)} />
+          <div className="absolute inset-0 bg-brandBrown/50" onClick={handleDismissAllergenPopup} />
           <div className="relative w-full max-w-sm rounded-2xl border border-line bg-surface p-6 shadow-[0_20px_40px_rgba(90,56,37,0.2)]">
             <div className="text-base font-semibold text-ink">Allergen notice</div>
             <p className="mt-3 text-sm leading-relaxed text-inkMuted">
-              Baked in a home kitchen. Allergens present in the kitchen may include:{" "}
-              {ALLERGEN_NAMES.map((name, i) => (
-                <span key={name}>
-                  <strong className="font-semibold text-ink">{name}</strong>
-                  {i < ALLERGEN_NAMES.length - 1 ? ", " : ". "}
-                </span>
-              ))}
-              We cannot guarantee any item is free from cross-contamination.
+              Baked in a home kitchen with shared ingredients and tools. Please review the allergen notice carefully before continuing. We cannot guarantee any item is free from cross-contamination.
             </p>
+            <div className="mt-4 rounded-2xl border border-line bg-cream p-3 text-xs leading-6 text-inkMuted">
+              {allergenDisclaimer}
+            </div>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={handleAllergenConfirm}
@@ -287,7 +299,7 @@ export default function PreorderModal({
                 ) : "I understand, continue"}
               </button>
               <button
-                onClick={() => setShowAllergenPopup(false)}
+                onClick={handleDismissAllergenPopup}
                 className="inline-flex justify-center rounded-button border border-line bg-surface px-5 py-2.5 text-sm font-medium text-inkMuted hover:bg-cream"
               >
                 Go back

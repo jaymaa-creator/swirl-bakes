@@ -2,14 +2,22 @@ export const MENU = [
   {
     id: "cinnamon-rolls",
     name: "Cinnamon Rolls",
+    category: "Signature Rolls",
     priceSgd: 5,
+    image: "/cinnamon-rolls-opt.webp",
+    imageAlt: "Freshly glazed cinnamon rolls in a close-up tray shot",
+    badge: "Best seller",
     note: "Baked fresh. Choose 2, 4, or 6 per order.",
     allergens: "Contains gluten, dairy, eggs.",
   },
   {
     id: "brown-butter-cookies",
     name: "Brown Butter Cookies",
+    category: "Cookies",
     priceSgd: 2,
+    image: "/cinnamon-rolls-tray-opt.webp",
+    imageAlt: "A warm bakery tray styled for Swirl Girl Bakes Saturday batch orders",
+    badge: "Weekend add-on",
     note: "Chewy, toasty brown-butter cookies. Choose 2, 4, or 6 per order.",
     allergens: "Contains gluten, dairy, eggs.",
   },
@@ -53,5 +61,13 @@ export const FAQ = [
   {
     q: "Delivery pricing?",
     a: "Delivery is charged by the courier (GrabExpress/Lalamove). We can book it for you and share the fee before dispatch.",
+  },
+  {
+    q: "Where is collection?",
+    a: "Collection is arranged at a central Singapore pickup point. Exact details are shared after confirmation so we can keep handoff timing close to bake completion.",
+  },
+  {
+    q: "How should I store and reheat my order?",
+    a: "Orders are best on the day of pickup. If needed, keep them covered at room temperature and follow the included reheating notes to bring back the soft centre and glossy finish.",
   },
 ];

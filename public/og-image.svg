@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Swirl Girl Bakes social sharing image">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F7F3EE" />
+      <stop offset="55%" stop-color="#F3E8DC" />
+      <stop offset="100%" stop-color="#EED8C3" />
+    </linearGradient>
+    <radialGradient id="glow" cx="18%" cy="14%" r="70%">
+      <stop offset="0%" stop-color="#C47A3A" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#C47A3A" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+  <g transform="translate(88 84)">
+    <rect width="1024" height="462" rx="40" fill="#FBF8F4" stroke="#E8DED2" />
+    <circle cx="152" cy="132" r="74" fill="#5A3825" />
+    <path d="M152 78c21.2 0 39 12.1 39 32.2 0 17.8-14.4 31.1-33.5 31.9 7.6 2.9 12.8 9 12.8 18.4 0 13.6-11.9 22-28.5 22-17.6 0-28.8-8.7-32.1-23.4l19.4-4c1.7 6.9 6.2 11.3 13.2 11.3 6.4 0 10.9-3.6 10.9-9.2 0-6.8-5.6-9.6-15-9.6H133v-15.6h5.2c10.3 0 16.5-4.3 16.5-11.4 0-5.8-4.4-9.4-10.6-9.4-6.3 0-10.7 3.6-12.4 9.5l-19-4.4C120.1 86.9 133 78 152 78Z" fill="#F7EBDD" />
+    <circle cx="226" cy="82" r="16" fill="#C47A3A" />
+    <text x="70" y="280" fill="#5A3825" font-family="Georgia, 'Times New Roman', serif" font-size="68" font-weight="700">
+      Swirl Girl Bakes
+    </text>
+    <text x="70" y="356" fill="#2B211B" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="34">
+      Small-batch Saturday cinnamon rolls and cookies
+    </text>
+    <text x="70" y="406" fill="#5C4A3F" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="28">
+      Pre-orders close Friday 7pm SGT • Baked fresh in Singapore
+    </text>
+    <g transform="translate(756 70)">
+      <rect width="198" height="322" rx="28" fill="#F7EBDD" />
+      <circle cx="99" cy="99" r="56" fill="#5A3825" />
+      <path d="M99 64c16.6 0 30.6 9.8 30.6 25.2 0 13.8-11.1 24.1-25.8 24.7 5.9 2.3 9.9 7 9.9 14.4 0 10.6-9.2 17.1-21.8 17.1-13.5 0-22.3-6.7-24.8-18.1l14.9-3c1.3 5.4 4.8 8.8 10.2 8.8 4.9 0 8.3-2.7 8.3-7 0-5.2-4.4-7.4-11.6-7.4h-3.9v-12.1h3.9c8 0 12.9-3.3 12.9-8.9 0-4.5-3.3-7.3-8.2-7.3-4.9 0-8.2 2.8-9.5 7.4l-14.6-3.4C72.1 71.3 82.3 64 99 64Z" fill="#F7EBDD" />
+      <circle cx="155" cy="61" r="14" fill="#C47A3A" />
+      <text x="28" y="236" fill="#5A3825" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20" font-weight="700">
+        Reserve for Saturday
+      </text>
+      <text x="28" y="270" fill="#5C4A3F" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="18">
+        WhatsApp ordering
+      </text>
+      <text x="28" y="298" fill="#5C4A3F" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="18">
+        Limited weekly batches
+      </text>
+    </g>
+  </g>
+</svg>

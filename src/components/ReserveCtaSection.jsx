@@ -13,11 +13,11 @@ export default function ReserveCtaSection({
   return (
     <section className="mx-auto max-w-6xl px-4 pt-4 pb-24 sm:pt-6">
       <Card>
-        <div className="p-6 sm:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div className="flex flex-col items-start justify-between gap-6 p-6 sm:p-8 lg:flex-row lg:items-center" data-reveal>
           <div>
             <div className="text-sm font-semibold">Ready to reserve this week’s batch?</div>
             <div className="mt-2 text-inkMuted">
-              Next batch closes Friday 7pm (SGT). Reserve on WhatsApp now to lock your slot.
+              Next batch closes {brand.orderCutoffLabel}. Reserve on WhatsApp now to lock your slot.
             </div>
             <div className="mt-1 text-xs text-inkMuted">
               We confirm availability, delivery details, and PayNow instructions before baking.

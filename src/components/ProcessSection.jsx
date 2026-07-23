@@ -28,7 +28,7 @@ function StepIcon({ kind }) {
   );
 }
 
-export default function ProcessSection({ brandColors, deliveryOptions }) {
+export default function ProcessSection({ brand, brandColors, deliveryOptions }) {
   return (
     <section
       id="how"
@@ -51,9 +51,9 @@ export default function ProcessSection({ brandColors, deliveryOptions }) {
         style={{ backgroundColor: brandColors.brown }}
         aria-hidden="true"
       />
-      <div className="relative max-w-3xl">
+      <div className="relative max-w-3xl" data-reveal="left">
         <div className="text-xs tracking-[0.2em] uppercase text-inkMuted">Process</div>
-        <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-ink">How Saturday batches work</h2>
+        <h2 className="mt-2 text-3xl text-ink sm:text-4xl">How Saturday batches work</h2>
         <p className="mt-3 text-inkMuted leading-relaxed">
           A small-batch flow designed for limited weekly production.
         </p>
@@ -87,6 +87,7 @@ export default function ProcessSection({ brandColors, deliveryOptions }) {
                 ? "border-brandCinnamon/35 bg-[rgba(196,122,58,0.06)]"
                 : "border-line/70"
             }`}
+            data-reveal="up"
           >
             <div className="p-5 sm:p-6">
               <div className="flex items-center gap-3">
@@ -115,7 +116,7 @@ export default function ProcessSection({ brandColors, deliveryOptions }) {
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
-          <div className="p-5">
+          <div className="p-5" data-reveal="left">
             <div className="text-sm font-semibold">Delivery options</div>
             <ul className="mt-3 space-y-2 text-sm text-inkMuted">
               {deliveryOptions.map((d) => (
@@ -131,11 +132,13 @@ export default function ProcessSection({ brandColors, deliveryOptions }) {
           </div>
         </Card>
         <Card>
-          <div className="p-5">
-            <div className="text-sm font-semibold">Food safety and freshness</div>
+          <div className="p-5" data-reveal="right">
+            <div className="text-sm font-semibold">Pickup and cut-off guidance</div>
             <div className="mt-3 text-sm text-inkMuted leading-relaxed">
-              Rolls are packed after cooling to prevent condensation. Reheat instructions are included.
-              You control bake windows to keep quality high.
+              Pre-orders close at {brand.orderCutoffLabel}. If you choose self-collection, exact meetup timing and the collection point are confirmed after your order is accepted.
+            </div>
+            <div className="mt-4 rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
+              {brand.collectionNote}
             </div>
           </div>
         </Card>
