@@ -63,6 +63,25 @@ export default function LandingSection({
                 <br />
                 Reserve early, then we wake, bake and dispatch.
               </p>
+              <div className="sticker-perk mt-4 inline-flex items-center gap-3 rounded-2xl px-3 py-2 text-left shadow-[0_8px_24px_rgba(43,33,27,0.2)]">
+                <span className="sticker-perk__mark inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+                  <img
+                    src="/logo.webp"
+                    alt=""
+                    className="h-full w-full object-cover"
+                    aria-hidden="true"
+                    decoding="async"
+                  />
+                </span>
+                <span>
+                  <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-[#38241A]">
+                    A little extra for you
+                  </span>
+                  <span className="block text-sm font-semibold text-[#38241A]">
+                    Free holographic sticker with every purchase
+                  </span>
+                </span>
+              </div>
               <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-white/90 sm:text-sm">
                 <span className="rounded-full bg-white/12 px-3 py-1.5">Pre-orders close {brand.orderCutoffLabel}</span>
                 <span className="rounded-full bg-white/12 px-3 py-1.5">{brand.originLabel}</span>
