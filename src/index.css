@@ -51,8 +51,19 @@ h1, h2, h3, h4 {
   }
 }
 
+@keyframes cinnamon-loader-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .ribbon {
   overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);
 }
 
 .ribbon-track {
@@ -60,6 +71,7 @@ h1, h2, h3, h4 {
   width: max-content;
   white-space: nowrap;
   will-change: transform;
+  transform: translateZ(0);
   animation: ribbon-marquee 28s linear infinite;
 }
 
@@ -67,7 +79,28 @@ h1, h2, h3, h4 {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  gap: 0;
   white-space: nowrap;
+}
+
+.ribbon-item {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 1rem;
+  padding-inline: 1.5rem;
+}
+
+.cinnamon-loader {
+  contain: layout paint;
+  transform: translateZ(0);
+}
+
+.cinnamon-loader__rotor {
+  animation: cinnamon-loader-spin 1.25s linear infinite;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .ribbon:hover .ribbon-track {
@@ -101,6 +134,10 @@ h1, h2, h3, h4 {
   }
 
   .ribbon-track {
+    animation: none;
+  }
+
+  .cinnamon-loader__rotor {
     animation: none;
   }
 

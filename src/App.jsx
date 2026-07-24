@@ -104,20 +104,21 @@ export default function BakesLandingPage() {
           <div className="ribbon-track py-2 text-xs font-medium text-inkMuted sm:text-sm">
             {[0, 1].map((dupIdx) => (
               <div className="ribbon-group" aria-hidden={dupIdx === 1} key={dupIdx}>
-                {ribbonItems.map((item, idx) => (
-                  <React.Fragment key={`${dupIdx}-${item}`}>
-                    <span className="mx-6">{item}</span>
-                    {idx < ribbonItems.length - 1 ? (
-                      <span className="inline-flex items-center justify-center text-brandBrown" aria-hidden="true">
-                        <span className="sm:hidden">
-                          <CinnamonLoader size={20} />
-                        </span>
-                        <span className="hidden sm:inline-flex">
-                          <CinnamonLoader size={48} />
-                        </span>
+                {ribbonItems.map((item) => (
+                  <span className="ribbon-item" key={`${dupIdx}-${item}`}>
+                    <span>{item}</span>
+                    <span
+                      className="inline-flex flex-none items-center justify-center text-brandBrown"
+                      aria-hidden="true"
+                    >
+                      <span className="inline-flex h-5 w-5 flex-none items-center justify-center sm:hidden">
+                        <CinnamonLoader size={20} />
                       </span>
-                    ) : null}
-                  </React.Fragment>
+                      <span className="hidden h-12 w-12 flex-none items-center justify-center sm:inline-flex">
+                        <CinnamonLoader size={48} />
+                      </span>
+                    </span>
+                  </span>
                 ))}
               </div>
             ))}
