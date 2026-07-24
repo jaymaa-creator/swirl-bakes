@@ -10,9 +10,9 @@ const BRAND = {
   orderCutoffLabel: "Friday 7pm SGT",
   originLabel: "Baked in Singapore",
   story:
-    "Swirl Girl Bakes is a home-baking microbrand built around one careful Saturday batch each week. The goal is simple: soft cinnamon rolls, warm cookies, and a pickup or delivery flow that still feels personal.",
+    "Swirl Girl Bakes is a home-baking microbrand built around one careful Saturday batch each week. The goal is simple: soft cinnamon rolls, tender banana bread, and a pickup or delivery flow that still feels personal.",
   ingredients: [
-    "French-style butter for richer dough and cookies",
+    "French-style butter for richer dough and banana bread",
     "Saigon cinnamon for a deeper swirl and glaze aroma",
     "Small-batch dough rested overnight for a softer crumb",
     "Freshly baked on Saturday for best texture and flavour",

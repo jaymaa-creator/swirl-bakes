@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import ConfirmationSection from "./components/ConfirmationSection";
+import BananaBreadGallery from "./components/BananaBreadGallery";
 import FaqSection from "./components/FaqSection";
 import Seo from "./components/Seo";
 import StorySection from "./components/StorySection";
@@ -206,6 +207,8 @@ export default function BakesLandingPage() {
           setForm={setForm}
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
         />
+
+        <BananaBreadGallery />
 
         <ProcessSection
           brand={BRAND}

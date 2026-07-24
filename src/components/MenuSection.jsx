@@ -73,6 +73,12 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
                   </span>
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-inkMuted">{m.note}</p>
+                {m.ingredients ? (
+                  <div className="mt-4 rounded-card bg-cream px-3 py-3 text-xs leading-5 text-inkMuted">
+                    <span className="font-semibold text-ink">Ingredients: </span>
+                    {m.ingredients.join(", ")}
+                  </div>
+                ) : null}
                 <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} each</div>
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                 {quantityOptions.map((qty) => {

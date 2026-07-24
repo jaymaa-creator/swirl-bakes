@@ -14,9 +14,9 @@ function upsertMeta(selector, attributes) {
 
 export default function Seo({ brand, menu, faq }) {
   useEffect(() => {
-    const title = `${brand.name} | Saturday Cinnamon Rolls & Cookies in Singapore`;
+    const title = `${brand.name} | Saturday Cinnamon Rolls & Banana Bread in Singapore`;
     const description =
-      "Reserve small-batch Saturday cinnamon rolls and brown butter cookies from Swirl Girl Bakes in Singapore. Weekly pre-orders close Friday at 7pm SGT.";
+      "Reserve small-batch Saturday cinnamon rolls and banana bread from Swirl Girl Bakes in Singapore. Weekly pre-orders close Friday at 7pm SGT.";
     const origin =
       typeof window !== "undefined" && window.location.origin !== "null"
         ? window.location.origin
