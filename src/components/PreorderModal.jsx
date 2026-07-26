@@ -100,7 +100,7 @@ export default function PreorderModal({
       onOrderRequest?.();
     }
 
-    onOrderIntent?.();
+    onOrderIntent?.(waLinkWithAck);
     window.open(waLinkWithAck, "_blank", "noreferrer");
   }
 

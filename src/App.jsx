@@ -11,6 +11,7 @@ import ProcessSection from "./components/ProcessSection";
 import ReserveCtaSection from "./components/ReserveCtaSection";
 import SiteFooter from "./components/SiteFooter";
 import InstagramReelSection from "./components/InstagramReelSection";
+import WhatsAppHandoffNotice from "./components/WhatsAppHandoffNotice";
 import CinnamonLoader from "./components/ui/CinnamonLoader";
 import BRAND from "./config/brand";
 import { ALLERGEN_DISCLAIMER, FAQ, MENU, QUANTITY_OPTIONS } from "./config/products";
@@ -48,6 +49,7 @@ export default function BakesLandingPage() {
   const defaultBakeDate = toSingaporeDateKey(getNearestOpenSaturday(new Date()));
   const [modalOpen, setModalOpen] = useState(false);
   const [hasStartedOrder, setHasStartedOrder] = useState(false);
+  const [whatsappHandoffLink, setWhatsappHandoffLink] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -93,9 +95,10 @@ export default function BakesLandingPage() {
 
   const closePreorderModal = () => setModalOpen(false);
 
-  const handleOrderIntent = () => {
+  const handleOrderIntent = (whatsappLink) => {
     setHasStartedOrder(true);
     setModalOpen(false);
+    setWhatsappHandoffLink(whatsappLink || "");
     window.history.replaceState(null, "", "#confirmation");
   };
 
@@ -248,6 +251,11 @@ export default function BakesLandingPage() {
       </main>
 
       <SiteFooter brand={BRAND} />
+
+      <WhatsAppHandoffNotice
+        whatsappLink={whatsappHandoffLink}
+        onDismiss={() => setWhatsappHandoffLink("")}
+      />
 
       <PreorderModal
         open={modalOpen}
