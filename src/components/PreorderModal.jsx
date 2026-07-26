@@ -184,7 +184,7 @@ export default function PreorderModal({
                   >
                     <div>
                       <div className="text-sm font-medium text-ink">{m.name}</div>
-                      <div className="text-xs text-inkMuted">{money(m.priceSgd)} each</div>
+                      <div className="text-xs text-inkMuted">{money(m.priceSgd)} {m.unitLabel || "each"}</div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {quantityOptions.map((qty) => {

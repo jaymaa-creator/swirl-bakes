@@ -23,7 +23,7 @@ export default function Seo({ brand, menu, faq }) {
         : "";
     const siteUrl = brand.siteUrl || origin;
     const pageUrl = siteUrl || undefined;
-    const imageUrl = siteUrl ? `${siteUrl}/og-image.svg` : "/og-image.svg";
+    const imageUrl = siteUrl ? `${siteUrl}/og-image.jpg` : "/og-image.jpg";
     const gscVerification = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION;
 
     document.title = title;

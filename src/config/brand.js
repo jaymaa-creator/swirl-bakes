@@ -4,9 +4,9 @@ const BRAND = {
   primaryCTA: "Reserve for Saturday",
   secondaryCTA: "Available this week",
   waNumberE164: "+6581307971",
-  instagramUrl: "https://www.instagram.com/swirlgirlbakes/",
+  instagramUrl: "https://www.instagram.com/swirlgirl.sg/",
   instagramHandle: "@swirlgirl.sg",
-  siteUrl: import.meta.env.VITE_SITE_URL || "https://swirl-girl.jaemcd95.workers.dev",
+  siteUrl: import.meta.env.VITE_SITE_URL || "https://swirlgirl.sg",
   orderCutoffLabel: "Friday 7pm SGT",
   originLabel: "Baked in Singapore",
   story:
@@ -17,9 +17,9 @@ const BRAND = {
     "Small-batch dough rested overnight for a softer crumb",
     "Freshly baked on Saturday for best texture and flavour",
   ],
-  collectionLocation: "Central Singapore collection point",
+  collectionLocation: "Joo Chiat collection point",
   collectionNote:
-    "Exact meetup details are shared after confirmation so timing stays tight and bakes stay fresh.",
+    "Collection is in Joo Chiat. Exact meetup details are shared after confirmation so timing stays tight and bakes stay fresh.",
   pickupInstructions: [
     "Collection timing is confirmed after your order is accepted.",
     "Bring an insulated bag if you are collecting multiple boxes.",

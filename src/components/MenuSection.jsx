@@ -79,7 +79,7 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
                     {m.ingredients.join(", ")}
                   </div>
                 ) : null}
-                <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} each</div>
+                <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} {m.unitLabel || "each"}</div>
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                 {quantityOptions.map((qty) => {
                   const isSelected = Number(form.items[m.id] || 0) === qty;

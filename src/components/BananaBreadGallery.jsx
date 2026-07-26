@@ -12,11 +12,13 @@ const PHOTOS = [
   {
     src: "/banana-bread-board.webp",
     alt: "Banana bread with a banana and baking tools on a wooden board",
+    caption: "Chocolate-chip variation from a previous kitchen bake",
     className: "sm:col-span-1",
   },
   {
     src: "/banana-bread-choc-chip.webp",
     alt: "A banana bread loaf with chocolate chips on a wooden board",
+    caption: "Chocolate-chip variation from a previous kitchen bake",
     className: "sm:col-span-2",
   },
 ];
@@ -38,7 +40,7 @@ export default function BananaBreadGallery() {
         {PHOTOS.map((photo) => (
           <figure
             key={photo.src}
-            className={`overflow-hidden rounded-card bg-[#E9DCCF] ${photo.className}`}
+            className={`relative overflow-hidden rounded-card bg-[#E9DCCF] ${photo.className}`}
             data-reveal="up"
           >
             <img
@@ -48,6 +50,11 @@ export default function BananaBreadGallery() {
               loading="lazy"
               decoding="async"
             />
+            {photo.caption ? (
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-brandBrown/80 to-transparent px-4 pb-3 pt-10 text-xs font-medium text-white">
+                {photo.caption}
+              </figcaption>
+            ) : null}
           </figure>
         ))}
       </div>
