@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import ConfirmationSection from "./components/ConfirmationSection";
 import BananaBreadGallery from "./components/BananaBreadGallery";
+import PrivacySection from "./components/PrivacySection";
 import FaqSection from "./components/FaqSection";
 import Seo from "./components/Seo";
 import StorySection from "./components/StorySection";
@@ -102,7 +103,7 @@ export default function BakesLandingPage() {
     window.history.replaceState(null, "", "#confirmation");
   };
 
-  const handleOrderRequest = () => {
+  const handleOrderRequest = (turnstileToken) => {
     const order = buildOrderRecord({
       form: { ...form, bakeWindow: displayBakeWindow },
       menu: MENU,
@@ -110,7 +111,7 @@ export default function BakesLandingPage() {
       moneyFormatter: money,
     });
 
-    submitOrderRequest(order).catch(() => {
+    submitOrderRequest(order, turnstileToken).catch(() => {
       // WhatsApp remains available if the order tracker is temporarily unavailable.
     });
   };
@@ -239,6 +240,8 @@ export default function BakesLandingPage() {
         </div>
 
         <FaqSection faq={FAQ} />
+
+        <PrivacySection brand={BRAND} />
 
         <ReserveCtaSection
           brand={BRAND}

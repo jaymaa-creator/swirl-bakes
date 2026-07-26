@@ -21,6 +21,17 @@ function isValidOrder(order) {
   );
 }
 
+async function verifyTurnstile(token, secret, remoteIp) {
+  const body = new URLSearchParams({ secret, response: token });
+  if (remoteIp) body.set("remoteip", remoteIp);
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body,
+  });
+  const result = await response.json().catch(() => null);
+  return result?.success === true && result.action === "order";
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -56,6 +67,20 @@ export default {
 
     if (!isValidOrder(payload.order)) {
       return jsonResponse({ ok: false, error: "Incomplete order" }, { status: 400 });
+    }
+
+    if (env.TURNSTILE_SECRET_KEY) {
+      const isTurnstileValid =
+        typeof payload.turnstileToken === "string" &&
+        (await verifyTurnstile(
+          payload.turnstileToken,
+          env.TURNSTILE_SECRET_KEY,
+          request.headers.get("CF-Connecting-IP")
+        ));
+
+      if (!isTurnstileValid) {
+        return jsonResponse({ ok: false, error: "Security check failed" }, { status: 403 });
+      }
     }
 
     try {

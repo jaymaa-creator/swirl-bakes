@@ -7,6 +7,9 @@ import Modal from "./ui/Modal";
 import Select from "./ui/Select";
 import Textarea from "./ui/Textarea";
 import CinnamonLoader from "./ui/CinnamonLoader";
+import TurnstileWidget from "./TurnstileWidget";
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 export default function PreorderModal({
   open,
@@ -30,6 +33,8 @@ export default function PreorderModal({
   const [showAllergenPopup, setShowAllergenPopup] = useState(false);
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
   const [allergenCountdown, setAllergenCountdown] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileError, setTurnstileError] = useState("");
   const countdownRef = useRef(null);
   const orderRequestSubmittedRef = useRef(false);
   const isDelivery = form.delivery.toLowerCase().includes("delivery");
@@ -95,9 +100,14 @@ export default function PreorderModal({
   }
 
   function completeOrder() {
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setTurnstileError("Please complete the security check before continuing.");
+      return;
+    }
+
     if (!orderRequestSubmittedRef.current) {
       orderRequestSubmittedRef.current = true;
-      onOrderRequest?.();
+      onOrderRequest?.(turnstileToken);
     }
 
     onOrderIntent?.(waLinkWithAck);
@@ -112,6 +122,20 @@ export default function PreorderModal({
         title="Reserve for Saturday"
         footer={
           <div className="grid gap-2">
+            {TURNSTILE_SITE_KEY ? (
+              <div className="rounded-2xl border border-line bg-cream px-3 py-3">
+                <div className="mb-2 text-xs font-medium text-inkMuted">Quick security check</div>
+                <TurnstileWidget
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onTokenChange={(token) => {
+                    setTurnstileToken(token);
+                    setTurnstileError("");
+                  }}
+                  onError={() => setTurnstileError("Security check could not load. Please refresh and try again.")}
+                />
+                {turnstileError ? <div className="mt-2 text-xs text-red-700">{turnstileError}</div> : null}
+              </div>
+            ) : null}
             <div className="flex flex-col gap-2 sm:flex-row">
               <a
                 href={allergenAcknowledged && canSubmitOrder ? waLinkWithAck : undefined}
@@ -316,6 +340,14 @@ export default function PreorderModal({
               placeholder="Optional"
             />
           </Field>
+
+          <p className="text-xs leading-6 text-inkMuted">
+            We use these details to manage your order. Do not include card details, NRIC details, or unnecessary sensitive information. Read our{" "}
+            <a href="#privacy" onClick={onClose} className="font-medium text-brandBrown underline underline-offset-2">
+              privacy notice
+            </a>
+            .
+          </p>
 
           <div className="hidden sm:block rounded-2xl border border-line bg-cream p-4 text-xs text-inkMuted whitespace-pre-wrap">
             {waMessageWithAck}

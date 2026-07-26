@@ -10,6 +10,7 @@ export default function SiteFooter({ brand }) {
               <a href="#menu" className="hover:text-ink">Menu</a>
               <a href="#how" className="hover:text-ink">How it works</a>
               <a href="#story" className="hover:text-ink">About</a>
+              <a href="#privacy" className="hover:text-ink">Privacy</a>
               <a href={brand.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-ink">
                 Instagram
               </a>

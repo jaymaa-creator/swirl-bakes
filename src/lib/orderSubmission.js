@@ -21,11 +21,11 @@ export function buildOrderRecord({ form, menu, estimatedTotal, moneyFormatter })
   };
 }
 
-export function submitOrderRequest(order) {
+export function submitOrderRequest(order, turnstileToken = "") {
   return fetch("/api/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ order }),
+    body: JSON.stringify({ order, turnstileToken }),
     keepalive: true,
   });
 }
