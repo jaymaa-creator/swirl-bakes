@@ -1,0 +1,2 @@
+ORDER_SHEET_WEBHOOK_URL=https://script.google.com/macros/s/your-deployment-id/exec
+ORDER_WEBHOOK_SECRET=replace-with-your-private-secret

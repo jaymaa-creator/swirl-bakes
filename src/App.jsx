@@ -27,6 +27,7 @@ import useBodyScrollLock from "./hooks/useBodyScrollLock";
 import useOrderSummary from "./hooks/useOrderSummary";
 import usePreorderModalOpen from "./hooks/usePreorderModalOpen";
 import useScrollReveal from "./hooks/useScrollReveal";
+import { buildOrderRecord, submitOrderRequest } from "./lib/orderSubmission";
 
 export default function BakesLandingPage() {
   const ribbonItems = [
@@ -96,6 +97,19 @@ export default function BakesLandingPage() {
     setHasStartedOrder(true);
     setModalOpen(false);
     window.history.replaceState(null, "", "#confirmation");
+  };
+
+  const handleOrderRequest = () => {
+    const order = buildOrderRecord({
+      form: { ...form, bakeWindow: displayBakeWindow },
+      menu: MENU,
+      estimatedTotal,
+      moneyFormatter: money,
+    });
+
+    submitOrderRequest(order).catch(() => {
+      // WhatsApp remains available if the order tracker is temporarily unavailable.
+    });
   };
 
   return (
@@ -252,6 +266,7 @@ export default function BakesLandingPage() {
         money={money}
         brand={BRAND}
         onOrderIntent={handleOrderIntent}
+        onOrderRequest={handleOrderRequest}
       />
     </div>
   );

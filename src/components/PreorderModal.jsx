@@ -25,11 +25,13 @@ export default function PreorderModal({
   money,
   brand,
   onOrderIntent,
+  onOrderRequest,
 }) {
   const [showAllergenPopup, setShowAllergenPopup] = useState(false);
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
   const [allergenCountdown, setAllergenCountdown] = useState(0);
   const countdownRef = useRef(null);
+  const orderRequestSubmittedRef = useRef(false);
   const isDelivery = form.delivery.toLowerCase().includes("delivery");
 
   useEffect(() => {
@@ -49,6 +51,10 @@ export default function PreorderModal({
 
     return () => clearInterval(countdownRef.current);
   }, [showAllergenPopup, allergenCountdown]);
+
+  useEffect(() => {
+    if (open) orderRequestSubmittedRef.current = false;
+  }, [open]);
 
   const [firstLine, ...rest] = waMessage.split("\n");
   const waMessageWithAck = [
@@ -72,20 +78,30 @@ export default function PreorderModal({
       return;
     }
 
-    onOrderIntent?.();
+    e.preventDefault();
+    completeOrder();
   }
 
   function handleAllergenConfirm() {
     setAllergenAcknowledged(true);
     setAllergenCountdown(0);
     setShowAllergenPopup(false);
-    onOrderIntent?.();
-    window.open(waLinkWithAck, "_blank", "noreferrer");
+    completeOrder();
   }
 
   function handleDismissAllergenPopup() {
     setAllergenCountdown(0);
     setShowAllergenPopup(false);
+  }
+
+  function completeOrder() {
+    if (!orderRequestSubmittedRef.current) {
+      orderRequestSubmittedRef.current = true;
+      onOrderRequest?.();
+    }
+
+    onOrderIntent?.();
+    window.open(waLinkWithAck, "_blank", "noreferrer");
   }
 
   return (
