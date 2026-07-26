@@ -12,9 +12,10 @@ export function buildOrderMessage({ brandName, form, menu, estimatedTotal, money
   if (form.email) lines.push(`Email: ${form.email}`);
   lines.push(`Bake window: ${form.bakeWindow}`);
   lines.push(`Fulfilment: ${form.delivery}`);
-  lines.push(`Area: ${form.area}`);
   if (form.delivery.toLowerCase().includes("delivery")) {
     lines.push(`Address: ${form.address || "-"}`);
+  } else {
+    lines.push(`Self-collection time: ${form.pickupTime || "-"}`);
   }
   lines.push("Items:");
   menu.forEach((m) => {

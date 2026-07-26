@@ -39,3 +39,26 @@ test("buildOrderMessage includes selected items and delivery address", () => {
   assert.match(message, /Address: 123 Test St #01-02/);
   assert.match(message, /Estimated total: S\$28/);
 });
+
+test("buildOrderMessage includes the self-collection time instead of an address", () => {
+  const form = {
+    name: "Jamie",
+    phone: "+65 8123 4567",
+    bakeWindow: "Sat, 8 Mar 2026",
+    delivery: "Self-collection - agreed pickup point",
+    pickupTime: "Afternoon",
+    address: "",
+    items: { classic: 2, pecan: 0 },
+  };
+
+  const message = buildOrderMessage({
+    brandName: "Swirl Girl Bakes",
+    form,
+    menu,
+    estimatedTotal: 14,
+    moneyFormatter: (n) => `S$${n}`,
+  });
+
+  assert.match(message, /Self-collection time: Afternoon/);
+  assert.doesNotMatch(message, /Address:/);
+});

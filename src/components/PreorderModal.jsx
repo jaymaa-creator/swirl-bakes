@@ -30,6 +30,7 @@ export default function PreorderModal({
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
   const [allergenCountdown, setAllergenCountdown] = useState(0);
   const countdownRef = useRef(null);
+  const isDelivery = form.delivery.toLowerCase().includes("delivery");
 
   useEffect(() => {
     if (showAllergenPopup && allergenCountdown > 0) {
@@ -125,44 +126,45 @@ export default function PreorderModal({
         }
       >
         <div className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Name">
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Your name"
-              />
-            </Field>
-            <Field label="Phone" hint="WhatsApp preferred">
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="+65 ..."
-              />
-            </Field>
-            <Field label="Email" hint="Optional">
-              <Input
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="you@email.com"
-              />
-            </Field>
-            <Field label="Saturday batch">
-              <Select
-                value={form.bakeWindow}
-                onChange={(e) => {
-                  const nextBakeWindow = e.target.value;
-                  setForm((f) => ({ ...f, bakeWindow: nextBakeWindow }));
-                }}
-              >
-                {saturdayDates.map((w) => (
-                  <option key={w.value} value={w.value} disabled={!w.isOpen}>
-                    {w.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
+          <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">1. Your details</div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Field label="Name">
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Your name"
+                />
+              </Field>
+              <Field label="Contact number" hint="WhatsApp preferred">
+                <Input
+                  value={form.phone}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="+65 ..."
+                />
+              </Field>
+              <Field label="Email" hint="Optional">
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="you@email.com"
+                />
+              </Field>
+              <Field label="Saturday batch">
+                <Select
+                  value={form.bakeWindow}
+                  onChange={(e) => setForm((f) => ({ ...f, bakeWindow: e.target.value }))}
+                >
+                  {saturdayDates.map((w) => (
+                    <option key={w.value} value={w.value} disabled={!w.isOpen}>
+                      {w.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+          </section>
 
           <Card>
             <div className="p-3 sm:p-4">
@@ -222,42 +224,73 @@ export default function PreorderModal({
             </div>
           </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Fulfilment">
-              <Select
-                value={form.delivery}
-                onChange={(e) => setForm((f) => ({ ...f, delivery: e.target.value }))}
-              >
-                {brand.deliveryOptions.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Area">
-              <Select
-                value={form.area}
-                onChange={(e) => setForm((f) => ({ ...f, area: e.target.value }))}
-              >
-                {brand.pickupAreas.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
+          <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">2. Delivery method</div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                { value: brand.deliveryOptions[1], label: "Self-collection", detail: "Collect from our agreed pickup point." },
+                { value: brand.deliveryOptions[0], label: "Delivery", detail: "GrabExpress or Lalamove, paid by customer." },
+              ].map((option) => {
+                const isSelected = form.delivery === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, delivery: option.value }))}
+                    className={`rounded-2xl border p-4 text-left transition-colors ${
+                      isSelected
+                        ? "border-brandBrown bg-surface shadow-soft"
+                        : "border-line bg-surface/60 hover:border-brandCinnamon"
+                    }`}
+                    aria-pressed={isSelected}
+                  >
+                    <span className="block text-sm font-semibold text-ink">{option.label}</span>
+                    <span className="mt-1 block text-xs leading-5 text-inkMuted">{option.detail}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-          {form.delivery.toLowerCase().includes("delivery") ? (
-            <Field label="Delivery address" hint="Include unit number">
-              <Input
-                value={form.address}
-                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                placeholder="Address"
-              />
-            </Field>
-          ) : null}
+          <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">
+              3. {isDelivery ? "Delivery address" : "Collection time"}
+            </div>
+            <div className="mt-4">
+              {isDelivery ? (
+                <Field label="Your delivery address" hint="Include unit number">
+                  <Input
+                    value={form.address}
+                    onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                    placeholder="Block, street, postal code, unit number"
+                  />
+                </Field>
+              ) : (
+                <Field label="Preferred self-collection slot" hint="We will confirm the exact handoff time">
+                  <div className="grid grid-cols-2 gap-3">
+                    {["Morning", "Afternoon"].map((slot) => {
+                      const isSelected = form.pickupTime === slot;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, pickupTime: slot }))}
+                          className={`rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                            isSelected
+                              ? "border-brandBrown bg-brandBrown text-white"
+                              : "border-line bg-surface text-inkMuted hover:border-brandCinnamon"
+                          }`}
+                          aria-pressed={isSelected}
+                        >
+                          {slot}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              )}
+            </div>
+          </section>
 
           <Field label="Notes" hint="Allergies, timing constraints, and order details">
             <Textarea

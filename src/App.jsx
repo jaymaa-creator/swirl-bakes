@@ -56,6 +56,7 @@ export default function BakesLandingPage() {
     delivery: BRAND.deliveryOptions[0],
     area: BRAND.pickupAreas[0],
     address: "",
+    pickupTime: "Morning",
     notes: "",
     items: Object.fromEntries(MENU.map((item) => [item.id, 0])),
   });
