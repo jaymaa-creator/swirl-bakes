@@ -49,69 +49,77 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
         </div>
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
-          {visibleItems.map((m) => (
-            <div
-              key={m.id}
-              className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_8px_24px_rgba(90,56,37,0.08)]"
-              data-reveal="up"
-            >
-              <img
-                src={m.image}
-                alt={m.imageAlt}
-                className="aspect-[4/3] w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
-              <div className="px-5 py-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.18em] text-inkMuted">{m.category}</div>
-                    <div className="mt-2 text-2xl text-ink">{m.name}</div>
+          {visibleItems.map((m) => {
+            const quantityChoices = m.quantityOptions || quantityOptions;
+            const isAvailable = m.available !== false;
+
+            return (
+              <div
+                key={m.id}
+                className={`overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_8px_24px_rgba(90,56,37,0.08)] ${
+                  isAvailable ? "" : "opacity-75"
+                }`}
+                data-reveal="up"
+              >
+                <img
+                  src={m.image}
+                  alt={m.imageAlt}
+                  className="aspect-[4/3] w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="px-5 py-6">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-inkMuted">{m.category}</div>
+                      <div className="mt-2 text-2xl text-ink">{m.name}</div>
+                    </div>
+                    <span className="rounded-full bg-[#F7EBDD] px-3 py-1 text-xs font-semibold text-brandBrown">
+                      {isAvailable ? m.badge : "Sold out this week"}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-[#F7EBDD] px-3 py-1 text-xs font-semibold text-brandBrown">
-                    {m.badge}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-inkMuted">{m.note}</p>
-                {m.ingredients ? (
-                  <div className="mt-4 rounded-card bg-cream px-3 py-3 text-xs leading-5 text-inkMuted">
-                    <span className="font-semibold text-ink">Ingredients: </span>
-                    {m.ingredients.join(", ")}
+                  <p className="mt-3 text-sm leading-relaxed text-inkMuted">{m.note}</p>
+                  {m.ingredients ? (
+                    <div className="mt-4 rounded-card bg-cream px-3 py-3 text-xs leading-5 text-inkMuted">
+                      <span className="font-semibold text-ink">Ingredients: </span>
+                      {m.ingredients.join(", ")}
+                    </div>
+                  ) : null}
+                  <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} {m.unitLabel || "each"}</div>
+                  <div className="mt-5 flex flex-wrap items-center gap-2">
+                    {quantityChoices.map((qty) => {
+                      const isSelected = Number(form.items[m.id] || 0) === qty;
+                      return (
+                        <button
+                          key={`${m.id}-${qty}`}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              items: {
+                                ...f.items,
+                                [m.id]: Number(f.items[m.id] || 0) === qty ? 0 : qty,
+                              },
+                            }))
+                          }
+                          className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
+                            isSelected
+                              ? "border-brandBrown bg-brandBrown text-white"
+                              : "border-[#DCCEBF] bg-transparent text-inkMuted hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
+                          }`}
+                          aria-pressed={isSelected}
+                        >
+                          {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
+                        </button>
+                      );
+                    })}
                   </div>
-                ) : null}
-                <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} {m.unitLabel || "each"}</div>
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                {quantityOptions.map((qty) => {
-                  const isSelected = Number(form.items[m.id] || 0) === qty;
-                  return (
-                    <button
-                      key={`${m.id}-${qty}`}
-                      type="button"
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          items: {
-                            ...f.items,
-                            [m.id]: Number(f.items[m.id] || 0) === qty ? 0 : qty,
-                          },
-                        }))
-                      }
-                      className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                        isSelected
-                          ? "border-brandBrown bg-brandBrown text-white"
-                          : "border-[#DCCEBF] bg-transparent text-inkMuted hover:border-brandCinnamon"
-                      }`}
-                      aria-pressed={isSelected}
-                    >
-                      {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
-                    </button>
-                  );
-                })}
+                  <div className="mt-4 text-xs text-inkMuted">{m.allergens}</div>
                 </div>
-                <div className="mt-4 text-xs text-inkMuted">{m.allergens}</div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {allergenDisclaimer ? (
           <p className="mt-6 max-w-4xl text-xs leading-6 text-inkMuted" data-reveal="up">

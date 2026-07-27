@@ -199,23 +199,30 @@ export default function PreorderModal({
           <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">1. Your details</div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field label="Name" hint="Required">
+              <Field label="Name" hint="Required" htmlFor="order-name">
                 <Input
+                  id="order-name"
+                  name="name"
                   required
                   autoComplete="name"
+                  enterKeyHint="next"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="Your name"
                 />
               </Field>
-              <Field label="Contact number" hint="WhatsApp preferred, required">
+              <Field label="Contact number" hint="WhatsApp preferred, required" htmlFor="order-phone">
                 <Input
+                  id="order-phone"
+                  name="tel"
                   required
                   type="tel"
                   autoComplete="tel"
+                  inputMode="tel"
+                  enterKeyHint="next"
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  placeholder="+65 ..."
+                  placeholder="+65 9123 4567"
                 />
               </Field>
               <Field label="Saturday batch">
@@ -244,45 +251,55 @@ export default function PreorderModal({
               </div>
 
               <div className="mt-3 grid gap-3">
-                {menu.map((m) => (
-                  <div
-                    key={m.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-line bg-cream px-4 py-3"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-ink">{m.name}</div>
-                      <div className="text-xs text-inkMuted">{money(m.priceSgd)} {m.unitLabel || "each"}</div>
+                {menu.map((m) => {
+                  const quantityChoices = m.quantityOptions || quantityOptions;
+                  const isAvailable = m.available !== false;
+
+                  return (
+                    <div
+                      key={m.id}
+                      className={`flex flex-col gap-3 rounded-2xl border border-line bg-cream px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+                        isAvailable ? "" : "opacity-70"
+                      }`}
+                    >
+                      <div>
+                        <div className="text-sm font-medium text-ink">{m.name}</div>
+                        <div className="text-xs text-inkMuted">
+                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : "Sold out this week"}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {quantityChoices.map((qty) => {
+                          const isSelected = Number(form.items[m.id] || 0) === qty;
+                          return (
+                            <button
+                              key={qty}
+                              type="button"
+                              disabled={!isAvailable}
+                              onClick={() =>
+                                setForm((f) => ({
+                                  ...f,
+                                  items: {
+                                    ...f.items,
+                                    [m.id]: Number(f.items[m.id] || 0) === qty ? 0 : qty,
+                                  },
+                                }))
+                              }
+                              className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
+                                isSelected
+                                  ? "border-brandBrown bg-brandBrown text-white"
+                                  : "border-[#DCCEBF] bg-transparent text-inkMuted hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
+                              }`}
+                              aria-pressed={isSelected}
+                            >
+                              {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {quantityOptions.map((qty) => {
-                        const isSelected = Number(form.items[m.id] || 0) === qty;
-                        return (
-                          <button
-                            key={qty}
-                            type="button"
-                            onClick={() =>
-                              setForm((f) => ({
-                                ...f,
-                                items: {
-                                  ...f.items,
-                                  [m.id]: Number(f.items[m.id] || 0) === qty ? 0 : qty,
-                                },
-                              }))
-                            }
-                            className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                              isSelected
-                                ? "border-brandBrown bg-brandBrown text-white"
-                                : "border-[#DCCEBF] bg-transparent text-inkMuted hover:border-brandCinnamon"
-                            }`}
-                            aria-pressed={isSelected}
-                          >
-                            {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {allergenDisclaimer ? (
@@ -325,8 +342,12 @@ export default function PreorderModal({
             </div>
             <div className="mt-4">
               {isDelivery ? (
-                <Field label="Your delivery address" hint="Include unit number">
+                <Field label="Your delivery address" hint="Include unit number" htmlFor="order-address">
                   <Input
+                    id="order-address"
+                    name="street-address"
+                    autoComplete="street-address"
+                    enterKeyHint="next"
                     value={form.address}
                     onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                     placeholder="Block, street, postal code, unit number"

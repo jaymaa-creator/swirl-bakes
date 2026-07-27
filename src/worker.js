@@ -1,5 +1,7 @@
 const ORDER_ENDPOINT = "/api/orders";
+const MENU_ENDPOINT = "/api/menu";
 const MAX_ORDER_BYTES = 16_000;
+const MENU_CACHE_SECONDS = 300;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -21,6 +23,40 @@ function isValidOrder(order) {
   );
 }
 
+function normalizeMenuProduct(product) {
+  if (!product || typeof product.id !== "string" || !product.id.trim()) return null;
+
+  return {
+    id: product.id.trim(),
+    priceSgd: Number(product.priceSgd) || undefined,
+    available: product.available,
+    maxQuantity: Number(product.maxQuantity) || undefined,
+  };
+}
+
+async function fetchMenuSettings(env) {
+  const menuSettingsUrl = env.MENU_SETTINGS_URL || env.ORDER_SHEET_WEBHOOK_URL;
+
+  if (!menuSettingsUrl) {
+    return { ok: true, products: [] };
+  }
+
+  const response = await fetch(menuSettingsUrl, {
+    headers: { Accept: "application/json" },
+    cf: { cacheTtl: MENU_CACHE_SECONDS, cacheEverything: true },
+  });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok || data?.ok !== true || !Array.isArray(data.products)) {
+    throw new Error(`Menu settings returned ${response.status}`);
+  }
+
+  return {
+    ok: true,
+    products: data.products.map(normalizeMenuProduct).filter(Boolean),
+  };
+}
+
 async function verifyTurnstile(token, secret, remoteIp) {
   const body = new URLSearchParams({ secret, response: token });
   if (remoteIp) body.set("remoteip", remoteIp);
@@ -35,6 +71,24 @@ async function verifyTurnstile(token, secret, remoteIp) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === MENU_ENDPOINT) {
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "Method not allowed" }, { status: 405 });
+      }
+
+      try {
+        return jsonResponse(await fetchMenuSettings(env), {
+          headers: { "Cache-Control": `public, max-age=60, s-maxage=${MENU_CACHE_SECONDS}` },
+        });
+      } catch (error) {
+        console.error("Unable to load menu settings", error);
+        return jsonResponse(
+          { ok: true, products: [] },
+          { headers: { "Cache-Control": "public, max-age=60" } }
+        );
+      }
+    }
 
     if (url.pathname !== ORDER_ENDPOINT) {
       return env.ASSETS.fetch(request);

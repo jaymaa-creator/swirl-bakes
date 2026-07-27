@@ -26,6 +26,7 @@ import {
 } from "./lib/dates";
 import useAnalytics from "./hooks/useAnalytics";
 import useBodyScrollLock from "./hooks/useBodyScrollLock";
+import useMenuSettings from "./hooks/useMenuSettings";
 import useOrderSummary from "./hooks/useOrderSummary";
 import usePreorderModalOpen from "./hooks/usePreorderModalOpen";
 import useScrollReveal from "./hooks/useScrollReveal";
@@ -67,6 +68,24 @@ export default function BakesLandingPage() {
 
   const { isOpeningModal, openingTriggerId, handleOpenPreorder } =
     usePreorderModalOpen(setForm, setModalOpen);
+  const { menu } = useMenuSettings(MENU);
+  const orderableMenu = useMemo(() => menu.filter((item) => item.available !== false), [menu]);
+  const orderForm = useMemo(() => {
+    const items = { ...form.items };
+
+    menu.forEach((item) => {
+      const currentQuantity = Number(items[item.id] || 0);
+      const maxQuantity = item.quantityOptions?.at(-1) || QUANTITY_OPTIONS.at(-1) || 0;
+
+      if (item.available === false) {
+        items[item.id] = 0;
+      } else if (currentQuantity > maxQuantity) {
+        items[item.id] = maxQuantity;
+      }
+    });
+
+    return { ...form, items };
+  }, [form, menu]);
 
   const fallbackBakeWindow = saturdayOptions[0]?.value || defaultBakeDate;
   const normalizedBakeWindow = saturdayOptions.some((option) => option.value === form.bakeWindow)
@@ -80,8 +99,8 @@ export default function BakesLandingPage() {
   const displayBakeWindow = selectedBakeOption?.label || "";
 
   const { estimatedTotal, hasSelectedItems, waMessage, money } = useOrderSummary({
-    form: { ...form, bakeWindow: displayBakeWindow },
-    menu: MENU,
+    form: { ...orderForm, bakeWindow: displayBakeWindow },
+    menu: orderableMenu,
     brandName: BRAND.name,
     waNumberE164: BRAND.waNumberE164,
   });
@@ -107,8 +126,8 @@ export default function BakesLandingPage() {
 
   const handleOrderRequest = (turnstileToken) => {
     const order = buildOrderRecord({
-      form: { ...form, bakeWindow: displayBakeWindow },
-      menu: MENU,
+      form: { ...orderForm, bakeWindow: displayBakeWindow },
+      menu: orderableMenu,
       estimatedTotal,
       moneyFormatter: money,
     });
@@ -225,9 +244,9 @@ export default function BakesLandingPage() {
         <InstagramReelSection />
 
         <MenuSection
-          menu={MENU}
+          menu={menu}
           quantityOptions={QUANTITY_OPTIONS}
-          form={form}
+          form={orderForm}
           setForm={setForm}
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
         />
@@ -272,7 +291,7 @@ export default function BakesLandingPage() {
       <PreorderModal
         open={modalOpen}
         onClose={closePreorderModal}
-        form={{ ...form, bakeWindow: normalizedBakeWindow }}
+        form={{ ...orderForm, bakeWindow: normalizedBakeWindow }}
         setForm={setForm}
         estimatedTotal={estimatedTotal}
         waMessage={waMessage}
@@ -281,7 +300,7 @@ export default function BakesLandingPage() {
         canSubmitOrder={hasSelectedItems && isSelectedBakeOpen && hasRequiredContactDetails}
         hasRequiredContactDetails={hasRequiredContactDetails}
         isBakeWindowOpen={isSelectedBakeOpen}
-        menu={MENU}
+        menu={menu}
         quantityOptions={QUANTITY_OPTIONS}
         allergenDisclaimer={ALLERGEN_DISCLAIMER}
         money={money}
