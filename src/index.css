@@ -124,6 +124,48 @@ h1, h2, h3, h4 {
   max-width: 38rem;
 }
 
+.cutoff-timer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 1rem;
+  background: rgba(43, 33, 27, 0.27);
+  padding: 0.75rem;
+}
+
+.cutoff-timer__unit {
+  display: grid;
+  min-width: 2.65rem;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.35rem 0.4rem;
+  color: white;
+}
+
+.cutoff-timer__unit strong {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.cutoff-timer__unit span {
+  margin-top: 0.2rem;
+  font-size: 0.62rem;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.78;
+}
+
+@media (max-width: 420px) {
+  .cutoff-timer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .ribbon {
   overflow: hidden;
   -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);

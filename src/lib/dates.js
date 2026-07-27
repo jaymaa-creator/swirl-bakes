@@ -77,9 +77,9 @@ export function getCutoffForSaturday(satDate) {
     0,
     0
   );
-  const fridayDate = addDays(saturdayStart, -1);
-  const fridayParts = getSingaporeParts(fridayDate);
-  return createSingaporeDate(fridayParts.year, fridayParts.month, fridayParts.day, 19, 0, 0);
+  const thursdayDate = addDays(saturdayStart, -2);
+  const thursdayParts = getSingaporeParts(thursdayDate);
+  return createSingaporeDate(thursdayParts.year, thursdayParts.month, thursdayParts.day, 22, 0, 0);
 }
 
 export function isSaturdayOpen(satDate, now = new Date()) {
@@ -99,6 +99,10 @@ export function getNearestOpenSaturday(now = new Date()) {
   }
 
   return candidate;
+}
+
+export function getNextOrderCutoff(now = new Date()) {
+  return getCutoffForSaturday(getNearestOpenSaturday(now));
 }
 
 export function getOpenSaturdays(count = 2, now = new Date()) {

@@ -34,7 +34,7 @@ import { buildOrderRecord, submitOrderRequest } from "./lib/orderSubmission";
 export default function BakesLandingPage() {
   const ribbonItems = [
     "Fresh cinnamon rolls every Saturday",
-    "Pre-orders close Friday 7pm",
+    "Pre-orders close Thursday 10pm",
     "Small-batch bakes in Singapore",
     "Reserve early - limited batch",
   ];
@@ -209,13 +209,7 @@ export default function BakesLandingPage() {
       ) : null}
 
       <main className="space-y-6 pb-6 sm:space-y-10 sm:pb-8">
-        <LandingSection
-          brand={BRAND}
-          bakeWindows={saturdayOptions}
-          handleOpenPreorder={handleOpenPreorder}
-          isOpeningModal={isOpeningModal}
-          openingTriggerId={openingTriggerId}
-        />
+        <LandingSection brand={BRAND} />
 
         <InstagramReelSection />
 

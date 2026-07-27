@@ -1,15 +1,8 @@
 import { useEffect, useRef } from "react";
-import Card from "./ui/Card";
-import CinnamonLoader from "./ui/CinnamonLoader";
+import CutoffCountdown from "./CutoffCountdown";
 import Pill from "./ui/Pill";
 
-export default function LandingSection({
-  brand,
-  bakeWindows,
-  handleOpenPreorder,
-  isOpeningModal,
-  openingTriggerId,
-}) {
+export default function LandingSection({ brand }) {
   const heroVideoRef = useRef(null);
   useEffect(() => {
     if (!heroVideoRef.current) return;
@@ -82,8 +75,8 @@ export default function LandingSection({
                 <br />
                 Reserve early, then we wake, bake and dispatch.
               </p>
+              <CutoffCountdown />
               <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-white/90 sm:text-sm">
-                <span className="rounded-full bg-white/12 px-3 py-1.5">Pre-orders close {brand.orderCutoffLabel}</span>
                 <span className="rounded-full bg-white/12 px-3 py-1.5">{brand.originLabel}</span>
               </div>
             </div>
@@ -91,59 +84,6 @@ export default function LandingSection({
         </div>
       </div>
 
-      <div className="mt-6 sm:mt-8" data-reveal="up">
-        <Card>
-          <div className="p-5 sm:p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Upcoming Batches</div>
-                <div className="mt-1 text-2xl text-ink sm:text-3xl">Choose your next Saturday slot</div>
-              </div>
-              <div className="text-sm text-inkMuted">Small batch only. Reservations stay limited.</div>
-            </div>
-            <div className="mt-5 grid gap-3">
-              {bakeWindows.map((w) => {
-                const triggerId = `landing-batch-${w.value}`;
-                const isLoading = isOpeningModal && openingTriggerId === triggerId;
-                const isDisabled = isLoading || !w.isOpen;
-
-                return (
-                  <div
-                    key={w.value}
-                    className={`flex flex-col gap-3 rounded-2xl border border-line bg-cream px-4 py-4 sm:flex-row sm:items-center sm:justify-between ${
-                      w.isOpen ? "" : "opacity-60"
-                    }`}
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-ink">{w.label}</div>
-                      <div className="mt-1 text-xs text-inkMuted">
-                        {w.isOpen ? "Reservations still open" : "Reservations closed"}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleOpenPreorder(w.value, triggerId)}
-                      disabled={isDisabled}
-                      className="relative rounded-button border border-line bg-surface px-3 py-2.5 text-xs font-medium text-brandBrown shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:border-brandCinnamon hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:translate-y-0 disabled:shadow-soft"
-                    >
-                      <span className={isLoading ? "opacity-0" : "opacity-100"}>
-                        {w.isOpen ? "Reserve for Saturday" : "Closed"}
-                      </span>
-                      {isLoading ? (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <CinnamonLoader size={18} className="text-brandBrown" />
-                        </span>
-                      ) : null}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-4 text-xs text-inkMuted">
-              We confirm delivery or collection timing after your batch slot is reserved.
-            </div>
-          </div>
-        </Card>
-      </div>
     </section>
   );
 }

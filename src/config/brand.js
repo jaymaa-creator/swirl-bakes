@@ -7,7 +7,7 @@ const BRAND = {
   instagramUrl: "https://www.instagram.com/swirlgirl.sg/",
   instagramHandle: "@swirlgirl.sg",
   siteUrl: import.meta.env.VITE_SITE_URL || "https://swirlgirl.sg",
-  orderCutoffLabel: "Friday 7pm SGT",
+  orderCutoffLabel: "Thursday 10pm SGT",
   originLabel: "Baked in Singapore",
   story:
     "Swirl Girl Bakes is a home-baking microbrand built around one careful Saturday batch each week. The goal is simple: soft cinnamon rolls, tender banana bread, and a pickup or delivery flow that still feels personal.",
