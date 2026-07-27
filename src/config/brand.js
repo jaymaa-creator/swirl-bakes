@@ -12,10 +12,10 @@ const BRAND = {
   story:
     "Swirl Girl Bakes is a home-baking microbrand built around one careful Saturday batch each week. The goal is simple: soft cinnamon rolls, tender banana bread, and a pickup or delivery flow that still feels personal.",
   ingredients: [
-    "French-style butter for richer dough and banana bread",
-    "Saigon cinnamon for a deeper swirl and glaze aroma",
-    "Small-batch dough rested overnight for a softer crumb",
-    "Freshly baked on Saturday for best texture and flavour",
+    "Banana bread is made with banana, butter, self-raising flour, caster sugar, eggs, and baking powder.",
+    "Cinnamon rolls contain gluten, dairy, and eggs.",
+    "Baked in small Saturday batches in a home kitchen.",
+    "Allergen cross-contamination is possible because ingredients and tools are shared.",
   ],
   collectionLocation: "Joo Chiat collection point",
   collectionNote:

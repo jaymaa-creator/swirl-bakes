@@ -37,7 +37,7 @@ export default function StorySection({ brand }) {
           <Card>
             <div className="p-6" data-reveal="right">
               <div className="text-xs uppercase tracking-[0.22em] text-inkMuted">Ingredients</div>
-              <h3 className="mt-3 text-2xl text-ink">What stays consistent each week</h3>
+              <h3 className="mt-3 text-2xl text-ink">Clear notes on each bake</h3>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-inkMuted">
                 {brand.ingredients.map((item) => (
                   <li key={item} className="flex gap-3">
