@@ -122,8 +122,8 @@ export default function BakesLandingPage() {
       <div className="sticky top-0 z-40">
         <div className="ribbon border-b border-line bg-[#F7EBDD]">
           <div className="ribbon-track py-2 text-xs font-medium text-inkMuted sm:text-sm">
-            {[0, 1].map((dupIdx) => (
-              <div className="ribbon-group" aria-hidden={dupIdx === 1} key={dupIdx}>
+            {[0, 1, 2, 3].map((dupIdx) => (
+              <div className="ribbon-group" aria-hidden={dupIdx > 0} key={dupIdx}>
                 {ribbonItems.map((item) => (
                   <span className="ribbon-item" key={`${dupIdx}-${item}`}>
                     <span>{item}</span>
