@@ -2,7 +2,9 @@ export function buildOrderRecord({ form, menu, estimatedTotal, moneyFormatter })
   const items = menu
     .map((item) => {
       const quantity = Number(form.items[item.id] || 0);
-      return quantity > 0 ? `${item.name} x${quantity}` : null;
+      if (quantity <= 0) return null;
+      const description = item.orderDescription ? ` (${item.orderDescription})` : "";
+      return `${item.name}${description} x${quantity}`;
     })
     .filter(Boolean)
     .join(", ");
@@ -10,7 +12,6 @@ export function buildOrderRecord({ form, menu, estimatedTotal, moneyFormatter })
   return {
     name: form.name,
     phone: form.phone,
-    email: form.email,
     bakeWindow: form.bakeWindow,
     items,
     estimatedTotal: moneyFormatter(estimatedTotal),

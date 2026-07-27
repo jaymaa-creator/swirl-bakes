@@ -103,7 +103,7 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
                       }`}
                       aria-pressed={isSelected}
                     >
-                      {qty}
+                      {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
                     </button>
                   );
                 })}

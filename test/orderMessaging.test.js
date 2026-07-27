@@ -16,7 +16,6 @@ test("buildOrderMessage includes selected items and delivery address", () => {
   const form = {
     name: "Jamie",
     phone: "+65 8123 4567",
-    email: "jamie@example.com",
     bakeWindow: "Sat, 8 Mar 2026",
     delivery: "Delivery (GrabExpress / Lalamove) - paid by customer",
     area: "Central",

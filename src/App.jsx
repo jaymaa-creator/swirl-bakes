@@ -55,7 +55,6 @@ export default function BakesLandingPage() {
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    email: "",
     bakeWindow: defaultBakeDate,
     delivery: BRAND.deliveryOptions[0],
     area: BRAND.pickupAreas[0],
@@ -85,6 +84,7 @@ export default function BakesLandingPage() {
     brandName: BRAND.name,
     waNumberE164: BRAND.waNumberE164,
   });
+  const hasRequiredContactDetails = Boolean(form.name.trim() && form.phone.trim());
 
   useBodyScrollLock(modalOpen);
   useScrollReveal();
@@ -269,7 +269,8 @@ export default function BakesLandingPage() {
         waMessage={waMessage}
         saturdayDates={saturdayOptions}
         hasSelectedItems={hasSelectedItems}
-        canSubmitOrder={hasSelectedItems && isSelectedBakeOpen}
+        canSubmitOrder={hasSelectedItems && isSelectedBakeOpen && hasRequiredContactDetails}
+        hasRequiredContactDetails={hasRequiredContactDetails}
         isBakeWindowOpen={isSelectedBakeOpen}
         menu={MENU}
         quantityOptions={QUANTITY_OPTIONS}

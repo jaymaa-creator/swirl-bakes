@@ -20,6 +20,7 @@ export default function PreorderModal({
   waMessage,
   saturdayDates,
   hasSelectedItems,
+  hasRequiredContactDetails,
   canSubmitOrder,
   isBakeWindowOpen,
   menu,
@@ -157,6 +158,9 @@ export default function PreorderModal({
             {!hasSelectedItems ? (
               <div className="text-xs text-inkMuted">Select at least one item.</div>
             ) : null}
+            {!hasRequiredContactDetails ? (
+              <div className="text-xs text-inkMuted">Enter your name and WhatsApp number to continue.</div>
+            ) : null}
             {hasSelectedItems && !isBakeWindowOpen ? (
               <div className="text-xs text-inkMuted">
                 Orders for this batch have closed. Please choose the next available Saturday.
@@ -169,26 +173,23 @@ export default function PreorderModal({
           <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">1. Your details</div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field label="Name">
+              <Field label="Name" hint="Required">
                 <Input
+                  required
+                  autoComplete="name"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="Your name"
                 />
               </Field>
-              <Field label="Contact number" hint="WhatsApp preferred">
+              <Field label="Contact number" hint="WhatsApp preferred, required">
                 <Input
+                  required
+                  type="tel"
+                  autoComplete="tel"
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   placeholder="+65 ..."
-                />
-              </Field>
-              <Field label="Email" hint="Optional">
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="you@email.com"
                 />
               </Field>
               <Field label="Saturday batch">
@@ -249,7 +250,7 @@ export default function PreorderModal({
                             }`}
                             aria-pressed={isSelected}
                           >
-                            {qty}
+                            {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
                           </button>
                         );
                       })}

@@ -9,7 +9,6 @@ export function buildOrderMessage({ brandName, form, menu, estimatedTotal, money
   lines.push(`${brandName} Saturday reservation`);
   lines.push(`Name: ${form.name || "-"}`);
   lines.push(`Phone: ${form.phone || "-"}`);
-  if (form.email) lines.push(`Email: ${form.email}`);
   lines.push(`Bake window: ${form.bakeWindow}`);
   lines.push(`Fulfilment: ${form.delivery}`);
   if (form.delivery.toLowerCase().includes("delivery")) {
@@ -20,7 +19,10 @@ export function buildOrderMessage({ brandName, form, menu, estimatedTotal, money
   lines.push("Items:");
   menu.forEach((m) => {
     const qty = Number(form.items[m.id] || 0);
-    if (qty > 0) lines.push(`- ${m.name} x${qty}`);
+    if (qty > 0) {
+      const description = m.orderDescription ? ` (${m.orderDescription})` : "";
+      lines.push(`- ${m.name}${description} x${qty}`);
+    }
   });
   lines.push(`Estimated total: ${moneyFormatter(estimatedTotal)} (excluding delivery)`);
   if (form.notes) lines.push(`Notes: ${form.notes}`);

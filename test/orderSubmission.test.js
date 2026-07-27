@@ -12,7 +12,6 @@ test("buildOrderRecord includes a self-collection slot and excludes an address",
     form: {
       name: "Jamie",
       phone: "+65 8123 4567",
-      email: "jamie@example.com",
       bakeWindow: "Sat, 8 Mar 2026",
       items: { rolls: 2, bread: 0 },
       delivery: "Self-collection - agreed pickup point",
@@ -35,7 +34,6 @@ test("buildOrderRecord includes a delivery address and excludes collection slot"
     form: {
       name: "Jamie",
       phone: "+65 8123 4567",
-      email: "",
       bakeWindow: "Sat, 8 Mar 2026",
       items: { rolls: 0, bread: 2 },
       delivery: "Delivery (GrabExpress / Lalamove) - paid by customer",

@@ -3,30 +3,36 @@ export const MENU = [
     id: "cinnamon-rolls",
     name: "Cinnamon Rolls",
     category: "Signature Rolls",
-    priceSgd: 5,
-    unitLabel: "each",
+    priceSgd: 35,
+    unitLabel: "per box of 6",
+    quantityLabel: "box",
+    quantityLabelPlural: "boxes",
+    orderDescription: "box of 6 rolls",
     image: "/cinnamon-rolls-opt.webp",
     imageAlt: "Freshly glazed cinnamon rolls in a close-up tray shot",
     badge: "Best seller",
-    note: "Baked fresh. Choose 2, 4, or 6 per order.",
+    note: "Six soft, freshly baked cinnamon rolls in every box.",
     allergens: "Contains gluten, dairy, eggs.",
   },
   {
     id: "banana-bread",
     name: "Banana Bread",
     category: "Loaf Cakes",
-    priceSgd: 2,
-    unitLabel: "per slice",
+    priceSgd: 25,
+    unitLabel: "per loaf",
+    quantityLabel: "loaf",
+    quantityLabelPlural: "loaves",
+    orderDescription: "loaf",
     image: "/banana-bread-slices.webp",
     imageAlt: "Freshly sliced banana bread on a wooden board with banana pieces",
     badge: "Weekend add-on",
-    note: "A tender, buttery banana loaf baked fresh for the Saturday batch. Choose 2, 4, or 6 slices per order.",
+    note: "A tender, buttery banana loaf baked fresh for the Saturday batch.",
     ingredients: ["Banana", "Butter", "Self-raising flour", "Caster sugar", "Eggs", "Baking powder"],
     allergens: "Contains gluten, dairy, eggs.",
   },
 ];
 
-export const QUANTITY_OPTIONS = [2, 4, 6];
+export const QUANTITY_OPTIONS = [1, 2, 3];
 
 export const ALLERGEN_NAMES = [
   "Cereals containing gluten",

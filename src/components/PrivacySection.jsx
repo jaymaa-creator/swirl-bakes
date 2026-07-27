@@ -11,7 +11,7 @@ export default function PrivacySection({ brand }) {
             <div>
               <div className="font-semibold text-ink">What we collect</div>
               <p className="mt-2">
-                We collect your name, WhatsApp number, email, order details, and collection or delivery information to manage your reservation.
+                We collect your name, WhatsApp number, order details, and collection or delivery information to manage your reservation.
               </p>
             </div>
             <div>
