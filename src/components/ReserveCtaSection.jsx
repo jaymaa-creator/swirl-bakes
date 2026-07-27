@@ -17,10 +17,7 @@ export default function ReserveCtaSection({
           <div>
             <div className="text-sm font-semibold">Ready to reserve this week’s batch?</div>
             <div className="mt-2 text-inkMuted">
-              Next batch closes {brand.orderCutoffLabel}. Reserve on WhatsApp now to lock your slot.
-            </div>
-            <div className="mt-1 text-xs text-inkMuted">
-              We confirm availability, delivery details, and PayNow instructions before baking.
+              Order by {brand.orderCutoffLabel}. We’ll confirm by WhatsApp.
             </div>
           </div>
           <button

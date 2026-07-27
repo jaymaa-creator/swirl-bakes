@@ -7,7 +7,7 @@ export default function StorySection({ brand }) {
         <Card>
           <div className="p-6 sm:p-8" data-reveal="left">
             <div className="text-xs uppercase tracking-[0.22em] text-inkMuted">About Swirl Girl</div>
-            <h2 className="mt-3 text-3xl text-ink sm:text-4xl">A weekly batch with a personal handoff.</h2>
+            <h2 className="mt-3 text-3xl text-ink sm:text-4xl">Saturday bakes from Joo Chiat.</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-inkMuted sm:text-[1rem]">
               {brand.story}
             </p>
@@ -37,7 +37,7 @@ export default function StorySection({ brand }) {
           <Card>
             <div className="p-6" data-reveal="right">
               <div className="text-xs uppercase tracking-[0.22em] text-inkMuted">Ingredients</div>
-              <h3 className="mt-3 text-2xl text-ink">Clear notes on each bake</h3>
+              <h3 className="mt-3 text-2xl text-ink">Ingredient notes</h3>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-inkMuted">
                 {brand.ingredients.map((item) => (
                   <li key={item} className="flex gap-3">
@@ -52,7 +52,7 @@ export default function StorySection({ brand }) {
           <Card>
             <div className="p-6" data-reveal="right">
               <div className="text-xs uppercase tracking-[0.22em] text-inkMuted">Collection Notes</div>
-              <h3 className="mt-3 text-2xl text-ink">Pickup stays simple and fresh.</h3>
+              <h3 className="mt-3 text-2xl text-ink">Pickup notes</h3>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-inkMuted">
                 {brand.pickupInstructions.map((item) => (
                   <li key={item} className="flex gap-3">

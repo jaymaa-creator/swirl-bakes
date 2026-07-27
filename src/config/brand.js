@@ -10,7 +10,7 @@ const BRAND = {
   orderCutoffLabel: "Thursday 10pm SGT",
   originLabel: "Baked in Singapore",
   story:
-    "Swirl Girl Bakes is a home-baking microbrand built around one careful Saturday batch each week. The goal is simple: soft cinnamon rolls, tender banana bread, and a pickup or delivery flow that still feels personal.",
+    "Small-batch cinnamon rolls and banana bread, baked fresh on Saturdays from Joo Chiat.",
   ingredients: [
     "Banana bread is made with banana, butter, self-raising flour, caster sugar, eggs, and baking powder.",
     "Cinnamon rolls contain gluten, dairy, and eggs.",
@@ -19,11 +19,11 @@ const BRAND = {
   ],
   collectionLocation: "Joo Chiat collection point",
   collectionNote:
-    "Collection is in Joo Chiat. Exact meetup details are shared after confirmation so timing stays tight and bakes stay fresh.",
+    "Exact pickup details are shared after your order is confirmed.",
   pickupInstructions: [
-    "Collection timing is confirmed after your order is accepted.",
-    "Bring an insulated bag if you are collecting multiple boxes.",
-    "Reheat instructions are included for the best same-day texture.",
+    "Pickup time is confirmed on WhatsApp.",
+    "Bring a bag if you are collecting multiple boxes.",
+    "Reheat notes are included with each order.",
   ],
   pickupAreas: ["Central", "East", "North", "North-East", "West"],
   deliveryOptions: [

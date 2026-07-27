@@ -55,7 +55,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
         <div className="text-xs tracking-[0.2em] uppercase text-inkMuted">Process</div>
         <h2 className="mt-2 text-3xl text-ink sm:text-4xl">How Saturday batches work</h2>
         <p className="mt-3 text-inkMuted leading-relaxed">
-          A small-batch flow designed for limited weekly production.
+          Pre-order first, then collect or arrange delivery on Saturday.
         </p>
       </div>
 
@@ -64,20 +64,20 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
           {
             step: "1",
             icon: "calendar",
-            title: "Reserve your slot",
-            body: "Choose your items and select a Saturday batch date.",
+            title: "Choose your bakes",
+            body: "Pick cinnamon rolls, banana bread, or both.",
           },
           {
             step: "2",
             icon: "payment",
-            title: "Confirm and pay",
-            body: "We confirm availability and total, then share payment details.",
+            title: "Send on WhatsApp",
+            body: "Your order message is prefilled.",
           },
           {
             step: "3",
             icon: "delivery",
-            title: "Bake then deliver",
-            body: "We bake fresh on Saturday and dispatch via GrabExpress/Lalamove or arrange collection.",
+            title: "Collect or deliver",
+            body: "Pickup is in Joo Chiat. Delivery is by GrabExpress or Lalamove.",
           },
         ].map((s) => (
           <div
@@ -127,7 +127,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
               ))}
             </ul>
             <div className="mt-4 text-xs text-inkMuted">
-              You can keep it manual: customer pays courier fee directly, or you quote it before dispatch.
+              Delivery fees are paid by the customer.
             </div>
           </div>
         </Card>
@@ -135,7 +135,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
           <div className="p-5" data-reveal="right">
             <div className="text-sm font-semibold">Pickup and cut-off guidance</div>
             <div className="mt-3 text-sm text-inkMuted leading-relaxed">
-              Pre-orders close at {brand.orderCutoffLabel}. If you choose self-collection, exact meetup timing and the collection point are confirmed after your order is accepted.
+              Pre-orders close at {brand.orderCutoffLabel}. Pickup details are confirmed on WhatsApp.
             </div>
             <div className="mt-4 rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
               {brand.collectionNote}

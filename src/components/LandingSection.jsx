@@ -52,9 +52,9 @@ export default function LandingSection({ brand }) {
                 {brand.tagline}
               </h1>
               <p className="mt-3 max-w-2xl text-[0.88rem] leading-relaxed text-white/95 sm:mt-4 sm:text-[1.12rem]">
-                Soft, gooey bakes made in one Saturday batch each week.
+                Cinnamon rolls and banana bread, baked fresh every Saturday.
                 <br />
-                Reserve early, then we wake, bake and dispatch.
+                Pre-order by Thursday 10pm.
               </p>
               <CutoffCountdown />
               <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-white/90 sm:text-sm">
