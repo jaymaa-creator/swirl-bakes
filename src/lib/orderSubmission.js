@@ -22,11 +22,18 @@ export function buildOrderRecord({ form, menu, estimatedTotal, moneyFormatter })
   };
 }
 
-export function submitOrderRequest(order, turnstileToken = "") {
-  return fetch("/api/orders", {
+export async function submitOrderRequest(order, turnstileToken = "") {
+  const response = await fetch("/api/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ order, turnstileToken }),
     keepalive: true,
   });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok || result?.ok !== true) {
+    throw new Error(result?.error || "Unable to save order");
+  }
+
+  return result;
 }

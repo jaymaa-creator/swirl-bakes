@@ -51,6 +51,7 @@ export default function BakesLandingPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [hasStartedOrder, setHasStartedOrder] = useState(false);
   const [whatsappHandoffLink, setWhatsappHandoffLink] = useState("");
+  const [whatsappOrderNumber, setWhatsappOrderNumber] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -96,10 +97,11 @@ export default function BakesLandingPage() {
 
   const closePreorderModal = () => setModalOpen(false);
 
-  const handleOrderIntent = (whatsappLink) => {
+  const handleOrderIntent = (whatsappLink, orderNumber) => {
     setHasStartedOrder(true);
     setModalOpen(false);
     setWhatsappHandoffLink(whatsappLink || "");
+    setWhatsappOrderNumber(orderNumber || "");
     window.history.replaceState(null, "", "#confirmation");
   };
 
@@ -111,9 +113,7 @@ export default function BakesLandingPage() {
       moneyFormatter: money,
     });
 
-    submitOrderRequest(order, turnstileToken).catch(() => {
-      // WhatsApp remains available if the order tracker is temporarily unavailable.
-    });
+    return submitOrderRequest(order, turnstileToken);
   };
 
   return (
@@ -251,7 +251,11 @@ export default function BakesLandingPage() {
 
       <WhatsAppHandoffNotice
         whatsappLink={whatsappHandoffLink}
-        onDismiss={() => setWhatsappHandoffLink("")}
+        orderNumber={whatsappOrderNumber}
+        onDismiss={() => {
+          setWhatsappHandoffLink("");
+          setWhatsappOrderNumber("");
+        }}
       />
 
       <PreorderModal

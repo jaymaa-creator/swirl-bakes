@@ -38,6 +38,7 @@ export default function PreorderModal({
   const [turnstileError, setTurnstileError] = useState("");
   const countdownRef = useRef(null);
   const orderRequestSubmittedRef = useRef(false);
+  const orderNumberRef = useRef("");
   const isDelivery = form.delivery.toLowerCase().includes("delivery");
 
   useEffect(() => {
@@ -59,7 +60,10 @@ export default function PreorderModal({
   }, [showAllergenPopup, allergenCountdown]);
 
   useEffect(() => {
-    if (open) orderRequestSubmittedRef.current = false;
+    if (open) {
+      orderRequestSubmittedRef.current = false;
+      orderNumberRef.current = "";
+    }
   }, [open]);
 
   const [firstLine, ...rest] = waMessage.split("\n");
@@ -69,7 +73,14 @@ export default function PreorderModal({
     "",
     ...rest,
   ].join("\n");
-  const waLinkWithAck = buildWhatsAppLink(brand.waNumberE164, waMessageWithAck);
+  function getWhatsAppLink(orderNumber = "") {
+    const message = orderNumber
+      ? [firstLine, `Order reference: ${orderNumber}`, ...waMessageWithAck.split("\n").slice(1)].join("\n")
+      : waMessageWithAck;
+    return buildWhatsAppLink(brand.waNumberE164, message);
+  }
+
+  const waLinkWithAck = getWhatsAppLink();
 
   function handleWaClick(e) {
     if (!canSubmitOrder) {
@@ -100,19 +111,34 @@ export default function PreorderModal({
     setShowAllergenPopup(false);
   }
 
-  function completeOrder() {
+  async function completeOrder() {
     if (TURNSTILE_SITE_KEY && !turnstileToken) {
       setTurnstileError("Please complete the security check before continuing.");
       return;
     }
 
+    const whatsappWindow = window.open("", "_blank");
+    if (whatsappWindow) whatsappWindow.opener = null;
+
+    let orderNumber = orderNumberRef.current;
     if (!orderRequestSubmittedRef.current) {
       orderRequestSubmittedRef.current = true;
-      onOrderRequest?.(turnstileToken);
+      try {
+        const result = await onOrderRequest?.(turnstileToken);
+        orderNumber = result?.orderNumber || "";
+        orderNumberRef.current = orderNumber;
+      } catch {
+        // WhatsApp remains available if the order tracker is temporarily unavailable.
+      }
     }
 
-    onOrderIntent?.(waLinkWithAck);
-    window.open(waLinkWithAck, "_blank", "noreferrer");
+    const whatsappLink = getWhatsAppLink(orderNumber);
+    onOrderIntent?.(whatsappLink, orderNumber);
+    if (whatsappWindow) {
+      whatsappWindow.location.replace(whatsappLink);
+    } else {
+      window.open(whatsappLink, "_blank", "noreferrer");
+    }
   }
 
   return (

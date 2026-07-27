@@ -4,9 +4,10 @@ export function buildWhatsAppLink(numberE164, message) {
   return `https://wa.me/${digits}?text=${text}`;
 }
 
-export function buildOrderMessage({ brandName, form, menu, estimatedTotal, moneyFormatter }) {
+export function buildOrderMessage({ brandName, form, menu, estimatedTotal, moneyFormatter, orderNumber }) {
   const lines = [];
   lines.push(`${brandName} Saturday reservation`);
+  if (orderNumber) lines.push(`Order reference: ${orderNumber}`);
   lines.push(`Name: ${form.name || "-"}`);
   lines.push(`Phone: ${form.phone || "-"}`);
   lines.push(`Bake window: ${form.bakeWindow}`);

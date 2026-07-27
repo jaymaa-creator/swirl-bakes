@@ -39,6 +39,26 @@ test("buildOrderMessage includes selected items and delivery address", () => {
   assert.match(message, /Estimated total: S\$28/);
 });
 
+test("buildOrderMessage includes an order reference when supplied", () => {
+  const message = buildOrderMessage({
+    brandName: "Swirl Girl Bakes",
+    form: {
+      name: "Jamie",
+      phone: "+65 8123 4567",
+      bakeWindow: "Sat, 8 Mar 2026",
+      delivery: "Self-collection - agreed pickup point",
+      pickupTime: "Morning",
+      items: { classic: 1, pecan: 0 },
+    },
+    menu,
+    estimatedTotal: 35,
+    moneyFormatter: (n) => `S$${n}`,
+    orderNumber: "SG-0001",
+  });
+
+  assert.match(message, /Order reference: SG-0001/);
+});
+
 test("buildOrderMessage includes the self-collection time instead of an address", () => {
   const form = {
     name: "Jamie",

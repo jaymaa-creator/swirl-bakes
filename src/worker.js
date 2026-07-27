@@ -59,6 +59,7 @@ export default {
     }
 
     let payload;
+    let sheetResult;
     try {
       payload = await request.json();
     } catch {
@@ -90,7 +91,7 @@ export default {
         body: JSON.stringify({ secret: env.ORDER_WEBHOOK_SECRET, order: payload.order }),
       });
 
-      const sheetResult = await sheetResponse.json().catch(() => null);
+      sheetResult = await sheetResponse.json().catch(() => null);
       if (!sheetResponse.ok || sheetResult?.ok !== true) {
         throw new Error(`Google Apps Script returned ${sheetResponse.status}`);
       }
@@ -99,6 +100,6 @@ export default {
       return jsonResponse({ ok: false, error: "Unable to save order" }, { status: 502 });
     }
 
-    return jsonResponse({ ok: true });
+    return jsonResponse({ ok: true, orderNumber: sheetResult?.orderNumber || "" });
   },
 };

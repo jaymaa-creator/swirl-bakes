@@ -1,4 +1,4 @@
-export default function WhatsAppHandoffNotice({ whatsappLink, onDismiss }) {
+export default function WhatsAppHandoffNotice({ whatsappLink, orderNumber, onDismiss }) {
   if (!whatsappLink) return null;
 
   return (
@@ -16,6 +16,9 @@ export default function WhatsAppHandoffNotice({ whatsappLink, onDismiss }) {
             <p className="mt-1 text-sm leading-6 text-inkMuted">
               WhatsApp should have opened in a new tab. Review the prefilled message and tap Send to submit your reservation.
             </p>
+            {orderNumber ? (
+              <div className="mt-2 text-sm font-semibold text-brandBrown">Order reference: {orderNumber}</div>
+            ) : null}
           </div>
           <button
             type="button"
