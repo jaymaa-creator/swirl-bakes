@@ -35,7 +35,7 @@ export default function CutoffCountdown() {
     <div className="cutoff-timer mt-5" aria-live="polite">
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">Thursday cut-off</div>
-        <div className="mt-1 text-sm font-medium text-white sm:text-base">Reserve by 10pm SGT for this Saturday&apos;s batch.</div>
+        <div className="cutoff-timer__description mt-1 text-sm font-medium text-white sm:text-base">Reserve by 10pm SGT for this Saturday&apos;s batch.</div>
       </div>
       <div className="flex shrink-0 gap-2" aria-label={`${remaining.days} days, ${remaining.hours} hours, and ${remaining.minutes} minutes remaining`}>
         <TimeUnit value={remaining.days} label="days" />

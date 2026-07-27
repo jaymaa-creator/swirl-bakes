@@ -161,8 +161,21 @@ h1, h2, h3, h4 {
 
 @media (max-width: 420px) {
   .cutoff-timer {
-    align-items: flex-start;
-    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.65rem;
+  }
+
+  .cutoff-timer__description {
+    display: none;
+  }
+
+  .cutoff-timer__unit {
+    min-width: 2.35rem;
+    padding: 0.32rem;
+  }
+
+  .cutoff-timer__unit strong {
+    font-size: 0.95rem;
   }
 }
 
