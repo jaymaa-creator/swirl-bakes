@@ -1,5 +1,5 @@
 const BRAND = {
-  name: "Swirl Girl Bakes",
+  name: "Swirl Girl",
   tagline: "Small-batch Saturday bakes, made fresh in Singapore.",
   primaryCTA: "Reserve for Saturday",
   secondaryCTA: "Available this week",

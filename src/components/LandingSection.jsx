@@ -37,7 +37,7 @@ export default function LandingSection({ brand }) {
               <div className="mb-4 hidden sm:mb-5 sm:block">
                 <img
                   src="/logo.webp"
-                  alt="Swirl Girl Bakes main logo"
+                  alt="Swirl Girl main logo"
                   className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20"
                   fetchPriority="high"
                   decoding="async"

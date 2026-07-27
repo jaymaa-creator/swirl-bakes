@@ -170,7 +170,7 @@ export default function BakesLandingPage() {
               <span className="sticker-perk__mark inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-10 sm:w-10">
                 <img
                   src="/logo.webp"
-                  alt="Swirl Girl Bakes logo"
+                  alt="Swirl Girl logo"
                   className="sticker-perk__logo h-full w-full object-cover"
                   loading="eager"
                   fetchPriority="high"
