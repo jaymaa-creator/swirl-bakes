@@ -17,25 +17,6 @@ export default function LandingSection({ brand }) {
           "radial-gradient(circle at 20% 10%, rgba(196,122,58,0.08), transparent 60%)",
       }}
     >
-      <div className="sticker-perk sticker-perk--hero mb-5 flex items-center gap-3 rounded-card px-4 py-3 shadow-card sm:mb-6 sm:px-5 sm:py-4" data-reveal="up">
-        <span className="sticker-perk__mark sticker-perk__mark--large inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl sm:h-14 sm:w-14">
-          <img
-            src="/logo.webp"
-            alt=""
-            className="sticker-perk__logo h-full w-full object-cover"
-            aria-hidden="true"
-            decoding="async"
-          />
-        </span>
-        <span>
-          <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#38241A]">
-            A little extra for you
-          </span>
-          <span className="mt-0.5 block text-base font-semibold text-[#38241A] sm:text-lg">
-            Free holographic sticker with every purchase
-          </span>
-        </span>
-      </div>
       <div className="relative overflow-hidden rounded-card border border-line bg-surface shadow-card" data-reveal>
         <video
           ref={heroVideoRef}
