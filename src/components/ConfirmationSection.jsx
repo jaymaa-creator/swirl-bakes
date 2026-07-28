@@ -8,7 +8,7 @@ export default function ConfirmationSection({ brand, isOrderStarted }) {
           <div data-reveal="left">
             <div className="text-xs uppercase tracking-[0.22em] text-inkMuted">How to order</div>
             <h2 className="mt-3 text-3xl text-ink sm:text-4xl">
-              {isOrderStarted ? "Send your WhatsApp order." : "Order by WhatsApp."}
+              {isOrderStarted ? "Send your order." : "How to order."}
             </h2>
             <p className="mt-4 max-w-xl text-sm leading-7 text-inkMuted sm:text-[1rem]">
               Choose your bakes, send the prefilled message, then wait for confirmation and PayNow details.
@@ -21,7 +21,7 @@ export default function ConfirmationSection({ brand, isOrderStarted }) {
           <div className="rounded-card border border-line bg-cream p-5" data-reveal="right">
             <ol className="space-y-3 text-sm leading-6 text-inkMuted">
               <li><strong className="font-semibold text-ink">1.</strong> Pick your items.</li>
-              <li><strong className="font-semibold text-ink">2.</strong> Send the WhatsApp message.</li>
+              <li><strong className="font-semibold text-ink">2.</strong> Send the prefilled message.</li>
               <li><strong className="font-semibold text-ink">3.</strong> Collect or arrange delivery on Saturday.</li>
             </ol>
           </div>

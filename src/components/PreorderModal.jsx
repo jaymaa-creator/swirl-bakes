@@ -185,7 +185,7 @@ export default function PreorderModal({
               <div className="text-xs text-inkMuted">Select at least one item.</div>
             ) : null}
             {!hasRequiredContactDetails ? (
-              <div className="text-xs text-inkMuted">Enter your name and WhatsApp number to continue.</div>
+              <div className="text-xs text-inkMuted">Enter your name and contact number to continue.</div>
             ) : null}
             {hasSelectedItems && !isBakeWindowOpen ? (
               <div className="text-xs text-inkMuted">
@@ -211,7 +211,7 @@ export default function PreorderModal({
                   placeholder="Your name"
                 />
               </Field>
-              <Field label="Contact number" hint="WhatsApp preferred, required" htmlFor="order-phone">
+              <Field label="Contact number" hint="Required" htmlFor="order-phone">
                 <Input
                   id="order-phone"
                   name="tel"

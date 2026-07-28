@@ -70,7 +70,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
           {
             step: "2",
             icon: "payment",
-            title: "Send on WhatsApp",
+            title: "Send your order",
             body: "Your order message is prefilled.",
           },
           {
@@ -135,7 +135,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
           <div className="p-5" data-reveal="right">
             <div className="text-sm font-semibold">Pickup and cut-off guidance</div>
             <div className="mt-3 text-sm text-inkMuted leading-relaxed">
-              Pre-orders close at {brand.orderCutoffLabel}. Pickup details are confirmed on WhatsApp.
+              Pre-orders close at {brand.orderCutoffLabel}. Pickup details are confirmed after your order is accepted.
             </div>
             <div className="mt-4 rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
               {brand.collectionNote}

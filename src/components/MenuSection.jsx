@@ -23,7 +23,7 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
           <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
           <h2 className="mt-2 text-3xl text-ink sm:text-4xl">Available this week</h2>
           <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
-            Choose your bakes, then reserve through WhatsApp.
+            Choose your bakes, then reserve this Saturday's batch.
           </p>
         </div>
 

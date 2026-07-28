@@ -21,7 +21,7 @@ const BRAND = {
   collectionNote:
     "Exact pickup details are shared after your order is confirmed.",
   pickupInstructions: [
-    "Pickup time is confirmed on WhatsApp.",
+    "Pickup time is confirmed after your order is accepted.",
     "Bring a bag if you are collecting multiple boxes.",
     "Reheat notes are included with each order.",
   ],
