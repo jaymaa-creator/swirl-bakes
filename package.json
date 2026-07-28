@@ -9,7 +9,11 @@
     "lint": "eslint .",
     "preview": "npm run build && wrangler dev",
     "test": "node --test",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "apps:push": "clasp push",
+    "apps:version": "clasp create-version",
+    "apps:deployments": "clasp list-deployments",
+    "apps:deploy": "clasp create-deployment"
   },
   "dependencies": {
     "react": "^19.2.0",

@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .dev.vars
+.clasprc.json
 
 # Editor directories and files
 .vscode/*
