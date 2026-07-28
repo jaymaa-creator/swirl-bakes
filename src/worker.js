@@ -44,16 +44,26 @@ async function fetchMenuSettings(env) {
     return { ok: true, products: [] };
   }
 
+  try {
+    return await requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET);
+  } catch (error) {
+    if (!env.ORDER_WEBHOOK_SECRET) throw error;
+
+    // Products are intentionally public through doGet, so this keeps the menu visible
+    // if a secret binding is temporarily unavailable during a deployment.
+    return requestMenuSettings(menuSettingsUrl);
+  }
+}
+
+async function requestMenuSettings(menuSettingsUrl, secret) {
   const response = await fetch(menuSettingsUrl, {
-    method: env.ORDER_WEBHOOK_SECRET ? "POST" : "GET",
+    method: secret ? "POST" : "GET",
     headers: {
       Accept: "application/json",
       "Cache-Control": "no-cache",
-      ...(env.ORDER_WEBHOOK_SECRET ? { "Content-Type": "application/json" } : {}),
+      ...(secret ? { "Content-Type": "application/json" } : {}),
     },
-    body: env.ORDER_WEBHOOK_SECRET
-      ? JSON.stringify({ secret: env.ORDER_WEBHOOK_SECRET, action: "menuSettings" })
-      : undefined,
+    body: secret ? JSON.stringify({ secret, action: "menuSettings" }) : undefined,
   });
   const data = await response.json().catch(() => null);
 
