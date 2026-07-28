@@ -38,6 +38,27 @@ npm run apps:deploy -- --deploymentId YOUR_DEPLOYMENT_ID --versionNumber VERSION
 
 The live deployment ID is the `AKfy...` value from the `/exec` URL.
 
+## Product Stock Columns
+
+The `Products` tab should use:
+
+```text
+product_id | price_sgd | available | max_quantity | batch_limit
+```
+
+`max_quantity` is the most one customer can select in a single order.
+
+`batch_limit` is the total stock for the active Saturday batch.
+
+Example:
+
+```text
+cinnamon-rolls | 35 | TRUE | 3 | 12
+banana-bread | 25 | TRUE | 3 | 6
+```
+
+If banana bread has `batch_limit = 6` and four loaves are already in this week's `Orders` rows, the website only shows quantity buttons `1` and `2`.
+
 ## Web App Manifest
 
 The manifest keeps this as a public web app:

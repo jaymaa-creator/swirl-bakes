@@ -1,7 +1,7 @@
 const ORDER_ENDPOINT = "/api/orders";
 const MENU_ENDPOINT = "/api/menu";
 const MAX_ORDER_BYTES = 16_000;
-const MENU_CACHE_SECONDS = 300;
+const MENU_CACHE_SECONDS = 60;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -30,7 +30,11 @@ function normalizeMenuProduct(product) {
     id: product.id.trim(),
     priceSgd: Number(product.priceSgd) || undefined,
     available: product.available,
+    batchLimit: Number(product.batchLimit) || undefined,
     maxQuantity: Number(product.maxQuantity) || undefined,
+    remainingQuantity:
+      Number(product.remainingQuantity) >= 0 ? Number(product.remainingQuantity) : undefined,
+    soldQuantity: Number(product.soldQuantity) >= 0 ? Number(product.soldQuantity) : undefined,
   };
 }
 
@@ -42,8 +46,16 @@ async function fetchMenuSettings(env) {
   }
 
   const response = await fetch(menuSettingsUrl, {
-    headers: { Accept: "application/json" },
-    cf: { cacheTtl: MENU_CACHE_SECONDS, cacheEverything: true },
+    method: env.ORDER_WEBHOOK_SECRET ? "POST" : "GET",
+    headers: {
+      Accept: "application/json",
+      "Cache-Control": "no-cache",
+      ...(env.ORDER_WEBHOOK_SECRET ? { "Content-Type": "application/json" } : {}),
+    },
+    body: env.ORDER_WEBHOOK_SECRET
+      ? JSON.stringify({ secret: env.ORDER_WEBHOOK_SECRET, action: "menuSettings" })
+      : undefined,
+    cf: { cacheTtl: MENU_CACHE_SECONDS },
   });
   const data = await response.json().catch(() => null);
 
@@ -79,13 +91,13 @@ export default {
 
       try {
         return jsonResponse(await fetchMenuSettings(env), {
-          headers: { "Cache-Control": `public, max-age=60, s-maxage=${MENU_CACHE_SECONDS}` },
+          headers: { "Cache-Control": "no-store" },
         });
       } catch (error) {
         console.error("Unable to load menu settings", error);
         return jsonResponse(
           { ok: true, products: [] },
-          { headers: { "Cache-Control": "public, max-age=60" } }
+          { headers: { "Cache-Control": "no-store" } }
         );
       }
     }

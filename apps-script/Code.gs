@@ -25,6 +25,13 @@ function doPost(event) {
       return jsonResponse({ ok: false, error: "Unauthorized" });
     }
 
+    if (payload.action === "menuSettings") {
+      return jsonResponse({
+        ok: true,
+        products: readMenuSettings(),
+      });
+    }
+
     const order = payload.order || {};
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = spreadsheet.getSheetByName(ORDERS_SHEET_NAME);
@@ -73,11 +80,11 @@ function setupMenuSettings() {
   }
 
   sheet.clear();
-  sheet.appendRow(["product_id", "price_sgd", "available", "max_quantity"]);
-  sheet.appendRow(["cinnamon-rolls", 35, true, 3]);
-  sheet.appendRow(["banana-bread", 25, true, 3]);
+  sheet.appendRow(["product_id", "price_sgd", "available", "max_quantity", "batch_limit"]);
+  sheet.appendRow(["cinnamon-rolls", 35, true, 3, 12]);
+  sheet.appendRow(["banana-bread", 25, true, 3, 6]);
   sheet.setFrozenRows(1);
-  sheet.autoResizeColumns(1, 4);
+  sheet.autoResizeColumns(1, 5);
 
   return { ok: true };
 }
@@ -151,20 +158,143 @@ function readMenuSettings() {
   const values = sheet.getDataRange().getValues();
   const headers = values.shift().map((header) => normalizeHeader(header));
   const column = Object.fromEntries(headers.map((header, index) => [header, index]));
+  const soldByProductId = getSoldQuantitiesForCurrentBatch(spreadsheet);
 
   return values
     .map((row) => {
       const id = String(row[column.product_id] || "").trim();
       if (!id) return null;
 
+      const batchLimit = toPositiveNumber(row[column.batch_limit]);
+      const soldQuantity = soldByProductId[id] || 0;
+      const remainingQuantity = batchLimit === null ? null : Math.max(batchLimit - soldQuantity, 0);
+
       return {
         id,
         priceSgd: row[column.price_sgd],
         available: parseBoolean(row[column.available]),
         maxQuantity: row[column.max_quantity],
+        batchLimit,
+        soldQuantity,
+        remainingQuantity,
       };
     })
     .filter(Boolean);
+}
+
+function getSoldQuantitiesForCurrentBatch(spreadsheet) {
+  const ordersSheet = spreadsheet.getSheetByName(ORDERS_SHEET_NAME);
+  if (!ordersSheet || ordersSheet.getLastRow() < 2) {
+    return {};
+  }
+
+  const values = ordersSheet.getDataRange().getValues();
+  const headers = values.shift().map((header) => normalizeHeader(header));
+  const column = Object.fromEntries(headers.map((header, index) => [header, index]));
+  const batchDate = getCurrentBatchDate();
+  const soldByProductId = {};
+  const productIds = readMenuSettingsProductIds();
+
+  values.forEach((row) => {
+    if (!isSameBatch(row[column.saturday_batch], batchDate)) return;
+    if (isCancelledStatus(row[column.status])) return;
+
+    const items = String(row[column.items] || "");
+    productIds.forEach((productId) => {
+      const productName = productNameFromId(productId);
+      const quantity = getOrderedQuantity(items, productName);
+      if (quantity > 0) {
+        soldByProductId[productId] = (soldByProductId[productId] || 0) + quantity;
+      }
+    });
+  });
+
+  return soldByProductId;
+}
+
+function readMenuSettingsProductIds() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values.shift().map((header) => normalizeHeader(header));
+  const productIdColumn = headers.indexOf("product_id");
+  if (productIdColumn < 0) return [];
+
+  return values
+    .map((row) => String(row[productIdColumn] || "").trim())
+    .filter(Boolean);
+}
+
+function getCurrentBatchDate() {
+  const now = new Date();
+  const timezone = Session.getScriptTimeZone() || "Asia/Singapore";
+  const localDate = new Date(Utilities.formatDate(now, timezone, "yyyy/MM/dd HH:mm:ss"));
+  const day = localDate.getDay();
+  const daysUntilSaturday = (6 - day + 7) % 7;
+  const saturday = new Date(localDate);
+  saturday.setDate(localDate.getDate() + daysUntilSaturday);
+  saturday.setHours(0, 0, 0, 0);
+
+  const cutoff = new Date(saturday);
+  cutoff.setDate(saturday.getDate() - 2);
+  cutoff.setHours(22, 0, 0, 0);
+
+  if (localDate > cutoff) {
+    saturday.setDate(saturday.getDate() + 7);
+  }
+
+  return saturday;
+}
+
+function isSameBatch(value, batchDate) {
+  if (!value) return false;
+
+  const timezone = Session.getScriptTimeZone() || "Asia/Singapore";
+  const targetKey = Utilities.formatDate(batchDate, timezone, "yyyy-MM-dd");
+  const targetLabel = Utilities.formatDate(batchDate, timezone, "EEE, d MMM yyyy")
+    .toLowerCase()
+    .replace(/,/g, "");
+
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, timezone, "yyyy-MM-dd") === targetKey;
+  }
+
+  const text = String(value).trim().toLowerCase().replace(/,/g, "");
+  if (text === targetLabel || text === targetKey) return true;
+
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && Utilities.formatDate(parsed, timezone, "yyyy-MM-dd") === targetKey;
+}
+
+function isCancelledStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  return ["cancelled", "canceled", "void", "refunded", "rejected"].includes(status);
+}
+
+function productNameFromId(productId) {
+  return String(productId || "")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getOrderedQuantity(items, productName) {
+  const pattern = new RegExp(`${escapeRegExp(productName)}[^,]*?x\\s*(\\d+)`, "gi");
+  let total = 0;
+  let match;
+
+  while ((match = pattern.exec(items)) !== null) {
+    total += Number(match[1] || 0);
+  }
+
+  return total;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getNextOrderNumber() {
@@ -214,4 +344,9 @@ function parseBoolean(value) {
   if (["true", "yes", "y", "1", "available", "on"].includes(text)) return true;
   if (["false", "no", "n", "0", "sold out", "soldout", "off"].includes(text)) return false;
   return true;
+}
+
+function toPositiveNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? Math.floor(number) : null;
 }

@@ -40,3 +40,43 @@ test("mergeMenuSettings ignores unknown product ids and invalid values", () => {
   assert.deepEqual(menu[0].quantityOptions, [1, 2, 3]);
   assert.equal(menu[1].priceSgd, 25);
 });
+
+test("mergeMenuSettings caps order quantities by remaining batch stock", () => {
+  const menu = mergeMenuSettings(baseMenu, {
+    products: [
+      {
+        id: "banana-bread",
+        priceSgd: "25",
+        available: true,
+        maxQuantity: "3",
+        batchLimit: "6",
+        soldQuantity: "4",
+        remainingQuantity: "2",
+      },
+    ],
+  });
+
+  assert.equal(menu[1].available, true);
+  assert.equal(menu[1].batchLimit, 6);
+  assert.equal(menu[1].soldQuantity, 4);
+  assert.equal(menu[1].remainingQuantity, 2);
+  assert.deepEqual(menu[1].quantityOptions, [1, 2]);
+});
+
+test("mergeMenuSettings marks a product unavailable when no batch stock remains", () => {
+  const menu = mergeMenuSettings(baseMenu, {
+    products: [
+      {
+        id: "banana-bread",
+        available: true,
+        maxQuantity: "3",
+        batchLimit: "6",
+        soldQuantity: "6",
+        remainingQuantity: "0",
+      },
+    ],
+  });
+
+  assert.equal(menu[1].available, false);
+  assert.deepEqual(menu[1].quantityOptions, []);
+});

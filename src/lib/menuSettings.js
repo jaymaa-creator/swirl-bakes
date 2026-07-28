@@ -16,8 +16,13 @@ function toPositiveNumber(value) {
   return Number.isFinite(number) && number > 0 ? number : null;
 }
 
+function toNonNegativeNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
 function toQuantityOptions(value) {
-  const maxQuantity = Math.floor(toPositiveNumber(value) || DEFAULT_MAX_QUANTITY);
+  const maxQuantity = Math.floor(toNonNegativeNumber(value) ?? DEFAULT_MAX_QUANTITY);
   return Array.from({ length: maxQuantity }, (_, index) => index + 1);
 }
 
@@ -31,8 +36,11 @@ export function normalizeMenuSettings(settings = {}) {
         product.id.trim(),
         {
           available: toBoolean(product.available, true),
+          batchLimit: toPositiveNumber(product.batchLimit),
           maxQuantity: toPositiveNumber(product.maxQuantity),
           priceSgd: toPositiveNumber(product.priceSgd),
+          remainingQuantity: toNonNegativeNumber(product.remainingQuantity),
+          soldQuantity: toNonNegativeNumber(product.soldQuantity),
         },
       ])
   );
@@ -43,13 +51,21 @@ export function mergeMenuSettings(baseMenu, settings) {
 
   return baseMenu.map((item) => {
     const productSettings = settingsById.get(item.id);
-    const maxQuantity = productSettings?.maxQuantity || DEFAULT_MAX_QUANTITY;
+    const customerMaxQuantity = productSettings?.maxQuantity || DEFAULT_MAX_QUANTITY;
+    const effectiveMaxQuantity =
+      productSettings?.remainingQuantity === null || productSettings?.remainingQuantity === undefined
+        ? customerMaxQuantity
+        : Math.min(customerMaxQuantity, productSettings.remainingQuantity);
+    const isAvailable = (productSettings?.available ?? true) && effectiveMaxQuantity > 0;
 
     return {
       ...item,
-      available: productSettings?.available ?? true,
+      available: isAvailable,
+      batchLimit: productSettings?.batchLimit,
       priceSgd: productSettings?.priceSgd || item.priceSgd,
-      quantityOptions: toQuantityOptions(maxQuantity),
+      remainingQuantity: productSettings?.remainingQuantity,
+      soldQuantity: productSettings?.soldQuantity,
+      quantityOptions: toQuantityOptions(effectiveMaxQuantity),
     };
   });
 }
