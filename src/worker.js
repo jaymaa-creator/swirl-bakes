@@ -1,7 +1,6 @@
 const ORDER_ENDPOINT = "/api/orders";
 const MENU_ENDPOINT = "/api/menu";
 const MAX_ORDER_BYTES = 16_000;
-const MENU_CACHE_SECONDS = 60;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -55,7 +54,6 @@ async function fetchMenuSettings(env) {
     body: env.ORDER_WEBHOOK_SECRET
       ? JSON.stringify({ secret: env.ORDER_WEBHOOK_SECRET, action: "menuSettings" })
       : undefined,
-    cf: { cacheTtl: MENU_CACHE_SECONDS },
   });
   const data = await response.json().catch(() => null);
 
@@ -96,8 +94,8 @@ export default {
       } catch (error) {
         console.error("Unable to load menu settings", error);
         return jsonResponse(
-          { ok: true, products: [] },
-          { headers: { "Cache-Control": "no-store" } }
+          { ok: false, error: "Menu settings are temporarily unavailable" },
+          { status: 503, headers: { "Cache-Control": "no-store" } }
         );
       }
     }

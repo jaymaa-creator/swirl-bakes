@@ -10,7 +10,7 @@ export default function useMenuSettings(baseMenu) {
 
     async function loadMenuSettings() {
       try {
-        const response = await fetch(`/api/menu?fresh=${Date.now()}`, {
+        const response = await fetch("/api/menu", {
           headers: { Accept: "application/json" },
           cache: "no-store",
         });
