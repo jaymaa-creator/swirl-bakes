@@ -74,9 +74,11 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
                       <div className="text-xs uppercase tracking-[0.18em] text-inkMuted">{m.category}</div>
                       <div className="mt-2 text-2xl text-ink">{m.name}</div>
                     </div>
-                    <span className="rounded-full bg-[#F7EBDD] px-3 py-1 text-xs font-semibold text-brandBrown">
-                      {isAvailable ? m.badge : "Sold out this week"}
-                    </span>
+                    {!isAvailable || m.badge ? (
+                      <span className="rounded-full bg-[#F7EBDD] px-3 py-1 text-xs font-semibold text-brandBrown">
+                        {isAvailable ? m.badge : "Sold out this week"}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-inkMuted">{m.note}</p>
                   {m.ingredients ? (

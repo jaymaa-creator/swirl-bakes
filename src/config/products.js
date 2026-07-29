@@ -25,7 +25,6 @@ export const MENU = [
     orderDescription: "loaf",
     image: "/banana-bread-slices.webp",
     imageAlt: "Freshly sliced banana bread on a wooden board with banana pieces",
-    badge: "Weekend add-on",
     note: "A tender, buttery banana loaf baked fresh for the Saturday batch.",
     ingredients: ["Banana", "Butter", "Self-raising flour", "Caster sugar", "Eggs", "Baking powder"],
     allergens: "Contains gluten, dairy, eggs.",
