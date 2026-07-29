@@ -59,7 +59,6 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
                 className={`overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_8px_24px_rgba(90,56,37,0.08)] ${
                   isAvailable ? "" : "opacity-75"
                 }`}
-                data-reveal="up"
               >
                 <img
                   src={m.image}
