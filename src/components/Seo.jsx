@@ -12,6 +12,18 @@ function upsertMeta(selector, attributes) {
   });
 }
 
+function priceOffer(item) {
+  if (typeof item.priceSgd !== "number" || !Number.isFinite(item.priceSgd) || item.priceSgd <= 0) {
+    return undefined;
+  }
+
+  return {
+    "@type": "Offer",
+    priceCurrency: "SGD",
+    price: item.priceSgd,
+  };
+}
+
 export default function Seo({ brand, menu, faq }) {
   useEffect(() => {
     const title = `${brand.name} | Saturday Cinnamon Rolls & Banana Bread in Singapore`;
@@ -95,24 +107,20 @@ export default function Seo({ brand, menu, faq }) {
             "@type": "MenuItem",
             name: item.name,
             description: item.note,
-            offers: {
-              "@type": "Offer",
-              priceCurrency: "SGD",
-              price: item.priceSgd,
-            },
+            offers: priceOffer(item),
           },
         })),
       },
-      makesOffer: menu.map((item) => ({
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Product",
-          name: item.name,
-          description: item.note,
-        },
-        priceCurrency: "SGD",
-        price: item.priceSgd,
-      })),
+      makesOffer: menu
+        .filter((item) => priceOffer(item))
+        .map((item) => ({
+          ...priceOffer(item),
+          itemOffered: {
+            "@type": "Product",
+            name: item.name,
+            description: item.note,
+          },
+        })),
       faq: faq.map((item) => ({
         "@type": "Question",
         name: item.q,

@@ -62,7 +62,8 @@ export function mergeMenuSettings(baseMenu, settings) {
       ...item,
       available: isAvailable,
       batchLimit: productSettings?.batchLimit,
-      priceSgd: productSettings?.priceSgd || item.priceSgd,
+      // Prices only come from the live Products sheet. There is intentionally no static fallback.
+      priceSgd: productSettings?.priceSgd ?? null,
       remainingQuantity: productSettings?.remainingQuantity,
       soldQuantity: productSettings?.soldQuantity,
       quantityOptions: toQuantityOptions(effectiveMaxQuantity),

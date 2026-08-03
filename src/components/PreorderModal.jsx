@@ -23,6 +23,7 @@ export default function PreorderModal({
   hasRequiredContactDetails,
   canSubmitOrder,
   isBakeWindowOpen,
+  menuStatus,
   menu,
   quantityOptions,
   allergenDisclaimer,
@@ -192,6 +193,9 @@ export default function PreorderModal({
                 Orders for this batch have closed. Please choose the next available Saturday.
               </div>
             ) : null}
+            {menuStatus !== "ready" ? (
+              <div className="text-xs text-inkMuted">Prices are loading from the current menu.</div>
+            ) : null}
           </div>
         }
       >
@@ -247,13 +251,16 @@ export default function PreorderModal({
                   <div className="text-sm font-semibold">Items</div>
                   <div className="text-xs text-inkMuted">Set quantities for your Saturday batch reservation.</div>
                 </div>
-                <div className="text-sm font-semibold">Estimated: {money(estimatedTotal)}</div>
+                <div className="text-sm font-semibold">
+                  Estimated: {menuStatus === "ready" ? money(estimatedTotal) : "Loading..."}
+                </div>
               </div>
 
               <div className="mt-3 grid gap-3">
                 {menu.map((m) => {
                   const quantityChoices = m.quantityOptions || quantityOptions;
                   const isAvailable = m.available !== false;
+                  const hasPrice = typeof m.priceSgd === "number" && Number.isFinite(m.priceSgd) && m.priceSgd > 0;
 
                   return (
                     <div
@@ -265,7 +272,13 @@ export default function PreorderModal({
                       <div>
                         <div className="text-sm font-medium text-ink">{m.name}</div>
                         <div className="text-xs text-inkMuted">
-                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : "Sold out this week"}
+                          {isAvailable
+                            ? hasPrice
+                              ? `${money(m.priceSgd)} ${m.unitLabel || "each"}`
+                              : menuStatus === "loading"
+                                ? "Price loading..."
+                                : "Price unavailable"
+                            : "Sold out this week"}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">

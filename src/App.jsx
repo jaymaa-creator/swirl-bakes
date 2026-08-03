@@ -68,8 +68,11 @@ export default function BakesLandingPage() {
 
   const { isOpeningModal, openingTriggerId, handleOpenPreorder } =
     usePreorderModalOpen(setForm, setModalOpen);
-  const { menu } = useMenuSettings(MENU);
+  const { menu, status: menuStatus } = useMenuSettings(MENU);
   const orderableMenu = useMemo(() => menu.filter((item) => item.available !== false), [menu]);
+  const hasCurrentPrices = orderableMenu.every(
+    (item) => typeof item.priceSgd === "number" && Number.isFinite(item.priceSgd) && item.priceSgd > 0
+  );
   const orderForm = useMemo(() => {
     const items = { ...form.items };
 
@@ -137,7 +140,7 @@ export default function BakesLandingPage() {
 
   return (
     <div className="min-h-screen bg-cream text-ink">
-      <Seo brand={BRAND} menu={MENU} faq={FAQ} />
+      <Seo brand={BRAND} menu={menu} faq={FAQ} />
       <div className="sticky top-0 z-40">
         <div className="ribbon border-b border-line bg-[#F7EBDD]">
           <div className="ribbon-track py-2 text-xs font-medium text-inkMuted sm:text-sm">
@@ -248,6 +251,7 @@ export default function BakesLandingPage() {
           quantityOptions={QUANTITY_OPTIONS}
           form={orderForm}
           setForm={setForm}
+          menuStatus={menuStatus}
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
         />
 
@@ -297,9 +301,16 @@ export default function BakesLandingPage() {
         waMessage={waMessage}
         saturdayDates={saturdayOptions}
         hasSelectedItems={hasSelectedItems}
-        canSubmitOrder={hasSelectedItems && isSelectedBakeOpen && hasRequiredContactDetails}
+        canSubmitOrder={
+          hasSelectedItems &&
+          isSelectedBakeOpen &&
+          hasRequiredContactDetails &&
+          menuStatus === "ready" &&
+          hasCurrentPrices
+        }
         hasRequiredContactDetails={hasRequiredContactDetails}
         isBakeWindowOpen={isSelectedBakeOpen}
+        menuStatus={menuStatus}
         menu={menu}
         quantityOptions={QUANTITY_OPTIONS}
         allergenDisclaimer={ALLERGEN_DISCLAIMER}

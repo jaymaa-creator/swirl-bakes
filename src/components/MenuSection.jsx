@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ALLERGEN_NAMES } from "../config/products";
 
-export default function MenuSection({ menu, quantityOptions, form, setForm, allergenDisclaimer }) {
+export default function MenuSection({ menu, quantityOptions, form, setForm, menuStatus, allergenDisclaimer }) {
   const [activeFilter, setActiveFilter] = useState("All");
   const filters = useMemo(() => ["All", ...new Set(menu.map((item) => item.category))], [menu]);
   const visibleItems = useMemo(
@@ -52,6 +52,7 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
           {visibleItems.map((m) => {
             const quantityChoices = m.quantityOptions || quantityOptions;
             const isAvailable = m.available !== false;
+            const hasPrice = typeof m.priceSgd === "number" && Number.isFinite(m.priceSgd) && m.priceSgd > 0;
 
             return (
               <div
@@ -86,7 +87,13 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, alle
                       {m.ingredients.join(", ")}
                     </div>
                   ) : null}
-                  <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} {m.unitLabel || "each"}</div>
+                  <div className="mt-4 text-sm font-semibold text-ink">
+                    {hasPrice
+                      ? `S$${m.priceSgd} ${m.unitLabel || "each"}`
+                      : menuStatus === "loading"
+                        ? "Price loading..."
+                        : "Price unavailable"}
+                  </div>
                   <div className="mt-5 flex flex-wrap items-center gap-2">
                     {quantityChoices.map((qty) => {
                       const isSelected = Number(form.items[m.id] || 0) === qty;
