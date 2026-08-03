@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { buildWhatsAppLink } from "../lib/orderMessaging";
+import { calculateLineTotalSgd } from "../lib/pricing";
 import Card from "./ui/Card";
 import Field from "./ui/Field";
 import Input from "./ui/Input";
@@ -42,7 +43,25 @@ export default function PreorderModal({
   const countdownRef = useRef(null);
   const orderRequestSubmittedRef = useRef(false);
   const orderNumberRef = useRef("");
-  const isDelivery = form.delivery.toLowerCase().includes("delivery");
+  const isDelivery = form.delivery.toLowerCase().includes("delivery") && isDeliveryEligible;
+
+  function setItemQuantity(productId, quantity) {
+    setForm((current) => {
+      const items = { ...current.items, [productId]: quantity };
+      const nextItemsTotal = menu.reduce(
+        (sum, item) => sum + calculateLineTotalSgd(item, Number(items[item.id] || 0)),
+        0
+      );
+      const mustUseCollection = nextItemsTotal < brand.deliveryMinimumSgd;
+
+      return {
+        ...current,
+        items,
+        delivery: mustUseCollection ? brand.deliveryOptions[1] : current.delivery,
+        address: mustUseCollection ? "" : current.address,
+      };
+    });
+  }
 
   useEffect(() => {
     if (showAllergenPopup && allergenCountdown > 0) {
@@ -289,13 +308,10 @@ export default function PreorderModal({
                               type="button"
                               disabled={!isAvailable}
                               onClick={() =>
-                                setForm((f) => ({
-                                  ...f,
-                                  items: {
-                                    ...f.items,
-                                    [m.id]: Number(f.items[m.id] || 0) === qty ? 0 : qty,
-                                  },
-                                }))
+                                setItemQuantity(
+                                  m.id,
+                                  Number(form.items[m.id] || 0) === qty ? 0 : qty
+                                )
                               }
                               className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
                                 isSelected
@@ -335,19 +351,24 @@ export default function PreorderModal({
                   enabled: isDeliveryEligible,
                 },
               ].map((option) => {
-                const isSelected = form.delivery === option.value;
+                const isSelected = form.delivery === option.value && option.enabled;
                 return (
                   <button
                     key={option.value}
                     type="button"
                     disabled={!option.enabled}
-                    onClick={() => setForm((f) => ({ ...f, delivery: option.value }))}
+                    onClick={() => {
+                      if (!option.enabled) return;
+                      setForm((f) => ({ ...f, delivery: option.value }));
+                    }}
                     className={`rounded-2xl border p-4 text-left transition-colors ${
                       isSelected
                         ? "border-brandBrown bg-surface shadow-soft"
                         : "border-line bg-surface/60 hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
                     }`}
                     aria-pressed={isSelected}
+                    aria-disabled={!option.enabled}
+                    title={!option.enabled ? `Delivery is available from ${money(brand.deliveryMinimumSgd)} of bakes.` : undefined}
                   >
                     <span className="block text-sm font-semibold text-ink">{option.label}</span>
                     <span className="mt-1 block text-xs leading-5 text-inkMuted">{option.detail}</span>
