@@ -237,8 +237,6 @@ export default function BakesLandingPage() {
       <main className="space-y-6 pb-6 sm:space-y-10 sm:pb-8">
         <LandingSection brand={BRAND} />
 
-        <InstagramReelSection />
-
         <MenuSection
           menu={menu}
           quantityOptions={QUANTITY_OPTIONS}
@@ -249,6 +247,8 @@ export default function BakesLandingPage() {
           onSelectItem={openMenuPreorder}
           onRetry={retryMenu}
         />
+
+        <InstagramReelSection />
 
         <BananaBreadGallery />
 
