@@ -189,7 +189,7 @@ export default function PreorderModal({
             ) : null}
             {hasSelectedItems && !isBakeWindowOpen ? (
               <div className="text-xs text-inkMuted">
-                Reservations are currently closed. The next order window opens Saturday at 12am SGT.
+                Reservations are currently closed. The next order window opens Friday at 12am SGT.
               </div>
             ) : null}
             {menuStatus !== "ready" ? (

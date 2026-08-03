@@ -91,7 +91,7 @@ export function getOrderWindowStartForSaturday(satDate) {
     0,
     0
   );
-  return addDays(saturdayStart, -7);
+  return addDays(saturdayStart, -8);
 }
 
 export function isSaturdayOpen(satDate, now = new Date()) {

@@ -16,13 +16,13 @@ test("the countdown rolls to the next available week's cut-off after Thursday 10
   assert.equal(cutoff.toISOString(), "2026-08-06T14:00:00.000Z");
 });
 
-test("a new order week begins at the start of Saturday in Singapore", () => {
-  const friday = new Date("2026-07-31T12:00:00+08:00");
-  const nextSaturday = getNearestOpenSaturday(friday);
+test("a new order week begins at the start of Friday in Singapore", () => {
+  const afterThursdayCutoff = new Date("2026-07-30T22:00:00+08:00");
+  const nextSaturday = getNearestOpenSaturday(afterThursdayCutoff);
 
-  assert.equal(isSaturdayOpen(nextSaturday, friday), false);
+  assert.equal(isSaturdayOpen(nextSaturday, afterThursdayCutoff), false);
 
-  const firstMomentOfSaturday = new Date("2026-08-01T00:00:00+08:00");
-  assert.equal(isSaturdayOpen(nextSaturday, firstMomentOfSaturday), true);
+  const firstMomentOfFriday = new Date("2026-07-31T00:00:00+08:00");
+  assert.equal(isSaturdayOpen(nextSaturday, firstMomentOfFriday), true);
   assert.equal(nextSaturday.toISOString(), "2026-08-07T16:00:00.000Z");
 });
