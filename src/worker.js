@@ -1,6 +1,7 @@
 const ORDER_ENDPOINT = "/api/orders";
 const MENU_ENDPOINT = "/api/menu";
 const MAX_ORDER_BYTES = 16_000;
+const MENU_CACHE_SECONDS = 15;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -80,6 +81,28 @@ async function requestMenuSettings(menuSettingsUrl, secret) {
   };
 }
 
+function menuCacheKey(url) {
+  const cacheUrl = new URL(url);
+  cacheUrl.pathname = `${MENU_ENDPOINT}/current`;
+  cacheUrl.search = "";
+  return new Request(cacheUrl.toString(), { method: "GET" });
+}
+
+async function getMenuSettings(request, env, ctx) {
+  const cache = caches.default;
+  const cacheKey = menuCacheKey(request.url);
+  const cached = await cache.match(cacheKey);
+
+  if (cached) return cached.json();
+
+  const settings = await fetchMenuSettings(env);
+  const cacheResponse = Response.json(settings, {
+    headers: { "Cache-Control": `public, max-age=${MENU_CACHE_SECONDS}` },
+  });
+  ctx.waitUntil(cache.put(cacheKey, cacheResponse));
+  return settings;
+}
+
 async function verifyTurnstile(token, secret, remoteIp) {
   const body = new URLSearchParams({ secret, response: token });
   if (remoteIp) body.set("remoteip", remoteIp);
@@ -92,7 +115,7 @@ async function verifyTurnstile(token, secret, remoteIp) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (url.pathname === MENU_ENDPOINT) {
@@ -101,8 +124,8 @@ export default {
       }
 
       try {
-        // Read through on every request so spreadsheet edits appear on the next refresh.
-        return jsonResponse(await fetchMenuSettings(env), {
+        // A short cache gives fast page loads while keeping spreadsheet edits near-instant.
+        return jsonResponse(await getMenuSettings(request, env, ctx), {
           headers: { "Cache-Control": "no-store" },
         });
       } catch (error) {
@@ -178,6 +201,7 @@ export default {
       return jsonResponse({ ok: false, error: "Unable to save order" }, { status: 502 });
     }
 
+    ctx.waitUntil(caches.default.delete(menuCacheKey(request.url)));
     return jsonResponse({ ok: true, orderNumber: sheetResult?.orderNumber || "" });
   },
 };

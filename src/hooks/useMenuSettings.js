@@ -13,7 +13,7 @@ export default function useMenuSettings(baseMenu) {
 
     async function loadMenuSettings() {
       const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 12_000);
+      const timeout = window.setTimeout(() => controller.abort(), 8_000);
 
       try {
         const response = await fetch("/api/menu", {
@@ -33,7 +33,7 @@ export default function useMenuSettings(baseMenu) {
         }
       } catch {
         if (isMounted) {
-          if (attempts < 2) {
+          if (attempts < 1) {
             attempts += 1;
             retryTimer = window.setTimeout(loadMenuSettings, attempts * 2_000);
             return;

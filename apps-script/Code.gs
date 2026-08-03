@@ -3,6 +3,8 @@ const ORDERS_SHEET_NAME = "Orders";
 const MENU_SETTINGS_SHEET_NAME = "Products";
 const SECRET_PROPERTY = "ORDER_WEBHOOK_SECRET";
 const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
+const MENU_CACHE_KEY = "live-menu-settings-v1";
+const MENU_CACHE_SECONDS = 15;
 
 function doGet() {
   try {
@@ -148,6 +150,10 @@ function appendOrderRow(sheet, orderRow) {
 }
 
 function readMenuSettings() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(MENU_CACHE_KEY);
+  if (cached) return JSON.parse(cached);
+
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = spreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
 
@@ -158,9 +164,12 @@ function readMenuSettings() {
   const values = sheet.getDataRange().getValues();
   const headers = values.shift().map((header) => normalizeHeader(header));
   const column = Object.fromEntries(headers.map((header, index) => [header, index]));
-  const soldByProductId = getSoldQuantitiesForCurrentBatch(spreadsheet);
+  const productIds = values
+    .map((row) => String(row[column.product_id] || "").trim())
+    .filter(Boolean);
+  const soldByProductId = getSoldQuantitiesForCurrentBatch(spreadsheet, productIds);
 
-  return values
+  const products = values
     .map((row) => {
       const id = String(row[column.product_id] || "").trim();
       if (!id) return null;
@@ -183,9 +192,12 @@ function readMenuSettings() {
       };
     })
     .filter(Boolean);
+
+  cache.put(MENU_CACHE_KEY, JSON.stringify(products), MENU_CACHE_SECONDS);
+  return products;
 }
 
-function getSoldQuantitiesForCurrentBatch(spreadsheet) {
+function getSoldQuantitiesForCurrentBatch(spreadsheet, productIds) {
   const ordersSheet = spreadsheet.getSheetByName(ORDERS_SHEET_NAME);
   if (!ordersSheet || ordersSheet.getLastRow() < 2) {
     return {};
@@ -196,8 +208,6 @@ function getSoldQuantitiesForCurrentBatch(spreadsheet) {
   const column = Object.fromEntries(headers.map((header, index) => [header, index]));
   const batchDate = getCurrentBatchDate();
   const soldByProductId = {};
-  const productIds = readMenuSettingsProductIds();
-
   values.forEach((row) => {
     if (!isSameBatch(row[column.saturday_batch], batchDate)) return;
     if (isCancelledStatus(row[column.status])) return;
@@ -213,21 +223,6 @@ function getSoldQuantitiesForCurrentBatch(spreadsheet) {
   });
 
   return soldByProductId;
-}
-
-function readMenuSettingsProductIds() {
-  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = spreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
-  if (!sheet || sheet.getLastRow() < 2) return [];
-
-  const values = sheet.getDataRange().getValues();
-  const headers = values.shift().map((header) => normalizeHeader(header));
-  const productIdColumn = headers.indexOf("product_id");
-  if (productIdColumn < 0) return [];
-
-  return values
-    .map((row) => String(row[productIdColumn] || "").trim())
-    .filter(Boolean);
 }
 
 function getCurrentBatchDate() {

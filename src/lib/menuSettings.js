@@ -1,4 +1,7 @@
 const DEFAULT_MAX_QUANTITY = 3;
+const DEFAULT_PRODUCT_IMAGES = {
+  sourdough: "/sourdough.webp",
+};
 
 function toBoolean(value, fallback = true) {
   if (typeof value === "boolean") return value;
@@ -52,7 +55,7 @@ function fallbackProduct(productId, productSettings) {
     quantityLabelPlural: isLoaf ? "loaves" : "items",
     note: productSettings.description || "Freshly baked for this Saturday's batch.",
     allergens: productSettings.allergens || "Allergen information available on request.",
-    image: productSettings.imageUrl || "",
+    image: productSettings.imageUrl || DEFAULT_PRODUCT_IMAGES[productId.toLowerCase()] || "",
     imageAlt: name,
   };
 }

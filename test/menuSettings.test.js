@@ -100,7 +100,7 @@ test("mergeMenuSettings adds available products from the sheet", () => {
   assert.equal(menu[2].priceSgd, 15);
   assert.equal(menu[2].note, "Homemade sourdough, baked fresh for Saturday.");
   assert.deepEqual(menu[2].quantityOptions, [1]);
-  assert.equal(menu[2].image, "");
+  assert.equal(menu[2].image, "/sourdough.webp");
 });
 
 test("mergeMenuSettings uses the sheet allergen statement", () => {
