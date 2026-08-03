@@ -4,7 +4,6 @@ import Card from "./ui/Card";
 import Field from "./ui/Field";
 import Input from "./ui/Input";
 import Modal from "./ui/Modal";
-import Select from "./ui/Select";
 import Textarea from "./ui/Textarea";
 import CinnamonLoader from "./ui/CinnamonLoader";
 import TurnstileWidget from "./TurnstileWidget";
@@ -18,7 +17,7 @@ export default function PreorderModal({
   setForm,
   estimatedTotal,
   waMessage,
-  saturdayDates,
+  bakeWindowLabel,
   hasSelectedItems,
   hasRequiredContactDetails,
   canSubmitOrder,
@@ -190,7 +189,7 @@ export default function PreorderModal({
             ) : null}
             {hasSelectedItems && !isBakeWindowOpen ? (
               <div className="text-xs text-inkMuted">
-                Orders for this batch have closed. Please choose the next available Saturday.
+                Reservations are currently closed. The next order window opens Saturday at 12am SGT.
               </div>
             ) : null}
             {menuStatus !== "ready" ? (
@@ -230,16 +229,9 @@ export default function PreorderModal({
                 />
               </Field>
               <Field label="Saturday batch">
-                <Select
-                  value={form.bakeWindow}
-                  onChange={(e) => setForm((f) => ({ ...f, bakeWindow: e.target.value }))}
-                >
-                  {saturdayDates.map((w) => (
-                    <option key={w.value} value={w.value} disabled={!w.isOpen}>
-                      {w.label}
-                    </option>
-                  ))}
-                </Select>
+                <div className="rounded-xl border border-line bg-surface px-4 py-3 text-sm font-medium text-ink">
+                  {bakeWindowLabel}
+                </div>
               </Field>
             </div>
           </section>

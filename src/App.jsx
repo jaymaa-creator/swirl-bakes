@@ -20,7 +20,6 @@ import {
   formatSgDate,
   fromSingaporeDateKey,
   getNearestOpenSaturday,
-  getOpenSaturdays,
   isSaturdayOpen,
   toSingaporeDateKey,
 } from "./lib/dates";
@@ -39,16 +38,8 @@ export default function BakesLandingPage() {
     "Small-batch bakes in Singapore",
     "Reserve early - limited batch",
   ];
-  const saturdayOptions = useMemo(
-    () =>
-      getOpenSaturdays(2, new Date()).map((date) => ({
-        value: toSingaporeDateKey(date),
-        label: formatSgDate(date),
-        isOpen: isSaturdayOpen(date, new Date()),
-      })),
-    []
-  );
-  const defaultBakeDate = toSingaporeDateKey(getNearestOpenSaturday(new Date()));
+  const nextSaturday = getNearestOpenSaturday(new Date());
+  const nextSaturdayKey = toSingaporeDateKey(nextSaturday);
   const [modalOpen, setModalOpen] = useState(false);
   const [hasStartedOrder, setHasStartedOrder] = useState(false);
   const [whatsappHandoffLink, setWhatsappHandoffLink] = useState("");
@@ -57,7 +48,7 @@ export default function BakesLandingPage() {
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    bakeWindow: defaultBakeDate,
+    bakeWindow: nextSaturdayKey,
     delivery: BRAND.deliveryOptions[0],
     area: BRAND.pickupAreas[0],
     address: "",
@@ -90,16 +81,11 @@ export default function BakesLandingPage() {
     return { ...form, items };
   }, [form, menu]);
 
-  const fallbackBakeWindow = saturdayOptions[0]?.value || defaultBakeDate;
-  const normalizedBakeWindow = saturdayOptions.some((option) => option.value === form.bakeWindow)
-    ? form.bakeWindow
-    : fallbackBakeWindow;
-  const selectedBakeDate = fromSingaporeDateKey(normalizedBakeWindow);
+  const selectedBakeDate = fromSingaporeDateKey(nextSaturdayKey);
   const isSelectedBakeOpen = selectedBakeDate
     ? isSaturdayOpen(selectedBakeDate, new Date())
     : false;
-  const selectedBakeOption = saturdayOptions.find((option) => option.value === normalizedBakeWindow);
-  const displayBakeWindow = selectedBakeOption?.label || "";
+  const displayBakeWindow = selectedBakeDate ? formatSgDate(selectedBakeDate) : "";
 
   const { estimatedTotal, hasSelectedItems, waMessage, money } = useOrderSummary({
     form: { ...orderForm, bakeWindow: displayBakeWindow },
@@ -115,7 +101,8 @@ export default function BakesLandingPage() {
 
   const isHeaderLoading = isOpeningModal && openingTriggerId === "header-primary";
 
-  const openHeaderPreorder = () => handleOpenPreorder(undefined, "header-primary");
+  const openHeaderPreorder = () => handleOpenPreorder(nextSaturdayKey, "header-primary");
+  const openReservePreorder = (_, triggerId) => handleOpenPreorder(nextSaturdayKey, triggerId);
 
   const closePreorderModal = () => setModalOpen(false);
 
@@ -273,7 +260,7 @@ export default function BakesLandingPage() {
 
         <ReserveCtaSection
           brand={BRAND}
-          handleOpenPreorder={handleOpenPreorder}
+          handleOpenPreorder={openReservePreorder}
           isOpeningModal={isOpeningModal}
           openingTriggerId={openingTriggerId}
         />
@@ -295,11 +282,11 @@ export default function BakesLandingPage() {
       <PreorderModal
         open={modalOpen}
         onClose={closePreorderModal}
-        form={{ ...orderForm, bakeWindow: normalizedBakeWindow }}
+        form={{ ...orderForm, bakeWindow: nextSaturdayKey }}
         setForm={setForm}
         estimatedTotal={estimatedTotal}
         waMessage={waMessage}
-        saturdayDates={saturdayOptions}
+        bakeWindowLabel={displayBakeWindow}
         hasSelectedItems={hasSelectedItems}
         canSubmitOrder={
           hasSelectedItems &&
