@@ -80,9 +80,9 @@ function setupMenuSettings() {
   }
 
   sheet.clear();
-  sheet.appendRow(["product_id", "price_sgd", "available", "max_quantity", "batch_limit", "description", "image_url"]);
-  sheet.appendRow(["cinnamon-rolls", 35, true, 3, 12, "", ""]);
-  sheet.appendRow(["banana-bread", 25, true, 3, 6, "", ""]);
+  sheet.appendRow(["product_id", "price_sgd", "available", "max_quantity", "batch_limit", "description", "allergens", "image_url"]);
+  sheet.appendRow(["cinnamon-rolls", 35, true, 3, 12, "", "", ""]);
+  sheet.appendRow(["banana-bread", 25, true, 3, 6, "", "", ""]);
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, 5);
 
@@ -178,6 +178,7 @@ function readMenuSettings() {
         soldQuantity,
         remainingQuantity,
         description: row[column.description],
+        allergens: row[column.allergens],
         imageUrl: row[column.image_url],
       };
     })

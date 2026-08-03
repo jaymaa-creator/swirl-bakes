@@ -1,7 +1,6 @@
 const ORDER_ENDPOINT = "/api/orders";
 const MENU_ENDPOINT = "/api/menu";
 const MAX_ORDER_BYTES = 16_000;
-const MENU_CACHE_SECONDS = 60;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -34,6 +33,7 @@ function normalizeMenuProduct(product) {
     maxQuantity: Number(product.maxQuantity) || undefined,
     description: typeof product.description === "string" ? product.description.trim() : undefined,
     imageUrl: typeof product.imageUrl === "string" ? product.imageUrl.trim() : undefined,
+    allergens: typeof product.allergens === "string" ? product.allergens.trim() : undefined,
     remainingQuantity:
       Number(product.remainingQuantity) >= 0 ? Number(product.remainingQuantity) : undefined,
     soldQuantity: Number(product.soldQuantity) >= 0 ? Number(product.soldQuantity) : undefined,
@@ -80,30 +80,6 @@ async function requestMenuSettings(menuSettingsUrl, secret) {
   };
 }
 
-function menuCacheKey(url) {
-  const cacheUrl = new URL(url);
-  cacheUrl.pathname = `${MENU_ENDPOINT}/current`;
-  cacheUrl.search = "";
-  return new Request(cacheUrl.toString(), { method: "GET" });
-}
-
-async function getMenuSettings(request, env, ctx) {
-  const cache = caches.default;
-  const cacheKey = menuCacheKey(request.url);
-  const cached = await cache.match(cacheKey);
-
-  if (cached) {
-    return cached.json();
-  }
-
-  const settings = await fetchMenuSettings(env);
-  const cacheResponse = Response.json(settings, {
-    headers: { "Cache-Control": `public, max-age=${MENU_CACHE_SECONDS}` },
-  });
-  ctx.waitUntil(cache.put(cacheKey, cacheResponse));
-  return settings;
-}
-
 async function verifyTurnstile(token, secret, remoteIp) {
   const body = new URLSearchParams({ secret, response: token });
   if (remoteIp) body.set("remoteip", remoteIp);
@@ -116,7 +92,7 @@ async function verifyTurnstile(token, secret, remoteIp) {
 }
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     if (url.pathname === MENU_ENDPOINT) {
@@ -125,7 +101,8 @@ export default {
       }
 
       try {
-        return jsonResponse(await getMenuSettings(request, env, ctx), {
+        // Read through on every request so spreadsheet edits appear on the next refresh.
+        return jsonResponse(await fetchMenuSettings(env), {
           headers: { "Cache-Control": "no-store" },
         });
       } catch (error) {
@@ -201,7 +178,6 @@ export default {
       return jsonResponse({ ok: false, error: "Unable to save order" }, { status: 502 });
     }
 
-    ctx.waitUntil(caches.default.delete(menuCacheKey(request.url)));
     return jsonResponse({ ok: true, orderNumber: sheetResult?.orderNumber || "" });
   },
 };

@@ -102,3 +102,11 @@ test("mergeMenuSettings adds available products from the sheet", () => {
   assert.deepEqual(menu[2].quantityOptions, [1]);
   assert.equal(menu[2].image, "");
 });
+
+test("mergeMenuSettings uses the sheet allergen statement", () => {
+  const menu = mergeMenuSettings(baseMenu, {
+    products: [{ id: "banana-bread", priceSgd: 20, allergens: "Contains banana, gluten, dairy and eggs." }],
+  });
+
+  assert.equal(menu[1].allergens, "Contains banana, gluten, dairy and eggs.");
+});

@@ -9,6 +9,7 @@ export default function MenuSection({
   menuStatus,
   allergenDisclaimer,
   onSelectItem,
+  onRetry,
 }) {
   const [activeFilter, setActiveFilter] = useState("All");
   const filters = useMemo(() => ["All", ...new Set(menu.map((item) => item.category))], [menu]);
@@ -38,7 +39,20 @@ export default function MenuSection({
             </p>
           </div>
           <div className="mt-8 rounded-3xl border border-line bg-surface px-5 py-7 text-sm text-inkMuted shadow-[0_8px_24px_rgba(90,56,37,0.08)]">
-            {isLoading ? "Loading this week's menu..." : "This week's menu is temporarily unavailable. Please refresh to try again."}
+            {isLoading ? (
+              "Loading this week's menu..."
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>We could not load the live menu.</span>
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="rounded-full border border-brandBrown px-4 py-2 text-xs font-semibold text-brandBrown transition-colors hover:bg-brandBrown hover:text-white"
+                >
+                  Retry menu
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>

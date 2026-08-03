@@ -51,7 +51,7 @@ function fallbackProduct(productId, productSettings) {
     quantityLabel: isLoaf ? "loaf" : "item",
     quantityLabelPlural: isLoaf ? "loaves" : "items",
     note: productSettings.description || "Freshly baked for this Saturday's batch.",
-    allergens: "Allergen information available on request.",
+    allergens: productSettings.allergens || "Allergen information available on request.",
     image: productSettings.imageUrl || "",
     imageAlt: name,
   };
@@ -73,6 +73,7 @@ export function normalizeMenuSettings(settings = {}) {
           remainingQuantity: toNonNegativeNumber(product.remainingQuantity),
           soldQuantity: toNonNegativeNumber(product.soldQuantity),
           description: toText(product.description),
+          allergens: toText(product.allergens),
           imageUrl: toText(product.imageUrl),
         },
       ])
@@ -99,6 +100,7 @@ export function mergeMenuSettings(baseMenu, settings) {
       // Prices only come from the live Products sheet. There is intentionally no static fallback.
       priceSgd: productSettings?.priceSgd ?? null,
       note: productSettings?.description || item.note,
+      allergens: productSettings?.allergens || item.allergens,
       image: productSettings?.imageUrl || item.image,
       remainingQuantity: productSettings?.remainingQuantity,
       soldQuantity: productSettings?.soldQuantity,

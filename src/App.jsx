@@ -56,7 +56,7 @@ export default function BakesLandingPage() {
 
   const { isOpeningModal, openingTriggerId, handleOpenPreorder } =
     usePreorderModalOpen(setForm, setModalOpen);
-  const { menu, status: menuStatus } = useMenuSettings(MENU);
+  const { menu, status: menuStatus, retry: retryMenu } = useMenuSettings(MENU);
   const orderableMenu = useMemo(() => menu.filter((item) => item.available !== false), [menu]);
   const hasCurrentPrices = orderableMenu.every(
     (item) => typeof item.priceSgd === "number" && Number.isFinite(item.priceSgd) && item.priceSgd > 0
@@ -247,6 +247,7 @@ export default function BakesLandingPage() {
           menuStatus={menuStatus}
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
           onSelectItem={openMenuPreorder}
+          onRetry={retryMenu}
         />
 
         <BananaBreadGallery />
