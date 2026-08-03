@@ -80,3 +80,25 @@ test("mergeMenuSettings marks a product unavailable when no batch stock remains"
   assert.equal(menu[1].available, false);
   assert.deepEqual(menu[1].quantityOptions, []);
 });
+
+test("mergeMenuSettings adds available products from the sheet", () => {
+  const menu = mergeMenuSettings(baseMenu, {
+    products: [
+      {
+        id: "sourdough",
+        priceSgd: "15",
+        available: true,
+        maxQuantity: "1",
+        batchLimit: "2",
+        remainingQuantity: "2",
+        description: "Homemade sourdough, baked fresh for Saturday.",
+      },
+    ],
+  });
+
+  assert.equal(menu[2].name, "Sourdough");
+  assert.equal(menu[2].priceSgd, 15);
+  assert.equal(menu[2].note, "Homemade sourdough, baked fresh for Saturday.");
+  assert.deepEqual(menu[2].quantityOptions, [1]);
+  assert.equal(menu[2].image, "");
+});

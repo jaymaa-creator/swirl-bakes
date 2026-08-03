@@ -4,7 +4,16 @@ export function buildWhatsAppLink(numberE164, message) {
   return `https://wa.me/${digits}?text=${text}`;
 }
 
-export function buildOrderMessage({ brandName, form, menu, estimatedTotal, moneyFormatter, orderNumber }) {
+export function buildOrderMessage({
+  brandName,
+  form,
+  menu,
+  estimatedTotal,
+  itemsTotal = estimatedTotal,
+  deliveryFee = 0,
+  moneyFormatter,
+  orderNumber,
+}) {
   const lines = [];
   lines.push(`${brandName} Saturday reservation`);
   if (orderNumber) lines.push(`Order reference: ${orderNumber}`);
@@ -25,7 +34,9 @@ export function buildOrderMessage({ brandName, form, menu, estimatedTotal, money
       lines.push(`- ${m.name}${description} x${qty}`);
     }
   });
-  lines.push(`Estimated total: ${moneyFormatter(estimatedTotal)} (excluding delivery)`);
+  lines.push(`Items subtotal: ${moneyFormatter(itemsTotal)}`);
+  if (deliveryFee > 0) lines.push(`Delivery fee: ${moneyFormatter(deliveryFee)}`);
+  lines.push(`Estimated total: ${moneyFormatter(estimatedTotal)}`);
   if (form.notes) lines.push(`Notes: ${form.notes}`);
   lines.push("\nPlease confirm availability and PayNow details.");
   return lines.join("\n");

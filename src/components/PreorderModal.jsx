@@ -16,6 +16,9 @@ export default function PreorderModal({
   form,
   setForm,
   estimatedTotal,
+  itemsTotal,
+  deliveryFee,
+  isDeliveryEligible,
   waMessage,
   bakeWindowLabel,
   hasSelectedItems,
@@ -244,9 +247,15 @@ export default function PreorderModal({
                   <div className="text-xs text-inkMuted">Set quantities for your Saturday batch reservation.</div>
                 </div>
                 <div className="text-sm font-semibold">
-                  Estimated: {menuStatus === "ready" ? money(estimatedTotal) : "—"}
+                  Price: {menuStatus === "ready" ? money(estimatedTotal) : "—"}
                 </div>
               </div>
+              {menuStatus === "ready" ? (
+                <div className="mt-2 text-xs text-inkMuted">
+                  Items {money(itemsTotal)}
+                  {deliveryFee > 0 ? ` + delivery ${money(deliveryFee)}` : ""}
+                </div>
+              ) : null}
 
               {menuStatus !== "ready" ? (
                 <div className="mt-3 rounded-2xl border border-line bg-cream px-4 py-3 text-sm text-inkMuted">
@@ -316,19 +325,27 @@ export default function PreorderModal({
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">2. Delivery method</div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
-                { value: brand.deliveryOptions[1], label: "Self-collection", detail: "Collect from our agreed pickup point." },
-                { value: brand.deliveryOptions[0], label: "Delivery", detail: "GrabExpress or Lalamove, paid by customer." },
+                { value: brand.deliveryOptions[1], label: "Self-collection", detail: "Collect from our agreed pickup point.", enabled: true },
+                {
+                  value: brand.deliveryOptions[0],
+                  label: "Delivery",
+                  detail: isDeliveryEligible
+                    ? `Flat ${money(brand.deliveryFeeSgd)} delivery fee added at checkout.`
+                    : `Available from ${money(brand.deliveryMinimumSgd)} of bakes.`,
+                  enabled: isDeliveryEligible,
+                },
               ].map((option) => {
                 const isSelected = form.delivery === option.value;
                 return (
                   <button
                     key={option.value}
                     type="button"
+                    disabled={!option.enabled}
                     onClick={() => setForm((f) => ({ ...f, delivery: option.value }))}
                     className={`rounded-2xl border p-4 text-left transition-colors ${
                       isSelected
                         ? "border-brandBrown bg-surface shadow-soft"
-                        : "border-line bg-surface/60 hover:border-brandCinnamon"
+                        : "border-line bg-surface/60 hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
                     }`}
                     aria-pressed={isSelected}
                   >

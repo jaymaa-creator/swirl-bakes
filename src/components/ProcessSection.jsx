@@ -64,20 +64,20 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
           {
             step: "1",
             icon: "calendar",
-            title: "Choose your bakes",
-            body: "Pick cinnamon rolls, banana bread, or both.",
+            title: "Pick your baked treat of choice",
+            body: "Choose from this week's freshly baked menu.",
           },
           {
             step: "2",
             icon: "payment",
             title: "Send your order",
-            body: "Your order message is prefilled.",
+            body: "Your order message is prefilled and sent via WhatsApp. Payment is then made via PayNow.",
           },
           {
             step: "3",
             icon: "delivery",
             title: "Collect or deliver",
-            body: "Pickup is in Joo Chiat. Delivery is by GrabExpress or Lalamove.",
+            body: "Pickup is in Joo Chiat. Delivery is available from S$50 of bakes, with a flat S$5 fee.",
           },
         ].map((s) => (
           <div
@@ -127,7 +127,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
               ))}
             </ul>
             <div className="mt-4 text-xs text-inkMuted">
-              Delivery fees are paid by the customer.
+              Delivery is available for orders of S$50 or more, with a flat S$5 fee.
             </div>
           </div>
         </Card>

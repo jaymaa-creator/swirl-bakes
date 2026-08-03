@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { ALLERGEN_NAMES } from "../config/products";
 
-export default function MenuSection({ menu, quantityOptions, form, setForm, menuStatus, allergenDisclaimer }) {
+export default function MenuSection({
+  menu,
+  quantityOptions,
+  form,
+  setForm,
+  menuStatus,
+  allergenDisclaimer,
+  onSelectItem,
+}) {
   const [activeFilter, setActiveFilter] = useState("All");
   const filters = useMemo(() => ["All", ...new Set(menu.map((item) => item.category))], [menu]);
   const visibleItems = useMemo(
@@ -88,13 +96,22 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, menu
                   isAvailable ? "" : "opacity-75"
                 }`}
               >
-                <img
-                  src={m.image}
-                  alt={m.imageAlt}
-                  className="aspect-[4/3] w-full object-cover"
-                  loading="lazy"
-                  decoding="async"
-                />
+                {m.image ? (
+                  <img
+                    src={m.image}
+                    alt={m.imageAlt}
+                    className="aspect-[4/3] w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#F8E5CE,transparent_42%),linear-gradient(135deg,#EAD9C9,#F9F3EC)] px-6 text-center">
+                    <div>
+                      <img src="/logo.webp" alt="" className="mx-auto h-16 w-16 rounded-full object-cover" />
+                      <div className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">Photo coming soon</div>
+                    </div>
+                  </div>
+                )}
                 <div className="px-5 py-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -123,15 +140,17 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, menu
                           key={`${m.id}-${qty}`}
                           type="button"
                           disabled={!isAvailable}
-                          onClick={() =>
+                          onClick={() => {
+                            const nextQuantity = Number(form.items[m.id] || 0) === qty ? 0 : qty;
                             setForm((f) => ({
                               ...f,
                               items: {
                                 ...f.items,
-                                [m.id]: Number(f.items[m.id] || 0) === qty ? 0 : qty,
+                                [m.id]: nextQuantity,
                               },
-                            }))
-                          }
+                            }));
+                            if (nextQuantity > 0) onSelectItem?.();
+                          }}
                           className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
                             isSelected
                               ? "border-brandBrown bg-brandBrown text-white"

@@ -26,6 +26,37 @@ function toQuantityOptions(value) {
   return Array.from({ length: maxQuantity }, (_, index) => index + 1);
 }
 
+function toText(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function productNameFromId(productId) {
+  return String(productId)
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function fallbackProduct(productId, productSettings) {
+  const isLoaf = /bread|sourdough|loaf/i.test(productId);
+  const name = productNameFromId(productId);
+
+  return {
+    id: productId,
+    name,
+    category: "Weekly bakes",
+    unitLabel: isLoaf ? "per loaf" : "each",
+    quantityLabel: isLoaf ? "loaf" : "item",
+    quantityLabelPlural: isLoaf ? "loaves" : "items",
+    note: productSettings.description || "Freshly baked for this Saturday's batch.",
+    allergens: "Allergen information available on request.",
+    image: productSettings.imageUrl || "",
+    imageAlt: name,
+  };
+}
+
 export function normalizeMenuSettings(settings = {}) {
   const products = Array.isArray(settings.products) ? settings.products : [];
 
@@ -41,6 +72,8 @@ export function normalizeMenuSettings(settings = {}) {
           priceSgd: toPositiveNumber(product.priceSgd),
           remainingQuantity: toNonNegativeNumber(product.remainingQuantity),
           soldQuantity: toNonNegativeNumber(product.soldQuantity),
+          description: toText(product.description),
+          imageUrl: toText(product.imageUrl),
         },
       ])
   );
@@ -48,8 +81,9 @@ export function normalizeMenuSettings(settings = {}) {
 
 export function mergeMenuSettings(baseMenu, settings) {
   const settingsById = normalizeMenuSettings(settings);
+  const baseIds = new Set(baseMenu.map((item) => item.id));
 
-  return baseMenu.map((item) => {
+  const menu = baseMenu.map((item) => {
     const productSettings = settingsById.get(item.id);
     const customerMaxQuantity = productSettings?.maxQuantity || DEFAULT_MAX_QUANTITY;
     const effectiveMaxQuantity =
@@ -64,9 +98,34 @@ export function mergeMenuSettings(baseMenu, settings) {
       batchLimit: productSettings?.batchLimit,
       // Prices only come from the live Products sheet. There is intentionally no static fallback.
       priceSgd: productSettings?.priceSgd ?? null,
+      note: productSettings?.description || item.note,
+      image: productSettings?.imageUrl || item.image,
       remainingQuantity: productSettings?.remainingQuantity,
       soldQuantity: productSettings?.soldQuantity,
       quantityOptions: toQuantityOptions(effectiveMaxQuantity),
     };
   });
+
+  settingsById.forEach((productSettings, productId) => {
+    if (baseIds.has(productId) || !productSettings.available) return;
+
+    const item = fallbackProduct(productId, productSettings);
+    const customerMaxQuantity = productSettings.maxQuantity || DEFAULT_MAX_QUANTITY;
+    const effectiveMaxQuantity =
+      productSettings.remainingQuantity === null || productSettings.remainingQuantity === undefined
+        ? customerMaxQuantity
+        : Math.min(customerMaxQuantity, productSettings.remainingQuantity);
+
+    menu.push({
+      ...item,
+      available: effectiveMaxQuantity > 0,
+      batchLimit: productSettings.batchLimit,
+      priceSgd: productSettings.priceSgd,
+      remainingQuantity: productSettings.remainingQuantity,
+      soldQuantity: productSettings.soldQuantity,
+      quantityOptions: toQuantityOptions(effectiveMaxQuantity),
+    });
+  });
+
+  return menu;
 }

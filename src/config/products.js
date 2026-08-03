@@ -24,7 +24,6 @@ export const MENU = [
     image: "/banana-bread-slices.webp",
     imageAlt: "Freshly sliced banana bread on a wooden board with banana pieces",
     note: "A tender, buttery banana loaf baked fresh for the Saturday batch.",
-    ingredients: ["Banana", "Butter", "Self-raising flour", "Caster sugar", "Eggs", "Baking powder"],
     allergens: "Contains gluten, dairy, eggs.",
   },
 ];
@@ -66,11 +65,11 @@ export const FAQ = [
   },
   {
     q: "Delivery pricing?",
-    a: "Delivery is charged by the courier (GrabExpress/Lalamove). We can book it for you and share the fee before dispatch.",
+    a: "Delivery is available for orders of S$50 or more. A flat S$5 fee is added to eligible delivery orders.",
   },
   {
     q: "Where is collection?",
-    a: "Collection is arranged at a central Singapore pickup point. Exact details are shared after confirmation so we can keep handoff timing close to bake completion.",
+    a: "Collection is in Joo Chiat, with exact details shared after confirmation so we can keep handoff timings close to bake completion.",
   },
   {
     q: "How should I store and reheat my order?",

@@ -8,6 +8,8 @@ const BRAND = {
   instagramHandle: "@swirlgirl.sg",
   siteUrl: import.meta.env.VITE_SITE_URL || "https://swirlgirl.sg",
   orderCutoffLabel: "Thursday 10pm SGT",
+  deliveryMinimumSgd: 50,
+  deliveryFeeSgd: 5,
   originLabel: "Baked in Singapore",
   story:
     "Small-batch cinnamon rolls and banana bread, baked fresh on Saturdays from Joo Chiat.",
@@ -27,7 +29,7 @@ const BRAND = {
   ],
   pickupAreas: ["Central", "East", "North", "North-East", "West"],
   deliveryOptions: [
-    "Delivery (GrabExpress / Lalamove) - paid by customer",
+    "Delivery - flat S$5 fee",
     "Self-collection - agreed pickup point",
   ],
   colors: {

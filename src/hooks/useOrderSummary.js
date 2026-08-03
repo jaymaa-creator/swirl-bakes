@@ -2,7 +2,14 @@ import { useMemo } from "react";
 import { buildOrderMessage, buildWhatsAppLink } from "../lib/orderMessaging";
 import { calculateLineTotalSgd, money } from "../lib/pricing";
 
-export default function useOrderSummary({ form, menu, brandName, waNumberE164 }) {
+export default function useOrderSummary({
+  form,
+  menu,
+  brandName,
+  waNumberE164,
+  deliveryMinimumSgd,
+  deliveryFeeSgd,
+}) {
   const lineTotals = useMemo(
     () =>
       Object.fromEntries(
@@ -14,10 +21,14 @@ export default function useOrderSummary({ form, menu, brandName, waNumberE164 })
     [form.items, menu]
   );
 
-  const estimatedTotal = useMemo(
+  const itemsTotal = useMemo(
     () => Object.values(lineTotals).reduce((sum, lineTotal) => sum + Number(lineTotal || 0), 0),
     [lineTotals]
   );
+  const isDelivery = form.delivery.toLowerCase().includes("delivery");
+  const isDeliveryEligible = itemsTotal >= deliveryMinimumSgd;
+  const deliveryFee = isDelivery && isDeliveryEligible ? deliveryFeeSgd : 0;
+  const estimatedTotal = itemsTotal + deliveryFee;
 
   const hasSelectedItems = useMemo(
     () => menu.some((m) => Number(form.items[m.id] || 0) > 0),
@@ -30,10 +41,12 @@ export default function useOrderSummary({ form, menu, brandName, waNumberE164 })
         brandName,
         form,
         menu,
+        itemsTotal,
+        deliveryFee,
         estimatedTotal,
         moneyFormatter: money,
       }),
-    [brandName, form, menu, estimatedTotal]
+    [brandName, form, menu, itemsTotal, deliveryFee, estimatedTotal]
   );
 
   const waLink = useMemo(
@@ -41,5 +54,14 @@ export default function useOrderSummary({ form, menu, brandName, waNumberE164 })
     [waNumberE164, waMessage]
   );
 
-  return { estimatedTotal, hasSelectedItems, waMessage, waLink, money };
+  return {
+    itemsTotal,
+    deliveryFee,
+    estimatedTotal,
+    isDeliveryEligible,
+    hasSelectedItems,
+    waMessage,
+    waLink,
+    money,
+  };
 }

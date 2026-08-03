@@ -43,7 +43,7 @@ The live deployment ID is the `AKfy...` value from the `/exec` URL.
 The `Products` tab should use:
 
 ```text
-product_id | price_sgd | available | max_quantity | batch_limit
+product_id | price_sgd | available | max_quantity | batch_limit | description | image_url
 ```
 
 `max_quantity` is the most one customer can select in a single order.
@@ -53,11 +53,13 @@ product_id | price_sgd | available | max_quantity | batch_limit
 Example:
 
 ```text
-cinnamon-rolls | 35 | TRUE | 3 | 12
-banana-bread | 25 | TRUE | 3 | 6
+cinnamon-rolls | 35 | TRUE | 3 | 12 | (blank) | (blank)
+banana-bread | 25 | TRUE | 3 | 6 | (blank) | (blank)
 ```
 
 If banana bread has `batch_limit = 6` and four loaves are already in this week's `Orders` rows, the website only shows quantity buttons `1` and `2`.
+
+Add a row with `available = TRUE` to publish a new product. `description` is optional: it overrides the existing Cinnamon Roll or Banana Bread copy when filled in, and supplies the copy for new products. `image_url` is optional; a new product shows a tidy placeholder until an image is available.
 
 ## Web App Manifest
 

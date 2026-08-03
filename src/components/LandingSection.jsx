@@ -52,7 +52,7 @@ export default function LandingSection({ brand }) {
                 {brand.tagline}
               </h1>
               <p className="mt-3 max-w-2xl text-[0.88rem] leading-relaxed text-white/95 sm:mt-4 sm:text-[1.12rem]">
-                Cinnamon rolls and banana bread, baked fresh every Saturday.
+                Treats baked fresh every Saturday.
                 <br />
                 Pre-order by Thursday 10pm.
               </p>

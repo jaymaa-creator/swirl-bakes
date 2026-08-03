@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import ConfirmationSection from "./components/ConfirmationSection";
 import BananaBreadGallery from "./components/BananaBreadGallery";
 import PrivacySection from "./components/PrivacySection";
 import FaqSection from "./components/FaqSection";
@@ -9,7 +8,6 @@ import LandingSection from "./components/LandingSection";
 import MenuSection from "./components/MenuSection";
 import PreorderModal from "./components/PreorderModal";
 import ProcessSection from "./components/ProcessSection";
-import ReserveCtaSection from "./components/ReserveCtaSection";
 import SiteFooter from "./components/SiteFooter";
 import InstagramReelSection from "./components/InstagramReelSection";
 import WhatsAppHandoffNotice from "./components/WhatsAppHandoffNotice";
@@ -41,7 +39,6 @@ export default function BakesLandingPage() {
   const nextSaturday = getNearestOpenSaturday(new Date());
   const nextSaturdayKey = toSingaporeDateKey(nextSaturday);
   const [modalOpen, setModalOpen] = useState(false);
-  const [hasStartedOrder, setHasStartedOrder] = useState(false);
   const [whatsappHandoffLink, setWhatsappHandoffLink] = useState("");
   const [whatsappOrderNumber, setWhatsappOrderNumber] = useState("");
 
@@ -49,7 +46,7 @@ export default function BakesLandingPage() {
     name: "",
     phone: "",
     bakeWindow: nextSaturdayKey,
-    delivery: BRAND.deliveryOptions[0],
+    delivery: BRAND.deliveryOptions[1],
     area: BRAND.pickupAreas[0],
     address: "",
     pickupTime: "Morning",
@@ -87,11 +84,21 @@ export default function BakesLandingPage() {
     : false;
   const displayBakeWindow = selectedBakeDate ? formatSgDate(selectedBakeDate) : "";
 
-  const { estimatedTotal, hasSelectedItems, waMessage, money } = useOrderSummary({
+  const {
+    itemsTotal,
+    deliveryFee,
+    estimatedTotal,
+    isDeliveryEligible,
+    hasSelectedItems,
+    waMessage,
+    money,
+  } = useOrderSummary({
     form: { ...orderForm, bakeWindow: displayBakeWindow },
     menu: orderableMenu,
     brandName: BRAND.name,
     waNumberE164: BRAND.waNumberE164,
+    deliveryMinimumSgd: BRAND.deliveryMinimumSgd,
+    deliveryFeeSgd: BRAND.deliveryFeeSgd,
   });
   const hasRequiredContactDetails = Boolean(form.name.trim() && form.phone.trim());
 
@@ -102,12 +109,11 @@ export default function BakesLandingPage() {
   const isHeaderLoading = isOpeningModal && openingTriggerId === "header-primary";
 
   const openHeaderPreorder = () => handleOpenPreorder(nextSaturdayKey, "header-primary");
-  const openReservePreorder = (_, triggerId) => handleOpenPreorder(nextSaturdayKey, triggerId);
+  const openMenuPreorder = () => handleOpenPreorder(nextSaturdayKey, "menu-item");
 
   const closePreorderModal = () => setModalOpen(false);
 
   const handleOrderIntent = (whatsappLink, orderNumber) => {
-    setHasStartedOrder(true);
     setModalOpen(false);
     setWhatsappHandoffLink(whatsappLink || "");
     setWhatsappOrderNumber(orderNumber || "");
@@ -240,6 +246,7 @@ export default function BakesLandingPage() {
           setForm={setForm}
           menuStatus={menuStatus}
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
+          onSelectItem={openMenuPreorder}
         />
 
         <BananaBreadGallery />
@@ -258,14 +265,6 @@ export default function BakesLandingPage() {
 
         <PrivacySection brand={BRAND} />
 
-        <ReserveCtaSection
-          brand={BRAND}
-          handleOpenPreorder={openReservePreorder}
-          isOpeningModal={isOpeningModal}
-          openingTriggerId={openingTriggerId}
-        />
-
-        <ConfirmationSection brand={BRAND} isOrderStarted={hasStartedOrder} />
       </main>
 
       <SiteFooter brand={BRAND} />
@@ -285,6 +284,9 @@ export default function BakesLandingPage() {
         form={{ ...orderForm, bakeWindow: nextSaturdayKey }}
         setForm={setForm}
         estimatedTotal={estimatedTotal}
+        itemsTotal={itemsTotal}
+        deliveryFee={deliveryFee}
+        isDeliveryEligible={isDeliveryEligible}
         waMessage={waMessage}
         bakeWindowLabel={displayBakeWindow}
         hasSelectedItems={hasSelectedItems}
@@ -293,7 +295,8 @@ export default function BakesLandingPage() {
           isSelectedBakeOpen &&
           hasRequiredContactDetails &&
           menuStatus === "ready" &&
-          hasCurrentPrices
+          hasCurrentPrices &&
+          (!form.delivery.toLowerCase().includes("delivery") || isDeliveryEligible)
         }
         hasRequiredContactDetails={hasRequiredContactDetails}
         isBakeWindowOpen={isSelectedBakeOpen}

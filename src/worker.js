@@ -32,6 +32,8 @@ function normalizeMenuProduct(product) {
     available: product.available,
     batchLimit: Number(product.batchLimit) || undefined,
     maxQuantity: Number(product.maxQuantity) || undefined,
+    description: typeof product.description === "string" ? product.description.trim() : undefined,
+    imageUrl: typeof product.imageUrl === "string" ? product.imageUrl.trim() : undefined,
     remainingQuantity:
       Number(product.remainingQuantity) >= 0 ? Number(product.remainingQuantity) : undefined,
     soldQuantity: Number(product.soldQuantity) >= 0 ? Number(product.soldQuantity) : undefined,
