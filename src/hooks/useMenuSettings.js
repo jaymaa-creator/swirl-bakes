@@ -7,6 +7,8 @@ export default function useMenuSettings(baseMenu) {
 
   useEffect(() => {
     let isMounted = true;
+    let retryTimer;
+    let attempts = 0;
 
     async function loadMenuSettings() {
       try {
@@ -26,6 +28,11 @@ export default function useMenuSettings(baseMenu) {
         }
       } catch {
         if (isMounted) {
+          if (attempts < 2) {
+            attempts += 1;
+            retryTimer = window.setTimeout(loadMenuSettings, attempts * 2_000);
+            return;
+          }
           setMenu(mergeMenuSettings(baseMenu));
           setStatus("fallback");
         }
@@ -36,6 +43,7 @@ export default function useMenuSettings(baseMenu) {
 
     return () => {
       isMounted = false;
+      window.clearTimeout(retryTimer);
     };
   }, [baseMenu]);
 

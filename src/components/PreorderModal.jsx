@@ -244,15 +244,19 @@ export default function PreorderModal({
                   <div className="text-xs text-inkMuted">Set quantities for your Saturday batch reservation.</div>
                 </div>
                 <div className="text-sm font-semibold">
-                  Estimated: {menuStatus === "ready" ? money(estimatedTotal) : "Loading..."}
+                  Estimated: {menuStatus === "ready" ? money(estimatedTotal) : "—"}
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-3">
+              {menuStatus !== "ready" ? (
+                <div className="mt-3 rounded-2xl border border-line bg-cream px-4 py-3 text-sm text-inkMuted">
+                  Loading the current menu and prices...
+                </div>
+              ) : (
+                <div className="mt-3 grid gap-3">
                 {menu.map((m) => {
                   const quantityChoices = m.quantityOptions || quantityOptions;
                   const isAvailable = m.available !== false;
-                  const hasPrice = typeof m.priceSgd === "number" && Number.isFinite(m.priceSgd) && m.priceSgd > 0;
 
                   return (
                     <div
@@ -264,13 +268,7 @@ export default function PreorderModal({
                       <div>
                         <div className="text-sm font-medium text-ink">{m.name}</div>
                         <div className="text-xs text-inkMuted">
-                          {isAvailable
-                            ? hasPrice
-                              ? `${money(m.priceSgd)} ${m.unitLabel || "each"}`
-                              : menuStatus === "loading"
-                                ? "Price loading..."
-                                : "Price unavailable"
-                            : "Sold out this week"}
+                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : "Sold out this week"}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -305,7 +303,8 @@ export default function PreorderModal({
                     </div>
                   );
                 })}
-              </div>
+                </div>
+              )}
 
               {allergenDisclaimer ? (
                 <div className="mt-3 text-xs text-inkMuted">{allergenDisclaimer}</div>

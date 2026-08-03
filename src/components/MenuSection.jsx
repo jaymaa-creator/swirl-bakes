@@ -9,6 +9,34 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, menu
     [activeFilter, menu]
   );
 
+  if (menuStatus !== "ready") {
+    const isLoading = menuStatus === "loading";
+
+    return (
+      <section
+        id="menu"
+        className="mx-auto max-w-6xl rounded-[28px] bg-[#F3ECE4] px-4 py-12 sm:py-16"
+        style={{
+          background:
+            "radial-gradient(circle at 85% 15%, rgba(196,122,58,0.08), transparent 58%)",
+        }}
+      >
+        <div className="max-w-5xl">
+          <div className="max-w-3xl" data-reveal="left">
+            <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
+            <h2 className="mt-2 text-3xl text-ink sm:text-4xl">Available this week</h2>
+            <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
+              Choose your bakes, then reserve this Saturday's batch.
+            </p>
+          </div>
+          <div className="mt-8 rounded-3xl border border-line bg-surface px-5 py-7 text-sm text-inkMuted shadow-[0_8px_24px_rgba(90,56,37,0.08)]">
+            {isLoading ? "Loading this week's menu..." : "This week's menu is temporarily unavailable. Please refresh to try again."}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       id="menu"
@@ -52,7 +80,6 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, menu
           {visibleItems.map((m) => {
             const quantityChoices = m.quantityOptions || quantityOptions;
             const isAvailable = m.available !== false;
-            const hasPrice = typeof m.priceSgd === "number" && Number.isFinite(m.priceSgd) && m.priceSgd > 0;
 
             return (
               <div
@@ -87,13 +114,7 @@ export default function MenuSection({ menu, quantityOptions, form, setForm, menu
                       {m.ingredients.join(", ")}
                     </div>
                   ) : null}
-                  <div className="mt-4 text-sm font-semibold text-ink">
-                    {hasPrice
-                      ? `S$${m.priceSgd} ${m.unitLabel || "each"}`
-                      : menuStatus === "loading"
-                        ? "Price loading..."
-                        : "Price unavailable"}
-                  </div>
+                  <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} {m.unitLabel || "each"}</div>
                   <div className="mt-5 flex flex-wrap items-center gap-2">
                     {quantityChoices.map((qty) => {
                       const isSelected = Number(form.items[m.id] || 0) === qty;
