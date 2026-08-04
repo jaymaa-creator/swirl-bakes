@@ -1,5 +1,9 @@
 # React + Vite
 
+## Swirl Girl Operations
+
+For managing products, stock limits, live-menu refreshes, and the Google Sheets/Cloudflare setup, see [Menu Operations](docs/menu-operations.md).
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
