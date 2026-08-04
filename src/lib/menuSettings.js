@@ -34,6 +34,8 @@ function toText(value) {
 }
 
 function productNameFromId(productId) {
+  if (String(productId).trim().toLowerCase() === "banana-bread") return "Banana Loaf";
+
   return String(productId)
     .trim()
     .split(/[\s_-]+/)

@@ -12,9 +12,9 @@ const BRAND = {
   deliveryFeeSgd: 5,
   originLabel: "Baked in Singapore",
   story:
-    "Small-batch cinnamon rolls and banana bread, baked fresh on Saturdays from Joo Chiat.",
+    "Small-batch cinnamon rolls and banana loaf, baked fresh on Saturdays from Joo Chiat.",
   ingredients: [
-    "Banana bread is made with banana, butter, self-raising flour, caster sugar, eggs, and baking powder.",
+    "Banana loaf is made with banana, butter, self-raising flour, caster sugar, eggs, and baking powder.",
     "Cinnamon rolls contain gluten, dairy, and eggs.",
     "Baked in small Saturday batches in a home kitchen.",
     "Allergen cross-contamination is possible because ingredients and tools are shared.",

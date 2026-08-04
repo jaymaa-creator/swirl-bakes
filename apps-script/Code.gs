@@ -274,8 +274,7 @@ function getSoldQuantitiesForCurrentBatch(spreadsheet, productIds) {
 
     const items = String(row[column.items] || "");
     productIds.forEach((productId) => {
-      const productName = productNameFromId(productId);
-      const quantity = getOrderedQuantity(items, productName);
+      const quantity = getOrderedQuantity(items, productNamesFromId(productId));
       if (quantity > 0) {
         soldByProductId[productId] = (soldByProductId[productId] || 0) + quantity;
       }
@@ -331,6 +330,15 @@ function isCancelledStatus(value) {
   return ["cancelled", "canceled", "void", "refunded", "rejected"].includes(status);
 }
 
+function productNamesFromId(productId) {
+  if (String(productId || "").trim().toLowerCase() === "banana-bread") {
+    // Keep existing Banana Bread rows in stock calculations after the customer-facing rename.
+    return ["Banana Loaf", "Banana Bread"];
+  }
+
+  return [productNameFromId(productId)];
+}
+
 function productNameFromId(productId) {
   return String(productId || "")
     .split("-")
@@ -339,14 +347,17 @@ function productNameFromId(productId) {
     .join(" ");
 }
 
-function getOrderedQuantity(items, productName) {
-  const pattern = new RegExp(`${escapeRegExp(productName)}[^,]*?x\\s*(\\d+)`, "gi");
+function getOrderedQuantity(items, productNames) {
+  const names = Array.isArray(productNames) ? productNames : [productNames];
   let total = 0;
-  let match;
+  names.forEach((productName) => {
+    const pattern = new RegExp(`${escapeRegExp(productName)}[^,]*?x\\s*(\\d+)`, "gi");
+    let match;
 
-  while ((match = pattern.exec(items)) !== null) {
-    total += Number(match[1] || 0);
-  }
+    while ((match = pattern.exec(items)) !== null) {
+      total += Number(match[1] || 0);
+    }
+  });
 
   return total;
 }

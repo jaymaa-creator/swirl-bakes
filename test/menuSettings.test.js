@@ -4,7 +4,7 @@ import { mergeMenuSettings } from "../src/lib/menuSettings.js";
 
 const baseMenu = [
   { id: "cinnamon-rolls", name: "Cinnamon Rolls" },
-  { id: "banana-bread", name: "Banana Bread" },
+  { id: "banana-bread", name: "Banana Loaf" },
 ];
 
 test("mergeMenuSettings overlays price, availability, and max quantity", () => {

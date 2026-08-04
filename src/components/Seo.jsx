@@ -26,9 +26,9 @@ function priceOffer(item) {
 
 export default function Seo({ brand, menu, faq }) {
   useEffect(() => {
-    const title = `${brand.name} | Saturday Cinnamon Rolls & Banana Bread in Singapore`;
+    const title = `${brand.name} | Saturday Cinnamon Rolls & Banana Loaf in Singapore`;
     const description =
-      "Reserve small-batch Saturday cinnamon rolls and banana bread from Swirl Girl in Singapore. Weekly pre-orders close Thursday at 10pm SGT.";
+      "Reserve small-batch Saturday cinnamon rolls and banana loaf from Swirl Girl in Singapore. Weekly pre-orders close Thursday at 10pm SGT.";
     const origin =
       typeof window !== "undefined" && window.location.origin !== "null"
         ? window.location.origin
