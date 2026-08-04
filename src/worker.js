@@ -1,8 +1,8 @@
 const ORDER_ENDPOINT = "/api/orders";
 const MENU_ENDPOINT = "/api/menu";
 const MAX_ORDER_BYTES = 16_000;
-const MENU_CURRENT_CACHE_SECONDS = 15;
-const MENU_LAST_KNOWN_CACHE_SECONDS = 31_536_000;
+const MENU_CONFIGURATION_CACHE_SECONDS = 300;
+const MENU_AVAILABILITY_CACHE_SECONDS = 15;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -50,7 +50,19 @@ async function fetchMenuSettings(env) {
   }
 
   try {
-    return await requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET);
+    const [configuration, availability] = await Promise.all([
+      requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET, "menuConfiguration"),
+      requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET, "menuAvailability"),
+    ]);
+
+    const availabilityById = new Map(availability.products.map((product) => [product.id, product]));
+    return {
+      ok: true,
+      products: configuration.products.map((product) => ({
+        ...product,
+        ...availabilityById.get(product.id),
+      })),
+    };
   } catch (error) {
     if (!env.ORDER_WEBHOOK_SECRET) throw error;
 
@@ -89,38 +101,56 @@ function menuCacheKey(url, segment) {
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
-async function refreshMenuSnapshot(request, env, cache) {
-  const settings = await fetchMenuSettings(env);
-  const currentKey = menuCacheKey(request.url, "current");
-  const lastKnownKey = menuCacheKey(request.url, "last-known");
-  const currentResponse = Response.json(settings, {
-    headers: { "Cache-Control": `public, max-age=${MENU_CURRENT_CACHE_SECONDS}` },
-  });
-  const lastKnownResponse = Response.json(settings, {
-    headers: { "Cache-Control": `public, max-age=${MENU_LAST_KNOWN_CACHE_SECONDS}` },
-  });
+async function getCachedMenuSegment(request, env, ctx, segment, seconds, action) {
+  const cache = caches.default;
+  const cacheKey = menuCacheKey(request.url, segment);
+  const cached = await cache.match(cacheKey);
 
-  await Promise.all([
-    cache.put(currentKey, currentResponse),
-    cache.put(lastKnownKey, lastKnownResponse),
-  ]);
+  if (cached) return cached.json();
+
+  const menuSettingsUrl = env.MENU_SETTINGS_URL || env.ORDER_SHEET_WEBHOOK_URL;
+  if (!menuSettingsUrl) return { ok: true, products: [] };
+
+  const settings = await requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET, action);
+  const cacheResponse = Response.json(settings, {
+    headers: { "Cache-Control": `public, max-age=${seconds}` },
+  });
+  ctx.waitUntil(cache.put(cacheKey, cacheResponse));
   return settings;
 }
 
 async function getMenuSettings(request, env, ctx) {
-  const cache = caches.default;
-  const current = await cache.match(menuCacheKey(request.url, "current"));
-  if (current) return current.json();
-
-  const lastKnown = await cache.match(menuCacheKey(request.url, "last-known"));
-  if (lastKnown) {
-    // Never make customers wait for Apps Script once we have a valid menu snapshot.
-    ctx.waitUntil(refreshMenuSnapshot(request, env, cache));
-    return lastKnown.json();
+  try {
+    const [configuration, availability] = await Promise.all([
+      getCachedMenuSegment(
+        request,
+        env,
+        ctx,
+        "configuration",
+        MENU_CONFIGURATION_CACHE_SECONDS,
+        "menuConfiguration"
+      ),
+      getCachedMenuSegment(
+        request,
+        env,
+        ctx,
+        "availability",
+        MENU_AVAILABILITY_CACHE_SECONDS,
+        "menuAvailability"
+      ),
+    ]);
+    const availabilityById = new Map(availability.products.map((product) => [product.id, product]));
+    return {
+      ok: true,
+      products: configuration.products.map((product) => ({
+        ...product,
+        ...availabilityById.get(product.id),
+      })),
+    };
+  } catch {
+    // A public combined menu keeps the site available if a secret binding is temporarily unavailable.
+    return fetchMenuSettings(env);
   }
-
-  // Only the very first request in a Cloudflare location waits for Apps Script.
-  return refreshMenuSnapshot(request, env, cache);
 }
 
 async function verifyTurnstile(token, secret, remoteIp) {
@@ -221,8 +251,7 @@ export default {
       return jsonResponse({ ok: false, error: "Unable to save order" }, { status: 502 });
     }
 
-    ctx.waitUntil(caches.default.delete(menuCacheKey(request.url, "current")));
-    ctx.waitUntil(refreshMenuSnapshot(request, env, caches.default));
+    ctx.waitUntil(caches.default.delete(menuCacheKey(request.url, "availability")));
     return jsonResponse({ ok: true, orderNumber: sheetResult?.orderNumber || "" });
   },
 };
