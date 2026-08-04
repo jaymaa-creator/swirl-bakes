@@ -43,6 +43,7 @@ export default function PreorderModal({
   const countdownRef = useRef(null);
   const orderRequestSubmittedRef = useRef(false);
   const orderNumberRef = useRef("");
+  const isMenuReady = menuStatus === "ready" || menuStatus === "refreshing";
   const isDelivery = form.delivery.toLowerCase().includes("delivery") && isDeliveryEligible;
 
   function setItemQuantity(productId, quantity) {
@@ -214,7 +215,7 @@ export default function PreorderModal({
                 Reservations are currently closed. The next order window opens Friday at 12am SGT.
               </div>
             ) : null}
-            {menuStatus !== "ready" ? (
+            {!isMenuReady ? (
               <div className="text-xs text-inkMuted">Prices are loading from the current menu.</div>
             ) : null}
           </div>
@@ -266,17 +267,17 @@ export default function PreorderModal({
                   <div className="text-xs text-inkMuted">Set quantities for your Saturday batch reservation.</div>
                 </div>
                 <div className="text-sm font-semibold">
-                  Price: {menuStatus === "ready" ? money(estimatedTotal) : "—"}
+                  Price: {isMenuReady ? money(estimatedTotal) : "—"}
                 </div>
               </div>
-              {menuStatus === "ready" ? (
+              {isMenuReady ? (
                 <div className="mt-2 text-xs text-inkMuted">
                   Items {money(itemsTotal)}
                   {deliveryFee > 0 ? ` + delivery ${money(deliveryFee)}` : ""}
                 </div>
               ) : null}
 
-              {menuStatus !== "ready" ? (
+              {!isMenuReady ? (
                 <div className="mt-3 rounded-2xl border border-line bg-cream px-4 py-3 text-sm text-inkMuted">
                   Loading the current menu and prices...
                 </div>
