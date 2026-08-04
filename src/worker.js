@@ -3,6 +3,7 @@ const MENU_ENDPOINT = "/api/menu";
 const MENU_SYNC_ENDPOINT = "/api/menu/sync";
 const MENU_SNAPSHOT_KEY = "current";
 const MAX_ORDER_BYTES = 16_000;
+const MENU_FALLBACK_CACHE_SECONDS = 300;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -104,6 +105,32 @@ async function saveMenuSnapshot(env, products) {
   await env.MENU_SNAPSHOT.put(MENU_SNAPSHOT_KEY, JSON.stringify(snapshot));
 }
 
+function fallbackMenuCacheKey(url) {
+  const cacheUrl = new URL(url);
+  cacheUrl.pathname = `${MENU_ENDPOINT}/fallback`;
+  cacheUrl.search = "";
+  return new Request(cacheUrl.toString(), { method: "GET" });
+}
+
+async function getMenuSettings(request, env, ctx) {
+  const snapshot = await getMenuSnapshot(env);
+  if (snapshot) return snapshot;
+
+  // Keep the site responsive until the KV binding has been seeded or during recovery.
+  const cacheKey = fallbackMenuCacheKey(request.url);
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached.json();
+
+  const settings = await fetchMenuSettings(env);
+  const cacheResponse = Response.json(settings, {
+    headers: { "Cache-Control": `public, max-age=${MENU_FALLBACK_CACHE_SECONDS}` },
+  });
+  ctx.waitUntil(
+    Promise.all([caches.default.put(cacheKey, cacheResponse), saveMenuSnapshot(env, settings.products)])
+  );
+  return settings;
+}
+
 async function verifyTurnstile(token, secret, remoteIp) {
   const body = new URLSearchParams({ secret, response: token });
   if (remoteIp) body.set("remoteip", remoteIp);
@@ -125,13 +152,7 @@ export default {
       }
 
       try {
-        const snapshot = await getMenuSnapshot(env);
-        if (snapshot) return jsonResponse(snapshot);
-
-        // During setup or recovery, keep the menu usable while the first snapshot is created.
-        const settings = await fetchMenuSettings(env);
-        ctx.waitUntil(saveMenuSnapshot(env, settings.products));
-        return jsonResponse(settings);
+        return jsonResponse(await getMenuSettings(request, env, ctx));
       } catch (error) {
         console.error("Unable to load menu settings", error);
         return jsonResponse(
