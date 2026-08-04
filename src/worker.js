@@ -1,7 +1,8 @@
 const ORDER_ENDPOINT = "/api/orders";
 const MENU_ENDPOINT = "/api/menu";
+const MENU_SYNC_ENDPOINT = "/api/menu/sync";
+const MENU_SNAPSHOT_KEY = "current";
 const MAX_ORDER_BYTES = 16_000;
-const MENU_CACHE_SECONDS = 15;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -81,26 +82,26 @@ async function requestMenuSettings(menuSettingsUrl, secret) {
   };
 }
 
-function menuCacheKey(url) {
-  const cacheUrl = new URL(url);
-  cacheUrl.pathname = `${MENU_ENDPOINT}/current`;
-  cacheUrl.search = "";
-  return new Request(cacheUrl.toString(), { method: "GET" });
+async function getMenuSnapshot(env) {
+  if (!env.MENU_SNAPSHOT) return null;
+
+  const snapshot = await env.MENU_SNAPSHOT.get(MENU_SNAPSHOT_KEY, "json");
+  if (!snapshot || snapshot.ok !== true || !Array.isArray(snapshot.products)) return null;
+
+  return {
+    ok: true,
+    products: snapshot.products.map(normalizeMenuProduct).filter(Boolean),
+  };
 }
 
-async function getMenuSettings(request, env, ctx) {
-  const cache = caches.default;
-  const cacheKey = menuCacheKey(request.url);
-  const cached = await cache.match(cacheKey);
+async function saveMenuSnapshot(env, products) {
+  if (!env.MENU_SNAPSHOT) return;
 
-  if (cached) return cached.json();
-
-  const settings = await fetchMenuSettings(env);
-  const cacheResponse = Response.json(settings, {
-    headers: { "Cache-Control": `public, max-age=${MENU_CACHE_SECONDS}` },
-  });
-  ctx.waitUntil(cache.put(cacheKey, cacheResponse));
-  return settings;
+  const snapshot = {
+    ok: true,
+    products: products.map(normalizeMenuProduct).filter(Boolean),
+  };
+  await env.MENU_SNAPSHOT.put(MENU_SNAPSHOT_KEY, JSON.stringify(snapshot));
 }
 
 async function verifyTurnstile(token, secret, remoteIp) {
@@ -124,10 +125,13 @@ export default {
       }
 
       try {
-        // A short cache gives fast page loads while keeping spreadsheet edits near-instant.
-        return jsonResponse(await getMenuSettings(request, env, ctx), {
-          headers: { "Cache-Control": "no-store" },
-        });
+        const snapshot = await getMenuSnapshot(env);
+        if (snapshot) return jsonResponse(snapshot);
+
+        // During setup or recovery, keep the menu usable while the first snapshot is created.
+        const settings = await fetchMenuSettings(env);
+        ctx.waitUntil(saveMenuSnapshot(env, settings.products));
+        return jsonResponse(settings);
       } catch (error) {
         console.error("Unable to load menu settings", error);
         return jsonResponse(
@@ -135,6 +139,34 @@ export default {
           { status: 503, headers: { "Cache-Control": "no-store" } }
         );
       }
+    }
+
+    if (url.pathname === MENU_SYNC_ENDPOINT) {
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "Method not allowed" }, { status: 405 });
+      }
+
+      let payload;
+      try {
+        payload = await request.json();
+      } catch {
+        return jsonResponse({ ok: false, error: "Invalid menu snapshot" }, { status: 400 });
+      }
+
+      if (
+        !env.ORDER_WEBHOOK_SECRET ||
+        payload?.secret !== env.ORDER_WEBHOOK_SECRET ||
+        !Array.isArray(payload.products)
+      ) {
+        return jsonResponse({ ok: false, error: "Unauthorized" }, { status: 401 });
+      }
+
+      if (!env.MENU_SNAPSHOT) {
+        return jsonResponse({ ok: false, error: "Menu snapshot storage is not configured" }, { status: 503 });
+      }
+
+      await saveMenuSnapshot(env, payload.products);
+      return jsonResponse({ ok: true });
     }
 
     if (url.pathname !== ORDER_ENDPOINT) {
@@ -201,7 +233,6 @@ export default {
       return jsonResponse({ ok: false, error: "Unable to save order" }, { status: 502 });
     }
 
-    ctx.waitUntil(caches.default.delete(menuCacheKey(request.url)));
     return jsonResponse({ ok: true, orderNumber: sheetResult?.orderNumber || "" });
   },
 };

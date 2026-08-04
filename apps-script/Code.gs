@@ -2,9 +2,10 @@ const SPREADSHEET_ID = "12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A";
 const ORDERS_SHEET_NAME = "Orders";
 const MENU_SETTINGS_SHEET_NAME = "Products";
 const SECRET_PROPERTY = "ORDER_WEBHOOK_SECRET";
+const MENU_SNAPSHOT_URL_PROPERTY = "MENU_SNAPSHOT_URL";
 const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
 const MENU_CACHE_KEY = "live-menu-settings-v1";
-const MENU_CACHE_SECONDS = 15;
+const MENU_CACHE_SECONDS = 300;
 
 function doGet() {
   try {
@@ -62,6 +63,14 @@ function doPost(event) {
         deliveryAddress: safeCell(order.address),
         notes: safeCell(order.notes),
       });
+
+      // Order quantities are part of the menu snapshot. A sync failure must not reject an order
+      // that was successfully written to the sheet.
+      try {
+        publishMenuSnapshot();
+      } catch (syncError) {
+        console.error(syncError);
+      }
     } finally {
       lock.releaseLock();
     }
@@ -115,6 +124,53 @@ function testDoPost() {
   console.log(result.getContent());
 }
 
+function syncMenuSnapshot() {
+  return publishMenuSnapshot();
+}
+
+function installMenuSyncTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter((trigger) => trigger.getHandlerFunction() === "onMenuSheetEdit")
+    .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp.newTrigger("onMenuSheetEdit")
+    .forSpreadsheet(SPREADSHEET_ID)
+    .onEdit()
+    .create();
+}
+
+function onMenuSheetEdit(event) {
+  const sheetName = event && event.range && event.range.getSheet().getName();
+  if (sheetName !== MENU_SETTINGS_SHEET_NAME && sheetName !== ORDERS_SHEET_NAME) return;
+
+  clearMenuCache();
+  publishMenuSnapshot();
+}
+
+function publishMenuSnapshot() {
+  const url = PropertiesService.getScriptProperties().getProperty(MENU_SNAPSHOT_URL_PROPERTY);
+  const secret = PropertiesService.getScriptProperties().getProperty(SECRET_PROPERTY);
+
+  if (!url || !secret) {
+    return { ok: false, error: "Missing menu snapshot configuration" };
+  }
+
+  clearMenuCache();
+  const response = UrlFetchApp.fetch(url, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify({ secret, products: readMenuSettings(true) }),
+    muteHttpExceptions: true,
+  });
+  const result = JSON.parse(response.getContentText() || "{}");
+
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300 || result.ok !== true) {
+    throw new Error(`Unable to publish menu snapshot (${response.getResponseCode()})`);
+  }
+
+  return result;
+}
+
 function appendOrderRow(sheet, orderRow) {
   const lastColumn = sheet.getLastColumn();
   const headers = sheet
@@ -149,10 +205,10 @@ function appendOrderRow(sheet, orderRow) {
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
 }
 
-function readMenuSettings() {
+function readMenuSettings(forceRefresh) {
   const cache = CacheService.getScriptCache();
   const cached = cache.get(MENU_CACHE_KEY);
-  if (cached) return JSON.parse(cached);
+  if (!forceRefresh && cached) return JSON.parse(cached);
 
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = spreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
@@ -195,6 +251,10 @@ function readMenuSettings() {
 
   cache.put(MENU_CACHE_KEY, JSON.stringify(products), MENU_CACHE_SECONDS);
   return products;
+}
+
+function clearMenuCache() {
+  CacheService.getScriptCache().remove(MENU_CACHE_KEY);
 }
 
 function getSoldQuantitiesForCurrentBatch(spreadsheet, productIds) {
