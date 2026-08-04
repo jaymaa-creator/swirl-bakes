@@ -18,7 +18,7 @@ export default function MenuSection({
     [activeFilter, menu]
   );
 
-  if (menuStatus === "loading" || menuStatus === "error") {
+  if (menuStatus !== "ready") {
     const isLoading = menuStatus === "loading";
 
     return (

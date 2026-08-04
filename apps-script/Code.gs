@@ -3,10 +3,8 @@ const ORDERS_SHEET_NAME = "Orders";
 const MENU_SETTINGS_SHEET_NAME = "Products";
 const SECRET_PROPERTY = "ORDER_WEBHOOK_SECRET";
 const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
-const MENU_CONFIGURATION_CACHE_KEY = "menu-configuration-v1";
-const MENU_CONFIGURATION_CACHE_SECONDS = 300;
-const MENU_AVAILABILITY_CACHE_KEY = "menu-availability-v1";
-const MENU_AVAILABILITY_CACHE_SECONDS = 15;
+const MENU_CACHE_KEY = "live-menu-settings-v1";
+const MENU_CACHE_SECONDS = 15;
 
 function doGet() {
   try {
@@ -27,20 +25,6 @@ function doPost(event) {
 
     if (!expectedSecret || payload.secret !== expectedSecret) {
       return jsonResponse({ ok: false, error: "Unauthorized" });
-    }
-
-    if (payload.action === "menuConfiguration") {
-      return jsonResponse({
-        ok: true,
-        products: readMenuConfiguration(),
-      });
-    }
-
-    if (payload.action === "menuAvailability") {
-      return jsonResponse({
-        ok: true,
-        products: readMenuAvailability(),
-      });
     }
 
     if (payload.action === "menuSettings") {
@@ -78,7 +62,6 @@ function doPost(event) {
         deliveryAddress: safeCell(order.address),
         notes: safeCell(order.notes),
       });
-      CacheService.getScriptCache().remove(MENU_AVAILABILITY_CACHE_KEY);
     } finally {
       lock.releaseLock();
     }
@@ -167,19 +150,8 @@ function appendOrderRow(sheet, orderRow) {
 }
 
 function readMenuSettings() {
-  const configurationById = new Map(
-    readMenuConfiguration().map((product) => [product.id, product])
-  );
-
-  return readMenuAvailability().map((availability) => ({
-    ...configurationById.get(availability.id),
-    ...availability,
-  }));
-}
-
-function readMenuConfiguration() {
   const cache = CacheService.getScriptCache();
-  const cached = cache.get(MENU_CONFIGURATION_CACHE_KEY);
+  const cached = cache.get(MENU_CACHE_KEY);
   if (cached) return JSON.parse(cached);
 
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -188,38 +160,6 @@ function readMenuConfiguration() {
   if (!sheet) {
     return [];
   }
-
-  const values = sheet.getDataRange().getValues();
-  const headers = values.shift().map((header) => normalizeHeader(header));
-  const column = Object.fromEntries(headers.map((header, index) => [header, index]));
-  const products = values
-    .map((row) => {
-      const id = String(row[column.product_id] || "").trim();
-      if (!id) return null;
-
-      return {
-        id,
-        priceSgd: row[column.price_sgd],
-        maxQuantity: row[column.max_quantity],
-        description: row[column.description],
-        allergens: row[column.allergens],
-        imageUrl: row[column.image_url],
-      };
-    })
-    .filter(Boolean);
-
-  cache.put(MENU_CONFIGURATION_CACHE_KEY, JSON.stringify(products), MENU_CONFIGURATION_CACHE_SECONDS);
-  return products;
-}
-
-function readMenuAvailability() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get(MENU_AVAILABILITY_CACHE_KEY);
-  if (cached) return JSON.parse(cached);
-
-  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = spreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
-  if (!sheet) return [];
 
   const values = sheet.getDataRange().getValues();
   const headers = values.shift().map((header) => normalizeHeader(header));
@@ -240,16 +180,20 @@ function readMenuAvailability() {
 
       return {
         id,
+        priceSgd: row[column.price_sgd],
         available: parseBoolean(row[column.available]),
         maxQuantity: row[column.max_quantity],
         batchLimit,
         soldQuantity,
         remainingQuantity,
+        description: row[column.description],
+        allergens: row[column.allergens],
+        imageUrl: row[column.image_url],
       };
     })
     .filter(Boolean);
 
-  cache.put(MENU_AVAILABILITY_CACHE_KEY, JSON.stringify(products), MENU_AVAILABILITY_CACHE_SECONDS);
+  cache.put(MENU_CACHE_KEY, JSON.stringify(products), MENU_CACHE_SECONDS);
   return products;
 }
 

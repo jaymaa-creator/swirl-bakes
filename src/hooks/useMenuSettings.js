@@ -9,13 +9,9 @@ export default function useMenuSettings(baseMenu) {
   useEffect(() => {
     let isMounted = true;
     let retryTimer;
-    let pollTimer;
     let attempts = 0;
-    let refreshInFlight = false;
 
-    async function loadMenuSettings({ silent = false } = {}) {
-      if (refreshInFlight) return;
-      refreshInFlight = true;
+    async function loadMenuSettings() {
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), 8_000);
 
@@ -37,29 +33,24 @@ export default function useMenuSettings(baseMenu) {
         }
       } catch {
         if (isMounted) {
-          if (!silent && attempts < 1) {
+          if (attempts < 1) {
             attempts += 1;
             retryTimer = window.setTimeout(loadMenuSettings, attempts * 2_000);
             return;
           }
-          if (!silent) {
-            setMenu(mergeMenuSettings(baseMenu));
-            setStatus("error");
-          }
+          setMenu(mergeMenuSettings(baseMenu));
+          setStatus("error");
         }
       } finally {
-        refreshInFlight = false;
         window.clearTimeout(timeout);
       }
     }
 
     loadMenuSettings();
-    pollTimer = window.setInterval(() => loadMenuSettings({ silent: true }), 15_000);
 
     return () => {
       isMounted = false;
       window.clearTimeout(retryTimer);
-      window.clearInterval(pollTimer);
     };
   }, [baseMenu, reloadKey]);
 
@@ -67,7 +58,7 @@ export default function useMenuSettings(baseMenu) {
     menu,
     status,
     retry: () => {
-      setStatus((current) => (current === "ready" ? "refreshing" : "loading"));
+      setStatus("loading");
       setReloadKey((key) => key + 1);
     },
   };

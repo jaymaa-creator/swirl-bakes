@@ -295,8 +295,7 @@ export default function BakesLandingPage() {
           hasSelectedItems &&
           isSelectedBakeOpen &&
           hasRequiredContactDetails &&
-          menuStatus !== "loading" &&
-          menuStatus !== "error" &&
+          menuStatus === "ready" &&
           hasCurrentPrices &&
           (!form.delivery.toLowerCase().includes("delivery") || isDeliveryEligible)
         }

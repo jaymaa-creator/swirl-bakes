@@ -61,8 +61,6 @@ If banana bread has `batch_limit = 6` and four loaves are already in this week's
 
 Add a row with `available = TRUE` to publish a new product. `description` is optional: it overrides the existing Cinnamon Roll or Banana Bread copy when filled in, and supplies the copy for new products. `allergens` is an optional customer-facing allergen statement. `image_url` is optional; a new product shows a tidy placeholder until an image is available.
 
-The website caches product details for five minutes. Availability, order limits, and remaining stock refresh every 15 seconds and refresh immediately after a website order is saved.
-
 ## Web App Manifest
 
 The manifest keeps this as a public web app:
