@@ -31,7 +31,7 @@ import { buildOrderRecord, submitOrderRequest } from "./lib/orderSubmission";
 
 export default function BakesLandingPage() {
   const ribbonItems = [
-    "Fresh cinnamon rolls every Saturday",
+    "We wake, then bake every Saturday",
     "Pre-orders close Thursday 10pm",
     "Small-batch bakes in Singapore",
     "Reserve early - limited batch",
