@@ -107,7 +107,7 @@ export default function MenuSection({
               <div
                 key={m.id}
                 className={`overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_8px_24px_rgba(90,56,37,0.08)] ${
-                  isAvailable ? "" : "opacity-75"
+                  isAvailable ? "" : "grayscale opacity-60"
                 }`}
               >
                 {m.image ? (
@@ -133,7 +133,11 @@ export default function MenuSection({
                       <div className="mt-2 text-2xl text-ink">{m.name}</div>
                     </div>
                     {!isAvailable || m.badge ? (
-                      <span className="rounded-full bg-[#F7EBDD] px-3 py-1 text-xs font-semibold text-brandBrown">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          isAvailable ? "bg-[#F7EBDD] text-brandBrown" : "bg-[#E8E7E5] text-[#6B6A67]"
+                        }`}
+                      >
                         {isAvailable ? m.badge : "Sold out this week"}
                       </span>
                     ) : null}
