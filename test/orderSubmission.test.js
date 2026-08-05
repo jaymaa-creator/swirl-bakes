@@ -4,7 +4,7 @@ import { buildOrderRecord } from "../src/lib/orderSubmission.js";
 
 const menu = [
   { id: "rolls", name: "Cinnamon Rolls" },
-  { id: "bread", name: "Banana Loaf" },
+  { id: "bread", name: "Banana Cake" },
 ];
 
 test("buildOrderRecord includes a self-collection slot and excludes an address", () => {
@@ -46,7 +46,7 @@ test("buildOrderRecord includes a delivery address and excludes collection slot"
     moneyFormatter: (amount) => `S$${amount}`,
   });
 
-  assert.equal(order.items, "Banana Loaf x2");
+  assert.equal(order.items, "Banana Cake x2");
   assert.equal(order.pickupTime, "");
   assert.equal(order.address, "123 Test Street");
 });

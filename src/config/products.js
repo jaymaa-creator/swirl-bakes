@@ -15,15 +15,15 @@ export const MENU = [
   },
   {
     id: "banana-bread",
-    name: "Banana Loaf",
+    name: "Banana Cake",
     category: "Loaf Cakes",
     unitLabel: "per loaf",
     quantityLabel: "loaf",
     quantityLabelPlural: "loaves",
     orderDescription: "loaf",
     image: "/banana-bread-slices.webp",
-    imageAlt: "Freshly sliced banana loaf on a wooden board with banana pieces",
-    note: "A tender, buttery banana loaf baked fresh for the Saturday batch.",
+    imageAlt: "Freshly sliced banana cake on a wooden board with banana pieces",
+    note: "A tender, buttery banana cake baked fresh for the Saturday batch.",
     allergens: "Contains gluten, dairy, eggs.",
   },
 ];
