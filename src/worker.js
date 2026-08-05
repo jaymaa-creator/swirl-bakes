@@ -204,6 +204,11 @@ export default {
       return jsonResponse({ ok: false, error: "Method not allowed" }, { status: 405 });
     }
 
+    // Preview deployments may share the production bindings, so never let them create real orders.
+    if (url.hostname !== "swirlgirl.sg") {
+      return jsonResponse({ ok: false, error: "Orders are disabled on this preview site" }, { status: 403 });
+    }
+
     const origin = request.headers.get("Origin");
     if (origin !== url.origin) {
       return jsonResponse({ ok: false, error: "Invalid origin" }, { status: 403 });
