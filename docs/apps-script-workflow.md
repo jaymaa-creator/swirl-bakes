@@ -57,9 +57,9 @@ cinnamon-rolls | 35 | TRUE | 3 | 12 | (blank) | (blank) | (blank)
 banana-bread | 25 | TRUE | 3 | 6 | (blank) | (blank) | (blank)
 ```
 
-If Banana Loaf has `batch_limit = 6` and four loaves are already in this week's `Orders` rows, the website only shows quantity buttons `1` and `2`.
+If Banana Cake has `batch_limit = 6` and four cakes are already in this week's `Orders` rows, the website only shows quantity buttons `1` and `2`.
 
-Add a row with `available = TRUE` to publish a new product. `description` is optional: it overrides the existing Cinnamon Roll or Banana Loaf copy when filled in, and supplies the copy for new products. `allergens` is an optional customer-facing allergen statement. `image_url` is optional; a new product shows a tidy placeholder until an image is available.
+Add a row with `available = TRUE` to publish a new product. `description` is optional: it overrides the existing Cinnamon Roll or Banana Cake copy when filled in, and supplies the copy for new products. `allergens` is an optional customer-facing allergen statement. `image_url` is optional; a new product shows a tidy placeholder until an image is available.
 
 ## Web App Manifest
 

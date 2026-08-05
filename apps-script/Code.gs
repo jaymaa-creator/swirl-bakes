@@ -332,8 +332,8 @@ function isCancelledStatus(value) {
 
 function productNamesFromId(productId) {
   if (String(productId || "").trim().toLowerCase() === "banana-bread") {
-    // Keep existing Banana Bread rows in stock calculations after the customer-facing rename.
-    return ["Banana Loaf", "Banana Bread"];
+    // Keep existing orders in stock calculations after the customer-facing rename.
+    return ["Banana Cake", "Banana Loaf", "Banana Bread"];
   }
 
   return [productNameFromId(productId)];
