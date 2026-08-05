@@ -118,10 +118,10 @@ export function mergeMenuSettings(baseMenu, settings) {
       productSettings.available &&
       productSettings.priceSgd !== null &&
       productSettings.batchLimit !== null &&
-      productSettings.remainingQuantity !== null &&
-      productSettings.remainingQuantity > 0;
+      productSettings.remainingQuantity !== null;
 
     // Sheet-only products stay private until their stock configuration is complete.
+    // Once published, they remain visible as sold out when the batch reaches zero.
     if (baseIds.has(productId) || !isConfiguredForSale) return;
 
     const item = fallbackProduct(productId, productSettings);
