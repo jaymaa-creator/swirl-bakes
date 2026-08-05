@@ -114,7 +114,15 @@ export function mergeMenuSettings(baseMenu, settings) {
   });
 
   settingsById.forEach((productSettings, productId) => {
-    if (baseIds.has(productId) || !productSettings.available) return;
+    const isConfiguredForSale =
+      productSettings.available &&
+      productSettings.priceSgd !== null &&
+      productSettings.batchLimit !== null &&
+      productSettings.remainingQuantity !== null &&
+      productSettings.remainingQuantity > 0;
+
+    // Sheet-only products stay private until their stock configuration is complete.
+    if (baseIds.has(productId) || !isConfiguredForSale) return;
 
     const item = fallbackProduct(productId, productSettings);
     const customerMaxQuantity = productSettings.maxQuantity || DEFAULT_MAX_QUANTITY;

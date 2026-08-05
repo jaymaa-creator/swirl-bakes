@@ -28,18 +28,24 @@ function isValidOrder(order) {
 function normalizeMenuProduct(product) {
   if (!product || typeof product.id !== "string" || !product.id.trim()) return null;
 
+  const finiteNumber = (value) => {
+    if (value === null || value === undefined || value === "") return undefined;
+
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  };
+
   return {
     id: product.id.trim(),
-    priceSgd: Number(product.priceSgd) || undefined,
+    priceSgd: finiteNumber(product.priceSgd),
     available: product.available,
-    batchLimit: Number(product.batchLimit) || undefined,
-    maxQuantity: Number(product.maxQuantity) || undefined,
+    batchLimit: finiteNumber(product.batchLimit),
+    maxQuantity: finiteNumber(product.maxQuantity),
     description: typeof product.description === "string" ? product.description.trim() : undefined,
     imageUrl: typeof product.imageUrl === "string" ? product.imageUrl.trim() : undefined,
     allergens: typeof product.allergens === "string" ? product.allergens.trim() : undefined,
-    remainingQuantity:
-      Number(product.remainingQuantity) >= 0 ? Number(product.remainingQuantity) : undefined,
-    soldQuantity: Number(product.soldQuantity) >= 0 ? Number(product.soldQuantity) : undefined,
+    remainingQuantity: finiteNumber(product.remainingQuantity),
+    soldQuantity: finiteNumber(product.soldQuantity),
   };
 }
 
