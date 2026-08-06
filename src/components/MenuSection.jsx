@@ -128,18 +128,33 @@ export default function MenuSection({
             return (
               <div
                 key={m.id}
-                className={`overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_8px_24px_rgba(90,56,37,0.08)] ${
-                  isAvailable ? "" : "grayscale opacity-60"
+                className={`overflow-hidden rounded-3xl border bg-surface shadow-[0_8px_24px_rgba(90,56,37,0.08)] ${
+                  isAvailable ? "border-line" : "border-[#E7C5A3] bg-[#FFF9F2]"
                 }`}
               >
                 {m.image ? (
-                  <img
-                    src={m.image}
-                    alt={m.imageAlt}
-                    className="aspect-[4/3] w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  <div className="relative">
+                    <img
+                      src={m.image}
+                      alt={m.imageAlt}
+                      className="aspect-[4/3] w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    {!isAvailable ? (
+                      <div className="pointer-events-none absolute right-3 top-3 w-1/4 min-w-20 max-w-32">
+                        <img
+                          src="/sold-out-sticker.png"
+                          alt="Swirl Girl says sold out this week"
+                          className="w-full rounded-[28%] shadow-[0_8px_20px_rgba(66,35,18,0.24)]"
+                        />
+                        <div className="relative -mt-2 ml-[-22%] rounded-2xl border border-[#E7C5A3] bg-[#FFF1DF] px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-brandBrown shadow-[0_3px_8px_rgba(90,56,37,0.12)] sm:text-xs">
+                          <span className="absolute -top-1 right-[22%] h-2.5 w-2.5 rotate-45 border-l border-t border-[#E7C5A3] bg-[#FFF1DF]" />
+                          <span className="relative">Sold out this week</span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : (
                   <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#F8E5CE,transparent_42%),linear-gradient(135deg,#EAD9C9,#F9F3EC)] px-6 text-center">
                     <div>
@@ -154,13 +169,9 @@ export default function MenuSection({
                       <div className="text-xs uppercase tracking-[0.18em] text-inkMuted">{m.category}</div>
                       <div className="mt-2 text-2xl text-ink">{m.name}</div>
                     </div>
-                    {!isAvailable || m.badge ? (
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          isAvailable ? "bg-[#F7EBDD] text-brandBrown" : "bg-[#E8E7E5] text-[#6B6A67]"
-                        }`}
-                      >
-                        {isAvailable ? m.badge : "Sold out this week"}
+                    {isAvailable && m.badge ? (
+                      <span className="rounded-full bg-[#F7EBDD] px-3 py-1 text-xs font-semibold text-brandBrown">
+                        {m.badge}
                       </span>
                     ) : null}
                   </div>
