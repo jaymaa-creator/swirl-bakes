@@ -142,17 +142,20 @@ export default function MenuSection({
                       decoding="async"
                     />
                     {!isAvailable ? (
-                      <div className="pointer-events-none absolute right-3 top-3 w-1/4 min-w-20 max-w-32">
-                        <img
-                          src="/sold-out-sticker.png"
-                          alt="Swirl Girl says sold out this week"
-                          className="w-full rounded-[28%] shadow-[0_8px_20px_rgba(66,35,18,0.24)]"
-                        />
-                        <div className="relative -mt-2 ml-[-22%] rounded-2xl border border-[#E7C5A3] bg-[#FFF1DF] px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-brandBrown shadow-[0_3px_8px_rgba(90,56,37,0.12)] sm:text-xs">
-                          <span className="absolute -top-1 right-[22%] h-2.5 w-2.5 rotate-45 border-l border-t border-[#E7C5A3] bg-[#FFF1DF]" />
-                          <span className="relative">Sold out this week</span>
+                      <>
+                        <div className="pointer-events-none absolute inset-0 bg-[#5A3825]/[0.10] backdrop-blur-[1px]" />
+                        <div className="pointer-events-none absolute right-3 top-3 w-1/4 min-w-20 max-w-32">
+                          <img
+                            src="/sold-out-sticker.png"
+                            alt="Swirl Girl says sold out this week"
+                            className="w-full rounded-[28%] shadow-[0_8px_20px_rgba(66,35,18,0.24)]"
+                          />
+                          <div className="relative -mt-2 ml-[-22%] rounded-2xl border border-[#E7C5A3] bg-[#FFF1DF] px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-brandBrown shadow-[0_3px_8px_rgba(90,56,37,0.12)] sm:text-xs">
+                            <span className="absolute -top-1 right-[22%] h-2.5 w-2.5 rotate-45 border-l border-t border-[#E7C5A3] bg-[#FFF1DF]" />
+                            <span className="relative">Sold out this week</span>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     ) : null}
                   </div>
                 ) : (
