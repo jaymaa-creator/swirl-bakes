@@ -112,6 +112,10 @@ export function getNearestOpenSaturday(now = new Date()) {
   return candidate;
 }
 
+export function getFollowingSaturday(saturday) {
+  return addDays(saturday, 7);
+}
+
 export function getNextOrderCutoff(now = new Date()) {
   return getCutoffForSaturday(getNearestOpenSaturday(now));
 }

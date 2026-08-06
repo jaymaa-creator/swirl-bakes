@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { mergeMenuSettings } from "../lib/menuSettings";
 
-export default function useMenuSettings(baseMenu) {
+export default function useMenuSettings(baseMenu, batchKey) {
   const [menu, setMenu] = useState(() => mergeMenuSettings(baseMenu));
   const [status, setStatus] = useState("loading");
   const [reloadKey, setReloadKey] = useState(0);
@@ -16,7 +16,7 @@ export default function useMenuSettings(baseMenu) {
       const timeout = window.setTimeout(() => controller.abort(), 8_000);
 
       try {
-        const response = await fetch("/api/menu", {
+        const response = await fetch(`/api/menu?batch=${encodeURIComponent(batchKey)}`, {
           headers: { Accept: "application/json" },
           cache: "no-store",
           signal: controller.signal,
@@ -52,7 +52,7 @@ export default function useMenuSettings(baseMenu) {
       isMounted = false;
       window.clearTimeout(retryTimer);
     };
-  }, [baseMenu, reloadKey]);
+  }, [baseMenu, batchKey, reloadKey]);
 
   return {
     menu,

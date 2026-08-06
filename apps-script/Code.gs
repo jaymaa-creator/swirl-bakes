@@ -7,11 +7,11 @@ const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
 const MENU_CACHE_KEY = "live-menu-settings-v1";
 const MENU_CACHE_SECONDS = 300;
 
-function doGet() {
+function doGet(event) {
   try {
     return jsonResponse({
       ok: true,
-      products: readMenuSettings(),
+      products: readMenuSettings(false, event && event.parameter && event.parameter.batch),
     });
   } catch (error) {
     console.error(error);
@@ -31,7 +31,7 @@ function doPost(event) {
     if (payload.action === "menuSettings") {
       return jsonResponse({
         ok: true,
-        products: readMenuSettings(),
+        products: readMenuSettings(false, payload.batch),
       });
     }
 
@@ -155,11 +155,22 @@ function publishMenuSnapshot() {
     return { ok: false, error: "Missing menu snapshot configuration" };
   }
 
-  clearMenuCache();
+  const currentBatch = getCurrentBatchDate();
+  const followingBatch = new Date(currentBatch);
+  followingBatch.setDate(followingBatch.getDate() + 7);
+  const currentBatchKey = formatBatchKey(currentBatch);
+  const followingBatchKey = formatBatchKey(followingBatch);
   const response = UrlFetchApp.fetch(url, {
     method: "post",
     contentType: "application/json",
-    payload: JSON.stringify({ secret, products: readMenuSettings(true) }),
+    payload: JSON.stringify({
+      secret,
+      currentBatch: currentBatchKey,
+      snapshots: {
+        [currentBatchKey]: readMenuSettings(true, currentBatchKey),
+        [followingBatchKey]: readMenuSettings(true, followingBatchKey),
+      },
+    }),
     muteHttpExceptions: true,
   });
   const result = JSON.parse(response.getContentText() || "{}");
@@ -205,9 +216,12 @@ function appendOrderRow(sheet, orderRow) {
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
 }
 
-function readMenuSettings(forceRefresh) {
+function readMenuSettings(forceRefresh, batchKey) {
+  const batchDate = getMenuBatchDate(batchKey);
+  const resolvedBatchKey = formatBatchKey(batchDate);
+  const cacheKey = `${MENU_CACHE_KEY}:${resolvedBatchKey}`;
   const cache = CacheService.getScriptCache();
-  const cached = cache.get(MENU_CACHE_KEY);
+  const cached = cache.get(cacheKey);
   if (!forceRefresh && cached) return JSON.parse(cached);
 
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -223,7 +237,7 @@ function readMenuSettings(forceRefresh) {
   const productIds = values
     .map((row) => String(row[column.product_id] || "").trim())
     .filter(Boolean);
-  const soldByProductId = getSoldQuantitiesForCurrentBatch(spreadsheet, productIds);
+  const soldByProductId = getSoldQuantitiesForBatch(spreadsheet, productIds, batchDate);
 
   const products = values
     .map((row) => {
@@ -249,15 +263,15 @@ function readMenuSettings(forceRefresh) {
     })
     .filter(Boolean);
 
-  cache.put(MENU_CACHE_KEY, JSON.stringify(products), MENU_CACHE_SECONDS);
+  cache.put(cacheKey, JSON.stringify(products), MENU_CACHE_SECONDS);
   return products;
 }
 
 function clearMenuCache() {
-  CacheService.getScriptCache().remove(MENU_CACHE_KEY);
+  // CacheService has no prefix delete. New snapshots always force a fresh read.
 }
 
-function getSoldQuantitiesForCurrentBatch(spreadsheet, productIds) {
+function getSoldQuantitiesForBatch(spreadsheet, productIds, batchDate) {
   const ordersSheet = spreadsheet.getSheetByName(ORDERS_SHEET_NAME);
   if (!ordersSheet || ordersSheet.getLastRow() < 2) {
     return {};
@@ -266,7 +280,6 @@ function getSoldQuantitiesForCurrentBatch(spreadsheet, productIds) {
   const values = ordersSheet.getDataRange().getValues();
   const headers = values.shift().map((header) => normalizeHeader(header));
   const column = Object.fromEntries(headers.map((header, index) => [header, index]));
-  const batchDate = getCurrentBatchDate();
   const soldByProductId = {};
   values.forEach((row) => {
     if (!isSameBatch(row[column.saturday_batch], batchDate)) return;
@@ -282,6 +295,19 @@ function getSoldQuantitiesForCurrentBatch(spreadsheet, productIds) {
   });
 
   return soldByProductId;
+}
+
+function getMenuBatchDate(batchKey) {
+  if (typeof batchKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(batchKey)) {
+    const requested = new Date(`${batchKey}T00:00:00+08:00`);
+    if (!Number.isNaN(requested.getTime()) && requested.getDay() === 6) return requested;
+  }
+
+  return getCurrentBatchDate();
+}
+
+function formatBatchKey(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone() || "Asia/Singapore", "yyyy-MM-dd");
 }
 
 function getCurrentBatchDate() {

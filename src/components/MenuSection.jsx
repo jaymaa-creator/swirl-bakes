@@ -10,6 +10,10 @@ export default function MenuSection({
   allergenDisclaimer,
   onSelectItem,
   onRetry,
+  batchLabel,
+  showFollowingBatch,
+  followingBatchLabel,
+  onShowFollowingBatch,
 }) {
   const [activeFilter, setActiveFilter] = useState("All");
   const filters = useMemo(() => ["All", ...new Set(menu.map((item) => item.category))], [menu]);
@@ -73,7 +77,7 @@ export default function MenuSection({
           <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
           <h2 className="mt-2 text-3xl text-ink sm:text-4xl">Available this week</h2>
           <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
-            Choose your bakes, then reserve this Saturday's batch.
+            Choose your bakes, then reserve the {batchLabel || "next Saturday"} batch.
           </p>
         </div>
 
@@ -97,6 +101,19 @@ export default function MenuSection({
             );
           })}
         </div>
+
+        {showFollowingBatch ? (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#D8D7D4] bg-[#F0EFED] px-5 py-4 text-sm text-[#5F5E5A]">
+            <span>This week is sold out. Pre-order for {followingBatchLabel} instead.</span>
+            <button
+              type="button"
+              onClick={onShowFollowingBatch}
+              className="rounded-full bg-brandBrown px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-px"
+            >
+              View next week
+            </button>
+          </div>
+        ) : null}
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {visibleItems.map((m) => {
