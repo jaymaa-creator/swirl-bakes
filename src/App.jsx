@@ -17,6 +17,7 @@ import { ALLERGEN_DISCLAIMER, FAQ, MENU, QUANTITY_OPTIONS } from "./config/produ
 import {
   formatSgDate,
   fromSingaporeDateKey,
+  getFollowingSaturday,
   getNearestOpenSaturday,
   isSaturdayOpen,
   toSingaporeDateKey,
@@ -38,6 +39,7 @@ export default function BakesLandingPage() {
   ];
   const nextSaturday = getNearestOpenSaturday(new Date());
   const nextSaturdayKey = toSingaporeDateKey(nextSaturday);
+  const [activeBatchKey, setActiveBatchKey] = useState(nextSaturdayKey);
   const [modalOpen, setModalOpen] = useState(false);
   const [whatsappHandoffLink, setWhatsappHandoffLink] = useState("");
   const [whatsappOrderNumber, setWhatsappOrderNumber] = useState("");
@@ -56,7 +58,7 @@ export default function BakesLandingPage() {
 
   const { isOpeningModal, openingTriggerId, handleOpenPreorder } =
     usePreorderModalOpen(setForm, setModalOpen);
-  const { menu, status: menuStatus, retry: retryMenu } = useMenuSettings(MENU);
+  const { menu, status: menuStatus, retry: retryMenu } = useMenuSettings(MENU, activeBatchKey);
   const orderableMenu = useMemo(() => menu.filter((item) => item.available !== false), [menu]);
   const hasCurrentPrices = orderableMenu.every(
     (item) => typeof item.priceSgd === "number" && Number.isFinite(item.priceSgd) && item.priceSgd > 0
@@ -78,9 +80,14 @@ export default function BakesLandingPage() {
     return { ...form, items };
   }, [form, menu]);
 
-  const selectedBakeDate = fromSingaporeDateKey(nextSaturdayKey);
+  const selectedBakeDate = fromSingaporeDateKey(activeBatchKey);
+  const isCurrentBatchSoldOut =
+    menuStatus === "ready" && menu.length > 0 && menu.every((item) => item.available === false);
+  const followingBatchKey = toSingaporeDateKey(getFollowingSaturday(nextSaturday));
   const isSelectedBakeOpen = selectedBakeDate
-    ? isSaturdayOpen(selectedBakeDate, new Date())
+    ? activeBatchKey !== nextSaturdayKey && isCurrentBatchSoldOut
+      ? true
+      : isSaturdayOpen(selectedBakeDate, new Date())
     : false;
   const displayBakeWindow = selectedBakeDate ? formatSgDate(selectedBakeDate) : "";
 
@@ -108,8 +115,16 @@ export default function BakesLandingPage() {
 
   const isHeaderLoading = isOpeningModal && openingTriggerId === "header-primary";
 
-  const openHeaderPreorder = () => handleOpenPreorder(nextSaturdayKey, "header-primary");
-  const openMenuPreorder = () => handleOpenPreorder(nextSaturdayKey, "menu-item");
+  const openHeaderPreorder = () => handleOpenPreorder(activeBatchKey, "header-primary");
+  const openMenuPreorder = () => handleOpenPreorder(activeBatchKey, "menu-item");
+  const showFollowingBatch = () => {
+    setForm((current) => ({
+      ...current,
+      bakeWindow: followingBatchKey,
+      items: Object.fromEntries(MENU.map((item) => [item.id, 0])),
+    }));
+    setActiveBatchKey(followingBatchKey);
+  };
 
   const closePreorderModal = () => setModalOpen(false);
 
@@ -246,6 +261,10 @@ export default function BakesLandingPage() {
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
           onSelectItem={openMenuPreorder}
           onRetry={retryMenu}
+          batchLabel={displayBakeWindow}
+          showFollowingBatch={activeBatchKey === nextSaturdayKey && isCurrentBatchSoldOut}
+          followingBatchLabel={formatSgDate(fromSingaporeDateKey(followingBatchKey))}
+          onShowFollowingBatch={showFollowingBatch}
         />
 
         <InstagramReelSection />

@@ -49,7 +49,7 @@ function normalizeMenuProduct(product) {
   };
 }
 
-async function fetchMenuSettings(env) {
+async function fetchMenuSettings(env, batchKey) {
   const menuSettingsUrl = env.MENU_SETTINGS_URL || env.ORDER_SHEET_WEBHOOK_URL;
 
   if (!menuSettingsUrl) {
@@ -57,25 +57,27 @@ async function fetchMenuSettings(env) {
   }
 
   try {
-    return await requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET);
+    return await requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET, batchKey);
   } catch (error) {
     if (!env.ORDER_WEBHOOK_SECRET) throw error;
 
     // Products are intentionally public through doGet, so this keeps the menu visible
     // if a secret binding is temporarily unavailable during a deployment.
-    return requestMenuSettings(menuSettingsUrl);
+    return requestMenuSettings(menuSettingsUrl, undefined, batchKey);
   }
 }
 
-async function requestMenuSettings(menuSettingsUrl, secret) {
-  const response = await fetch(menuSettingsUrl, {
+async function requestMenuSettings(menuSettingsUrl, secret, batchKey) {
+  const url = new URL(menuSettingsUrl);
+  if (batchKey) url.searchParams.set("batch", batchKey);
+  const response = await fetch(url.toString(), {
     method: secret ? "POST" : "GET",
     headers: {
       Accept: "application/json",
       "Cache-Control": "no-cache",
       ...(secret ? { "Content-Type": "application/json" } : {}),
     },
-    body: secret ? JSON.stringify({ secret, action: "menuSettings" }) : undefined,
+    body: secret ? JSON.stringify({ secret, action: "menuSettings", batch: batchKey }) : undefined,
   });
   const data = await response.json().catch(() => null);
 
@@ -89,10 +91,11 @@ async function requestMenuSettings(menuSettingsUrl, secret) {
   };
 }
 
-async function getMenuSnapshot(env) {
+async function getMenuSnapshot(env, batchKey) {
   if (!env.MENU_SNAPSHOT) return null;
 
-  const snapshot = await env.MENU_SNAPSHOT.get(MENU_SNAPSHOT_KEY, "json");
+  const key = batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY;
+  const snapshot = await env.MENU_SNAPSHOT.get(key, "json");
   if (!snapshot || snapshot.ok !== true || !Array.isArray(snapshot.products)) return null;
 
   return {
@@ -101,25 +104,25 @@ async function getMenuSnapshot(env) {
   };
 }
 
-async function saveMenuSnapshot(env, products) {
+async function saveMenuSnapshot(env, products, batchKey) {
   if (!env.MENU_SNAPSHOT) return;
 
   const snapshot = {
     ok: true,
     products: products.map(normalizeMenuProduct).filter(Boolean),
   };
-  await env.MENU_SNAPSHOT.put(MENU_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  await env.MENU_SNAPSHOT.put(batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY, JSON.stringify(snapshot));
 }
 
 function fallbackMenuCacheKey(url) {
   const cacheUrl = new URL(url);
   cacheUrl.pathname = `${MENU_ENDPOINT}/fallback`;
-  cacheUrl.search = "";
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
 async function getMenuSettings(request, env, ctx) {
-  const snapshot = await getMenuSnapshot(env);
+  const batchKey = new URL(request.url).searchParams.get("batch") || "";
+  const snapshot = await getMenuSnapshot(env, batchKey);
   if (snapshot) return snapshot;
 
   // Keep the site responsive until the KV binding has been seeded or during recovery.
@@ -127,12 +130,12 @@ async function getMenuSettings(request, env, ctx) {
   const cached = await caches.default.match(cacheKey);
   if (cached) return cached.json();
 
-  const settings = await fetchMenuSettings(env);
+  const settings = await fetchMenuSettings(env, batchKey);
   const cacheResponse = Response.json(settings, {
     headers: { "Cache-Control": `public, max-age=${MENU_FALLBACK_CACHE_SECONDS}` },
   });
   ctx.waitUntil(
-    Promise.all([caches.default.put(cacheKey, cacheResponse), saveMenuSnapshot(env, settings.products)])
+    Promise.all([caches.default.put(cacheKey, cacheResponse), saveMenuSnapshot(env, settings.products, batchKey)])
   );
   return settings;
 }
@@ -183,7 +186,7 @@ export default {
       if (
         !env.ORDER_WEBHOOK_SECRET ||
         payload?.secret !== env.ORDER_WEBHOOK_SECRET ||
-        !Array.isArray(payload.products)
+        !Array.isArray(payload.products) && !payload?.snapshots
       ) {
         return jsonResponse({ ok: false, error: "Unauthorized" }, { status: 401 });
       }
@@ -192,7 +195,17 @@ export default {
         return jsonResponse({ ok: false, error: "Menu snapshot storage is not configured" }, { status: 503 });
       }
 
-      await saveMenuSnapshot(env, payload.products);
+      if (payload?.snapshots && typeof payload.snapshots === "object") {
+        await Promise.all(
+          Object.entries(payload.snapshots).map(([batchKey, products]) =>
+            Array.isArray(products) ? saveMenuSnapshot(env, products, batchKey) : Promise.resolve()
+          )
+        );
+        const currentProducts = payload.snapshots[payload.currentBatch] || [];
+        await saveMenuSnapshot(env, currentProducts);
+      } else {
+        await saveMenuSnapshot(env, payload.products);
+      }
       return jsonResponse({ ok: true });
     }
 
