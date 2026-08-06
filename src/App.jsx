@@ -262,6 +262,7 @@ export default function BakesLandingPage() {
           onSelectItem={openMenuPreorder}
           onRetry={retryMenu}
           batchLabel={displayBakeWindow}
+          isNextWeek={activeBatchKey !== nextSaturdayKey}
           showFollowingBatch={activeBatchKey === nextSaturdayKey && isCurrentBatchSoldOut}
           followingBatchLabel={formatSgDate(fromSingaporeDateKey(followingBatchKey))}
           onShowFollowingBatch={showFollowingBatch}

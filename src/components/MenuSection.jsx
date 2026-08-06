@@ -11,6 +11,7 @@ export default function MenuSection({
   onSelectItem,
   onRetry,
   batchLabel,
+  isNextWeek,
   showFollowingBatch,
   followingBatchLabel,
   onShowFollowingBatch,
@@ -37,7 +38,9 @@ export default function MenuSection({
         <div className="max-w-5xl">
           <div className="max-w-3xl" data-reveal="left">
             <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
-            <h2 className="mt-2 text-3xl text-ink sm:text-4xl">Available this week</h2>
+            <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
+              {isNextWeek ? "Available next week" : "Available this week"}
+            </h2>
             <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
               Choose your bakes, then reserve this Saturday's batch.
             </p>
@@ -75,7 +78,9 @@ export default function MenuSection({
       <div className="max-w-5xl">
         <div className="max-w-3xl" data-reveal="left">
           <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
-          <h2 className="mt-2 text-3xl text-ink sm:text-4xl">Available this week</h2>
+          <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
+            {isNextWeek ? "Available next week" : "Available this week"}
+          </h2>
           <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
             Choose your bakes, then reserve the {batchLabel || "next Saturday"} batch.
           </p>
