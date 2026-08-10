@@ -1,5 +1,6 @@
 const DEFAULT_MAX_QUANTITY = 3;
 const DEFAULT_PRODUCT_IMAGES = {
+  "pandan-swirl": "/pandan-swirl.webp",
   sourdough: "/sourdough.webp",
 };
 

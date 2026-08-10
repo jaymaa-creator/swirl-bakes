@@ -199,9 +199,7 @@ function publishMenuSnapshot() {
     payload: JSON.stringify({
       secret,
       currentBatch: currentBatchKey,
-      snapshots: Object.fromEntries(
-        Object.entries(snapshots).map(([batchKey, snapshot]) => [batchKey, snapshot.products])
-      ),
+      snapshots,
     }),
     muteHttpExceptions: true,
   });

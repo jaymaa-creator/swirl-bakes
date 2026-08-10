@@ -29,6 +29,8 @@ To change the live menu, edit the relevant row in `Products`. No website code ch
 | `allergens` | Optional customer-facing allergen statement. |
 | `image_url` | Optional product image URL. |
 
+For images stored with the website, use a root-relative path such as `/pandan-swirl.webp` in `image_url`. The main Pandan Swirl photo is `/pandan-swirl.webp`; `/pandan-swirl-close-up.webp` is available for a future gallery or social post.
+
 ## Stock Calculation
 
 For the active Saturday batch, the menu calculates:
