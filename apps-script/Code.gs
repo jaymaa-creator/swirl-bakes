@@ -1,6 +1,7 @@
 const SPREADSHEET_ID = "12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A";
 const ORDERS_SHEET_NAME = "Orders";
 const MENU_SETTINGS_SHEET_NAME = "Products";
+const BAKE_CALENDAR_SHEET_NAME = "Calendar";
 const SECRET_PROPERTY = "ORDER_WEBHOOK_SECRET";
 const MENU_SNAPSHOT_URL_PROPERTY = "MENU_SNAPSHOT_URL";
 const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
@@ -9,10 +10,7 @@ const MENU_CACHE_SECONDS = 300;
 
 function doGet(event) {
   try {
-    return jsonResponse({
-      ok: true,
-      products: readMenuSettings(false, event && event.parameter && event.parameter.batch),
-    });
+    return jsonResponse(readMenuPayload(false, event && event.parameter && event.parameter.batch));
   } catch (error) {
     console.error(error);
     return jsonResponse({ ok: false, error: "Unable to load menu settings" });
@@ -29,10 +27,7 @@ function doPost(event) {
     }
 
     if (payload.action === "menuSettings") {
-      return jsonResponse({
-        ok: true,
-        products: readMenuSettings(false, payload.batch),
-      });
+      return jsonResponse(readMenuPayload(false, payload.batch));
     }
 
     const order = payload.order || {};
@@ -100,6 +95,21 @@ function setupMenuSettings() {
   return { ok: true };
 }
 
+function setupBakeCalendar() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = spreadsheet.getSheetByName(BAKE_CALENDAR_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(BAKE_CALENDAR_SHEET_NAME);
+  }
+
+  sheet.clear();
+  sheet.appendRow(["date", "open"]);
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, 2);
+  return { ok: true };
+}
+
 function testDoPost() {
   const secret = PropertiesService.getScriptProperties().getProperty(SECRET_PROPERTY);
   const result = doPost({
@@ -141,7 +151,13 @@ function installMenuSyncTrigger() {
 
 function onMenuSheetEdit(event) {
   const sheetName = event && event.range && event.range.getSheet().getName();
-  if (sheetName !== MENU_SETTINGS_SHEET_NAME && sheetName !== ORDERS_SHEET_NAME) return;
+  if (
+    sheetName !== MENU_SETTINGS_SHEET_NAME &&
+    sheetName !== ORDERS_SHEET_NAME &&
+    sheetName !== BAKE_CALENDAR_SHEET_NAME
+  ) {
+    return;
+  }
 
   clearMenuCache();
   publishMenuSnapshot();
@@ -155,21 +171,30 @@ function publishMenuSnapshot() {
     return { ok: false, error: "Missing menu snapshot configuration" };
   }
 
-  const currentBatch = getCurrentBatchDate();
-  const followingBatch = new Date(currentBatch);
-  followingBatch.setDate(followingBatch.getDate() + 7);
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const calendar = readBakeCalendar(spreadsheet);
+  const currentBatch = getMenuBatchDate("", spreadsheet, calendar);
   const currentBatchKey = formatBatchKey(currentBatch);
-  const followingBatchKey = formatBatchKey(followingBatch);
+  const batchKeys = getSnapshotBatchKeys(calendar, currentBatchKey);
+  const snapshots = Object.fromEntries(
+    batchKeys.map((batchKey) => [
+      batchKey,
+      {
+        ok: true,
+        batchKey,
+        defaultBatch: currentBatchKey,
+        calendar,
+        products: readMenuSettings(true, batchKey, spreadsheet, calendar),
+      },
+    ])
+  );
   const response = UrlFetchApp.fetch(url, {
     method: "post",
     contentType: "application/json",
     payload: JSON.stringify({
       secret,
       currentBatch: currentBatchKey,
-      snapshots: {
-        [currentBatchKey]: readMenuSettings(true, currentBatchKey),
-        [followingBatchKey]: readMenuSettings(true, followingBatchKey),
-      },
+      snapshots,
     }),
     muteHttpExceptions: true,
   });
@@ -216,16 +241,32 @@ function appendOrderRow(sheet, orderRow) {
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
 }
 
-function readMenuSettings(forceRefresh, batchKey) {
-  const batchDate = getMenuBatchDate(batchKey);
+function readMenuPayload(forceRefresh, batchKey) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const calendar = readBakeCalendar(spreadsheet);
+  const batchDate = getMenuBatchDate(batchKey, spreadsheet, calendar);
+  const resolvedBatchKey = formatBatchKey(batchDate);
+
+  return {
+    ok: true,
+    batchKey: resolvedBatchKey,
+    defaultBatch: formatBatchKey(getMenuBatchDate("", spreadsheet, calendar)),
+    calendar,
+    products: readMenuSettings(forceRefresh, resolvedBatchKey, spreadsheet, calendar),
+  };
+}
+
+function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar) {
+  const activeSpreadsheet = spreadsheet || SpreadsheetApp.openById(SPREADSHEET_ID);
+  const activeCalendar = calendar || readBakeCalendar(activeSpreadsheet);
+  const batchDate = getMenuBatchDate(batchKey, activeSpreadsheet, activeCalendar);
   const resolvedBatchKey = formatBatchKey(batchDate);
   const cacheKey = `${MENU_CACHE_KEY}:${resolvedBatchKey}`;
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   if (!forceRefresh && cached) return JSON.parse(cached);
 
-  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = spreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
+  const sheet = activeSpreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
 
   if (!sheet) {
     return [];
@@ -237,7 +278,7 @@ function readMenuSettings(forceRefresh, batchKey) {
   const productIds = values
     .map((row) => String(row[column.product_id] || "").trim())
     .filter(Boolean);
-  const soldByProductId = getSoldQuantitiesForBatch(spreadsheet, productIds, batchDate);
+  const soldByProductId = getSoldQuantitiesForBatch(activeSpreadsheet, productIds, batchDate);
 
   const products = values
     .map((row) => {
@@ -297,13 +338,83 @@ function getSoldQuantitiesForBatch(spreadsheet, productIds, batchDate) {
   return soldByProductId;
 }
 
-function getMenuBatchDate(batchKey) {
-  if (typeof batchKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(batchKey)) {
-    const requested = new Date(`${batchKey}T00:00:00+08:00`);
-    if (!Number.isNaN(requested.getTime()) && requested.getDay() === 6) return requested;
+function readBakeCalendar(spreadsheet) {
+  const sheet = spreadsheet.getSheetByName(BAKE_CALENDAR_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values.shift().map((header) => normalizeHeader(header));
+  const column = Object.fromEntries(headers.map((header, index) => [header, index]));
+  const dateColumn = column.date ?? column.bake_date;
+  const openColumn = column.open ?? column.available;
+
+  if (dateColumn === undefined || openColumn === undefined) return [];
+
+  const byDate = new Map();
+  values.forEach((row) => {
+    const date = parseCalendarDate(row[dateColumn]);
+    if (!date || date.getDay() !== 6) return;
+
+    const key = formatBatchKey(date);
+    byDate.set(key, { date: key, open: parseBoolean(row[openColumn]) });
+  });
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function parseCalendarDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(`${Utilities.formatDate(value, Session.getScriptTimeZone() || "Asia/Singapore", "yyyy-MM-dd")}T00:00:00+08:00`);
   }
 
-  return getCurrentBatchDate();
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    return new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`);
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return new Date(`${text}T00:00:00+08:00`);
+  }
+
+  return null;
+}
+
+function getMenuBatchDate(batchKey, spreadsheet, calendar) {
+  const requested = getRequestedSaturday(batchKey) || getCurrentBatchDate();
+  const activeCalendar = calendar || readBakeCalendar(spreadsheet || SpreadsheetApp.openById(SPREADSHEET_ID));
+  const openDates = activeCalendar.filter((entry) => entry.open).map((entry) => entry.date);
+
+  // An empty Calendar tab preserves the original weekly schedule until dates are added.
+  if (!openDates.length) return requested;
+
+  const requestedKey = formatBatchKey(requested);
+  const nextOpenKey = openDates.find((date) => date >= requestedKey);
+  return nextOpenKey ? new Date(`${nextOpenKey}T00:00:00+08:00`) : requested;
+}
+
+function getRequestedSaturday(batchKey) {
+  if (typeof batchKey !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(batchKey)) return null;
+
+  const requested = new Date(`${batchKey}T00:00:00+08:00`);
+  return !Number.isNaN(requested.getTime()) && requested.getDay() === 6 ? requested : null;
+}
+
+function getSnapshotBatchKeys(calendar, currentBatchKey) {
+  const futureOpenKeys = calendar
+    .filter((entry) => entry.open && entry.date >= currentBatchKey)
+    .map((entry) => entry.date)
+    .slice(0, 16);
+
+  // Retain the existing two-batch behaviour if the Calendar has not been populated yet.
+  if (!futureOpenKeys.length) {
+    const following = new Date(`${currentBatchKey}T00:00:00+08:00`);
+    following.setDate(following.getDate() + 7);
+    return [currentBatchKey, formatBatchKey(following)];
+  }
+
+  return [...new Set([currentBatchKey, ...futureOpenKeys])];
 }
 
 function formatBatchKey(date) {

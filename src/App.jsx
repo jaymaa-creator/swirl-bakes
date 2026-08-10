@@ -58,7 +58,13 @@ export default function BakesLandingPage() {
 
   const { isOpeningModal, openingTriggerId, handleOpenPreorder } =
     usePreorderModalOpen(setForm, setModalOpen);
-  const { menu, status: menuStatus, retry: retryMenu } = useMenuSettings(MENU, activeBatchKey);
+  const {
+    menu,
+    status: menuStatus,
+    retry: retryMenu,
+    batchKey: resolvedBatchKey,
+    calendar,
+  } = useMenuSettings(MENU, activeBatchKey);
   const orderableMenu = useMemo(() => menu.filter((item) => item.available !== false), [menu]);
   const hasCurrentPrices = orderableMenu.every(
     (item) => typeof item.priceSgd === "number" && Number.isFinite(item.priceSgd) && item.priceSgd > 0
@@ -80,15 +86,15 @@ export default function BakesLandingPage() {
     return { ...form, items };
   }, [form, menu]);
 
-  const selectedBakeDate = fromSingaporeDateKey(activeBatchKey);
+  const selectedBatchKey = menuStatus === "ready" && resolvedBatchKey ? resolvedBatchKey : activeBatchKey;
+  const selectedBakeDate = fromSingaporeDateKey(selectedBatchKey);
   const isCurrentBatchSoldOut =
     menuStatus === "ready" && menu.length > 0 && menu.every((item) => item.available === false);
-  const followingBatchKey = toSingaporeDateKey(getFollowingSaturday(nextSaturday));
-  const isSelectedBakeOpen = selectedBakeDate
-    ? activeBatchKey !== nextSaturdayKey && isCurrentBatchSoldOut
-      ? true
-      : isSaturdayOpen(selectedBakeDate, new Date())
-    : false;
+  const hasCalendar = calendar.length > 0;
+  const followingBatchKey =
+    calendar.find((entry) => entry.open && entry.date > selectedBatchKey)?.date ||
+    (hasCalendar ? "" : toSingaporeDateKey(getFollowingSaturday(selectedBakeDate || nextSaturday)));
+  const isSelectedBakeOpen = selectedBakeDate ? isSaturdayOpen(selectedBakeDate, new Date()) : false;
   const displayBakeWindow = selectedBakeDate ? formatSgDate(selectedBakeDate) : "";
 
   const {
@@ -115,9 +121,11 @@ export default function BakesLandingPage() {
 
   const isHeaderLoading = isOpeningModal && openingTriggerId === "header-primary";
 
-  const openHeaderPreorder = () => handleOpenPreorder(activeBatchKey, "header-primary");
-  const openMenuPreorder = () => handleOpenPreorder(activeBatchKey, "menu-item");
+  const openHeaderPreorder = () => handleOpenPreorder(selectedBatchKey, "header-primary");
+  const openMenuPreorder = () => handleOpenPreorder(selectedBatchKey, "menu-item");
   const showFollowingBatch = () => {
+    if (!followingBatchKey) return;
+
     setForm((current) => ({
       ...current,
       bakeWindow: followingBatchKey,
@@ -262,9 +270,9 @@ export default function BakesLandingPage() {
           onSelectItem={openMenuPreorder}
           onRetry={retryMenu}
           batchLabel={displayBakeWindow}
-          isNextWeek={activeBatchKey !== nextSaturdayKey}
-          showFollowingBatch={activeBatchKey === nextSaturdayKey && isCurrentBatchSoldOut}
-          followingBatchLabel={formatSgDate(fromSingaporeDateKey(followingBatchKey))}
+          isNextWeek={selectedBatchKey !== nextSaturdayKey}
+          showFollowingBatch={Boolean(followingBatchKey) && isCurrentBatchSoldOut}
+          followingBatchLabel={followingBatchKey ? formatSgDate(fromSingaporeDateKey(followingBatchKey)) : ""}
           onShowFollowingBatch={showFollowingBatch}
         />
 
@@ -302,7 +310,7 @@ export default function BakesLandingPage() {
       <PreorderModal
         open={modalOpen}
         onClose={closePreorderModal}
-        form={{ ...orderForm, bakeWindow: nextSaturdayKey }}
+        form={{ ...orderForm, bakeWindow: selectedBatchKey }}
         setForm={setForm}
         estimatedTotal={estimatedTotal}
         itemsTotal={itemsTotal}
