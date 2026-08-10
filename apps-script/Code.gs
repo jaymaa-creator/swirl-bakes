@@ -135,7 +135,10 @@ function testDoPost() {
 }
 
 function syncMenuSnapshot() {
-  return publishMenuSnapshot();
+  console.log("Starting manual menu snapshot sync");
+  const result = publishMenuSnapshot();
+  console.log(`Menu snapshot sync completed for ${result.currentBatch || "the current batch"}`);
+  return result;
 }
 
 function installMenuSyncTrigger() {
@@ -160,6 +163,7 @@ function onMenuSheetEdit(event) {
   }
 
   clearMenuCache();
+  console.log(`Menu snapshot sync triggered by an edit to ${sheetName}`);
   publishMenuSnapshot();
 }
 
@@ -176,6 +180,9 @@ function publishMenuSnapshot() {
   const currentBatch = getMenuBatchDate("", spreadsheet, calendar);
   const currentBatchKey = formatBatchKey(currentBatch);
   const batchKeys = getSnapshotBatchKeys(calendar, currentBatchKey);
+  console.log(
+    `Publishing menu snapshot: current batch ${currentBatchKey}; calendar entries ${calendar.length}; snapshots ${batchKeys.join(", ")}`
+  );
   const snapshots = Object.fromEntries(
     batchKeys.map((batchKey) => [
       batchKey,
@@ -198,13 +205,27 @@ function publishMenuSnapshot() {
     }),
     muteHttpExceptions: true,
   });
-  const result = JSON.parse(response.getContentText() || "{}");
+  const status = response.getResponseCode();
+  const responseText = response.getContentText() || "";
+  console.log(`Menu snapshot endpoint responded with HTTP ${status}: ${responsePreview(responseText)}`);
 
-  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300 || result.ok !== true) {
-    throw new Error(`Unable to publish menu snapshot (${response.getResponseCode()})`);
+  let result;
+  try {
+    result = JSON.parse(responseText || "{}");
+  } catch {
+    throw new Error(`Menu snapshot endpoint returned non-JSON (${status}): ${responsePreview(responseText)}`);
   }
 
-  return result;
+  if (status < 200 || status >= 300 || result.ok !== true) {
+    throw new Error(`Unable to publish menu snapshot (${status}): ${result.error || "unknown error"}`);
+  }
+
+  return { ...result, currentBatch: currentBatchKey, snapshotCount: batchKeys.length };
+}
+
+function responsePreview(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > 500 ? `${text.slice(0, 500)}...` : text;
 }
 
 function appendOrderRow(sheet, orderRow) {
