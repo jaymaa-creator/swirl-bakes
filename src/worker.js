@@ -39,6 +39,7 @@ function normalizeMenuProduct(product) {
     id: product.id.trim(),
     priceSgd: finiteNumber(product.priceSgd),
     available: product.available,
+    special: product.special === true,
     batchLimit: finiteNumber(product.batchLimit),
     maxQuantity: finiteNumber(product.maxQuantity),
     description: typeof product.description === "string" ? product.description.trim() : undefined,

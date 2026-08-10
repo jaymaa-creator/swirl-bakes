@@ -22,6 +22,7 @@ To change the live menu, edit the relevant row in `Products`. No website code ch
 | `product_id` | Unique product name used by the website, for example `banana-bread`. Do not change it after orders exist. |
 | `price_sgd` | Customer-facing price in Singapore dollars. |
 | `available` | Manual on/off switch. Use `TRUE` to sell the product and `FALSE` to show it as sold out. |
+| `special` | Optional Weekly Special flag. Use `TRUE` to feature the product in the Weekly Special callout. It is ignored whenever `available` is `FALSE`. |
 | `max_quantity` | Maximum one customer can reserve in a single order. |
 | `batch_limit` | Total quantity available for the current Saturday batch. Leave blank only if there is no batch-wide stock limit. |
 | `description` | Optional customer-facing product copy. If blank, the website uses its existing copy for recognised products. |

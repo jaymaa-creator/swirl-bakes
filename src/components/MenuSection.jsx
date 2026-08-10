@@ -22,6 +22,10 @@ export default function MenuSection({
     () => (activeFilter === "All" ? menu : menu.filter((item) => item.category === activeFilter)),
     [activeFilter, menu]
   );
+  const weeklySpecials = useMemo(
+    () => menu.filter((item) => item.special === true && item.available !== false),
+    [menu]
+  );
 
   if (menuStatus !== "ready") {
     const isLoading = menuStatus === "loading";
@@ -85,6 +89,48 @@ export default function MenuSection({
             Choose your bakes, then reserve the {batchLabel || "next Saturday"} batch.
           </p>
         </div>
+
+        {weeklySpecials.length > 0 ? (
+          <section
+            className="mt-7 overflow-hidden rounded-3xl border border-[#E7C5A3] bg-[linear-gradient(120deg,#FFF7E9_0%,#F9E1BD_52%,#F4C98C_100%)] shadow-[0_14px_32px_rgba(126,75,30,0.14)]"
+            aria-label="Weekly specials"
+            data-reveal="up"
+          >
+            <div className="flex items-center gap-2 border-b border-[#D9A36D]/45 bg-white/35 px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-brandBrown">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brandBrown text-sm text-white">*</span>
+              Weekly special
+            </div>
+            <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+              {weeklySpecials.map((item) => (
+                <article key={item.id} className="flex gap-4 rounded-2xl bg-white/75 p-3 shadow-[0_6px_16px_rgba(90,56,37,0.1)]">
+                  {item.image ? (
+                    <img src={item.image} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover" loading="lazy" decoding="async" />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg text-ink">{item.name}</h3>
+                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-inkMuted">{item.note}</p>
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-ink">S${item.priceSgd} {item.unitLabel || "each"}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((current) => ({
+                            ...current,
+                            items: { ...current.items, [item.id]: Math.max(1, Number(current.items[item.id] || 0)) },
+                          }));
+                          onSelectItem?.();
+                        }}
+                        className="rounded-full bg-brandBrown px-3 py-1.5 text-xs font-semibold text-white transition-transform hover:-translate-y-px"
+                      >
+                        Reserve
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-6 flex flex-wrap gap-2" data-reveal="up">
           {filters.map((filter) => {
@@ -172,9 +218,9 @@ export default function MenuSection({
                       <div className="text-xs uppercase tracking-[0.18em] text-inkMuted">{m.category}</div>
                       <div className="mt-2 text-2xl text-ink">{m.name}</div>
                     </div>
-                    {isAvailable && m.badge ? (
+                    {isAvailable && (m.special || m.badge) ? (
                       <span className="rounded-full bg-[#F7EBDD] px-3 py-1 text-xs font-semibold text-brandBrown">
-                        {m.badge}
+                        {m.special ? "Weekly special" : m.badge}
                       </span>
                     ) : null}
                   </div>

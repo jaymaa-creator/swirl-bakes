@@ -86,9 +86,9 @@ function setupMenuSettings() {
   }
 
   sheet.clear();
-  sheet.appendRow(["product_id", "price_sgd", "available", "max_quantity", "batch_limit", "description", "allergens", "image_url"]);
-  sheet.appendRow(["cinnamon-rolls", 35, true, 3, 12, "", "", ""]);
-  sheet.appendRow(["banana-bread", 25, true, 3, 6, "", "", ""]);
+  sheet.appendRow(["product_id", "price_sgd", "available", "special", "max_quantity", "batch_limit", "description", "allergens", "image_url"]);
+  sheet.appendRow(["cinnamon-rolls", 35, true, false, 3, 12, "", "", ""]);
+  sheet.appendRow(["banana-bread", 25, true, false, 3, 6, "", "", ""]);
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, 5);
 
@@ -310,10 +310,13 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar) {
       const soldQuantity = soldByProductId[id] || 0;
       const remainingQuantity = batchLimit === null ? null : Math.max(batchLimit - soldQuantity, 0);
 
+      const available = parseBoolean(row[column.available]);
+
       return {
         id,
         priceSgd: row[column.price_sgd],
-        available: parseBoolean(row[column.available]),
+        available,
+        special: available && parseOptionalBoolean(row[column.special]),
         maxQuantity: row[column.max_quantity],
         batchLimit,
         soldQuantity,
@@ -571,6 +574,12 @@ function parseBoolean(value) {
   if (["true", "yes", "y", "1", "available", "on"].includes(text)) return true;
   if (["false", "no", "n", "0", "sold out", "soldout", "off"].includes(text)) return false;
   return true;
+}
+
+function parseOptionalBoolean(value) {
+  if (typeof value === "boolean") return value;
+  const text = String(value || "").trim().toLowerCase();
+  return ["true", "yes", "y", "1", "on"].includes(text);
 }
 
 function toPositiveNumber(value) {
