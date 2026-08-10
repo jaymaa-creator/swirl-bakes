@@ -39,10 +39,10 @@ export default function MenuSection({
           <div className="max-w-3xl" data-reveal="left">
             <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
             <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
-              {isNextWeek ? "Available next week" : "Available this week"}
+              {isNextWeek ? "Available next bake" : "Available this week"}
             </h2>
             <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
-              Choose your bakes, then reserve this Saturday's batch.
+              Choose your bakes, then reserve the next available batch.
             </p>
           </div>
           <div className="mt-8 rounded-3xl border border-line bg-surface px-5 py-7 text-sm text-inkMuted shadow-[0_8px_24px_rgba(90,56,37,0.08)]">
@@ -79,7 +79,7 @@ export default function MenuSection({
         <div className="max-w-3xl" data-reveal="left">
           <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
           <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
-            {isNextWeek ? "Available next week" : "Available this week"}
+            {isNextWeek ? "Available next bake" : "Available this week"}
           </h2>
           <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
             Choose your bakes, then reserve the {batchLabel || "next Saturday"} batch.
