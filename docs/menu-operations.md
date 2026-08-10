@@ -77,7 +77,7 @@ Use this only if you have made a Sheet change and want to force a refresh immedi
 3. Click **Run**.
 4. Check the Execution log for a completed execution without an error.
 
-The project also has an installed `onMenuSheetEdit` trigger. It automatically refreshes the snapshot when someone manually edits either `Products` or `Orders`.
+The project also has an installed `onMenuSheetEdit` trigger. It automatically refreshes the snapshot when someone manually edits `Products`, `Orders`, or `Calendar`.
 
 Website orders refresh the snapshot after the order is written to the `Orders` tab. A failed refresh never rejects a successfully saved order; run `syncMenuSnapshot` if needed.
 
