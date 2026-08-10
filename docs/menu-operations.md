@@ -90,7 +90,7 @@ Google Apps Script **Script Properties** must contain:
 | --- | --- |
 | `ORDER_WEBHOOK_SECRET` | Shared secret for authenticated website orders and menu updates. Keep private. |
 | `MENU_SNAPSHOT_URL` | `https://swirl-girl.jaemcd95.workers.dev/api/menu/sync` |
-| `MENU_SNAPSHOT_TEST_URL` | `https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync` (optional, keeps the test site aligned with the Sheet) |
+| `MENU_SNAPSHOT_TEST_URL` | Optional override for the test sync endpoint. By default Apps Script publishes to `https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync`. |
 | `ORDER_SEQUENCE` | The latest order number counter. Do not reset it. |
 
 The Cloudflare Worker must have an `ORDER_WEBHOOK_SECRET` secret with the same value as Apps Script. If the secret is rotated, update it in both places and never paste it into chat, code, or Git.

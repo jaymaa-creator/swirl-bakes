@@ -5,6 +5,7 @@ const BAKE_CALENDAR_SHEET_NAME = "Calendar";
 const SECRET_PROPERTY = "ORDER_WEBHOOK_SECRET";
 const MENU_SNAPSHOT_URL_PROPERTY = "MENU_SNAPSHOT_URL";
 const MENU_SNAPSHOT_TEST_URL_PROPERTY = "MENU_SNAPSHOT_TEST_URL";
+const DEFAULT_MENU_SNAPSHOT_TEST_URL = "https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync";
 const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
 const MENU_CACHE_KEY = "live-menu-settings-v1";
 const MENU_CACHE_SECONDS = 300;
@@ -176,7 +177,9 @@ function onMenuSheetEdit(event) {
 
 function publishMenuSnapshot() {
   const productionUrl = PropertiesService.getScriptProperties().getProperty(MENU_SNAPSHOT_URL_PROPERTY);
-  const testUrl = PropertiesService.getScriptProperties().getProperty(MENU_SNAPSHOT_TEST_URL_PROPERTY);
+  const testUrl =
+    PropertiesService.getScriptProperties().getProperty(MENU_SNAPSHOT_TEST_URL_PROPERTY) ||
+    DEFAULT_MENU_SNAPSHOT_TEST_URL;
   const secret = PropertiesService.getScriptProperties().getProperty(SECRET_PROPERTY);
 
   if (!productionUrl || !secret) {

@@ -73,7 +73,7 @@ date | open
 
 Enter Saturday dates, then set `open` to `yes` or `no`. The next `yes` date becomes the next customer-facing bake date. For example, if `22/08/2026` is `no`, the website skips it and offers the next later row set to `yes`.
 
-After changing the Calendar tab, the installed sheet-edit trigger publishes a new KV snapshot. To force it immediately, run `syncMenuSnapshot` in Apps Script. Set the optional `MENU_SNAPSHOT_TEST_URL` Script Property to `https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync` so test uses the same fresh calendar data as production.
+After changing the Calendar tab, the installed sheet-edit trigger publishes a new KV snapshot to both production and test. To force it immediately, run `syncMenuSnapshot` in Apps Script. Test defaults to `https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync`; `MENU_SNAPSHOT_TEST_URL` is only needed to override that endpoint.
 
 ## Web App Manifest
 
