@@ -6,6 +6,15 @@ This guide explains how the website menu, stock limits, Google Sheet, and Cloudf
 
 The `Products` tab is the source of truth for what can be ordered. The `Orders` tab records reservations and reduces remaining stock for the active Saturday batch.
 
+The `Calendar` tab controls which Saturdays Swirl Girl is baking. It has just two columns:
+
+| Column | What it controls |
+| --- | --- |
+| `date` | A Saturday bake date. Use a real Google Sheets date value, for example `15/08/2026`. |
+| `open` | `yes` makes that date available for orders. `no` skips it completely. |
+
+The site always chooses the first `open = yes` date on or after the normal upcoming batch date. This means a `no` weekend is never shown to customers, and the next `yes` Saturday is used automatically. Keep a few future weekends in the tab so customers can move to the next available bake if the current one sells out.
+
 To change the live menu, edit the relevant row in `Products`. No website code change is needed.
 
 | Column | What it controls |
@@ -46,7 +55,7 @@ Orders with a status of `Cancelled`, `Canceled`, `Void`, `Refunded`, or `Rejecte
 Visitors read the menu from Cloudflare KV, rather than waiting for Google Sheets. This normally responds in a fraction of a second.
 
 ```text
-Products or Orders edited
+Products, Orders, or Calendar edited
   -> Apps Script recalculates products and remaining stock
   -> Apps Script publishes a signed snapshot to Cloudflare KV
   -> website serves the new snapshot

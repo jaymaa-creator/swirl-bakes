@@ -5,6 +5,7 @@ export default function useMenuSettings(baseMenu, batchKey) {
   const [menu, setMenu] = useState(() => mergeMenuSettings(baseMenu));
   const [status, setStatus] = useState("loading");
   const [reloadKey, setReloadKey] = useState(0);
+  const [menuMeta, setMenuMeta] = useState({ batchKey: "", defaultBatch: "", calendar: [] });
 
   useEffect(() => {
     let isMounted = true;
@@ -29,6 +30,11 @@ export default function useMenuSettings(baseMenu, batchKey) {
 
         if (isMounted) {
           setMenu(mergeMenuSettings(baseMenu, settings));
+          setMenuMeta({
+            batchKey: typeof settings.batchKey === "string" ? settings.batchKey : batchKey,
+            defaultBatch: typeof settings.defaultBatch === "string" ? settings.defaultBatch : "",
+            calendar: Array.isArray(settings.calendar) ? settings.calendar : [],
+          });
           setStatus("ready");
         }
       } catch {
@@ -57,6 +63,7 @@ export default function useMenuSettings(baseMenu, batchKey) {
   return {
     menu,
     status,
+    ...menuMeta,
     retry: () => {
       setStatus("loading");
       setReloadKey((key) => key + 1);

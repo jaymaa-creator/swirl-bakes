@@ -61,6 +61,18 @@ If Banana Cake has `batch_limit = 6` and four cakes are already in this week's `
 
 Add a row with `available = TRUE` to publish a new product. `description` is optional: it overrides the existing Cinnamon Roll or Banana Cake copy when filled in, and supplies the copy for new products. `allergens` is an optional customer-facing allergen statement. `image_url` is optional; a new product shows a tidy placeholder until an image is available.
 
+## Bake Calendar
+
+The `Calendar` tab uses just these columns:
+
+```text
+date | open
+```
+
+Enter Saturday dates, then set `open` to `yes` or `no`. The next `yes` date becomes the next customer-facing bake date. For example, if `22/08/2026` is `no`, the website skips it and offers the next later row set to `yes`.
+
+After changing the Calendar tab, the installed sheet-edit trigger publishes a new KV snapshot. To force it immediately, run `syncMenuSnapshot` in Apps Script.
+
 ## Web App Manifest
 
 The manifest keeps this as a public web app:
