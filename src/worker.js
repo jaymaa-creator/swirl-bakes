@@ -78,7 +78,7 @@ function normalizeMenuSnapshot(snapshot) {
   };
 }
 
-async function fetchMenuSettings(env, batchKey) {
+async function fetchMenuSettings(env, batchKey, useTestAvailability) {
   const menuSettingsUrl = env.MENU_SETTINGS_URL || env.ORDER_SHEET_WEBHOOK_URL;
 
   if (!menuSettingsUrl) {
@@ -86,19 +86,20 @@ async function fetchMenuSettings(env, batchKey) {
   }
 
   try {
-    return await requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET, batchKey);
+    return await requestMenuSettings(menuSettingsUrl, env.ORDER_WEBHOOK_SECRET, batchKey, useTestAvailability);
   } catch (error) {
     if (!env.ORDER_WEBHOOK_SECRET) throw error;
 
     // Products are intentionally public through doGet, so this keeps the menu visible
     // if a secret binding is temporarily unavailable during a deployment.
-    return requestMenuSettings(menuSettingsUrl, undefined, batchKey);
+    return requestMenuSettings(menuSettingsUrl, undefined, batchKey, useTestAvailability);
   }
 }
 
-async function requestMenuSettings(menuSettingsUrl, secret, batchKey) {
+async function requestMenuSettings(menuSettingsUrl, secret, batchKey, useTestAvailability) {
   const url = new URL(menuSettingsUrl);
   if (batchKey) url.searchParams.set("batch", batchKey);
+  if (useTestAvailability) url.searchParams.set("environment", "test");
   const response = await fetch(url.toString(), {
     method: secret ? "POST" : "GET",
     headers: {
@@ -106,7 +107,9 @@ async function requestMenuSettings(menuSettingsUrl, secret, batchKey) {
       "Cache-Control": "no-cache",
       ...(secret ? { "Content-Type": "application/json" } : {}),
     },
-    body: secret ? JSON.stringify({ secret, action: "menuSettings", batch: batchKey }) : undefined,
+    body: secret
+      ? JSON.stringify({ secret, action: "menuSettings", batch: batchKey, environment: useTestAvailability ? "test" : "" })
+      : undefined,
   });
   const data = await response.json().catch(() => null);
 
@@ -143,6 +146,23 @@ async function saveMenuSnapshot(env, snapshot, batchKey) {
   await env.MENU_SNAPSHOT.put(batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY, JSON.stringify(normalized));
 }
 
+async function removeStaleBatchSnapshots(env, activeBatchKeys) {
+  if (!env.MENU_SNAPSHOT) return;
+
+  const activeKeys = new Set(Object.keys(activeBatchKeys).map((batchKey) => `batch:${batchKey}`));
+  let cursor;
+
+  do {
+    const page = await env.MENU_SNAPSHOT.list({ prefix: "batch:", cursor });
+    await Promise.all(
+      page.keys
+        .filter((entry) => !activeKeys.has(entry.name))
+        .map((entry) => env.MENU_SNAPSHOT.delete(entry.name))
+    );
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+}
+
 function fallbackMenuCacheKey(url) {
   const cacheUrl = new URL(url);
   cacheUrl.pathname = `${MENU_ENDPOINT}/fallback`;
@@ -159,7 +179,8 @@ async function getMenuSettings(request, env, ctx) {
   const cached = await caches.default.match(cacheKey);
   if (cached) return cached.json();
 
-  const settings = await fetchMenuSettings(env, batchKey);
+  const isTestWorker = new URL(request.url).hostname.startsWith("test-");
+  const settings = await fetchMenuSettings(env, batchKey, isTestWorker);
   const cacheResponse = Response.json(settings, {
     headers: { "Cache-Control": `public, max-age=${MENU_FALLBACK_CACHE_SECONDS}` },
   });
@@ -230,6 +251,7 @@ export default {
             saveMenuSnapshot(env, snapshot, batchKey)
           )
         );
+        await removeStaleBatchSnapshots(env, payload.snapshots);
         const currentSnapshot = payload.snapshots[payload.currentBatch] || { products: [] };
         await saveMenuSnapshot(env, currentSnapshot);
       } else {

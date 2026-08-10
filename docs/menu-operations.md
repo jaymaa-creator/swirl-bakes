@@ -22,6 +22,7 @@ To change the live menu, edit the relevant row in `Products`. No website code ch
 | `product_id` | Unique product name used by the website, for example `banana-bread`. Do not change it after orders exist. |
 | `price_sgd` | Customer-facing price in Singapore dollars. |
 | `available` | Manual on/off switch. Use `TRUE` to sell the product and `FALSE` to show it as sold out. |
+| `test-available` | Optional test-site override. `TRUE`/`FALSE` applies only on the test site; leave blank to mirror `available`. |
 | `special` | Optional Weekly Special flag. Use `TRUE` to feature the product in the Weekly Special callout. It is ignored whenever `available` is `FALSE`. |
 | `max_quantity` | Maximum one customer can reserve in a single order. |
 | `batch_limit` | Total quantity available for the current Saturday batch. Leave blank only if there is no batch-wide stock limit. |
@@ -60,7 +61,7 @@ Visitors read the menu from Cloudflare KV, rather than waiting for Google Sheets
 ```text
 Products, Orders, or Calendar edited
   -> Apps Script recalculates products and remaining stock
-  -> Apps Script publishes a signed snapshot to Cloudflare KV
+  -> Apps Script publishes signed snapshots to production and test Cloudflare KV
   -> website serves the new snapshot
 ```
 
@@ -89,6 +90,7 @@ Google Apps Script **Script Properties** must contain:
 | --- | --- |
 | `ORDER_WEBHOOK_SECRET` | Shared secret for authenticated website orders and menu updates. Keep private. |
 | `MENU_SNAPSHOT_URL` | `https://swirl-girl.jaemcd95.workers.dev/api/menu/sync` |
+| `MENU_SNAPSHOT_TEST_URL` | `https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync` (optional, keeps the test site aligned with the Sheet) |
 | `ORDER_SEQUENCE` | The latest order number counter. Do not reset it. |
 
 The Cloudflare Worker must have an `ORDER_WEBHOOK_SECRET` secret with the same value as Apps Script. If the secret is rotated, update it in both places and never paste it into chat, code, or Git.
