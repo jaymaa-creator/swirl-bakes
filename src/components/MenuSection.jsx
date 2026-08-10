@@ -80,7 +80,7 @@ export default function MenuSection({
       }}
     >
       <div className="max-w-5xl">
-        <div className="max-w-3xl" data-reveal="left">
+        <div className="max-w-3xl">
           <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
           <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
             {isNextWeek ? "Available next bake" : "Available this week"}
@@ -94,7 +94,6 @@ export default function MenuSection({
           <section
             className="mt-7 overflow-hidden rounded-3xl border border-[#E7C5A3] bg-[linear-gradient(120deg,#FFF7E9_0%,#F9E1BD_52%,#F4C98C_100%)] shadow-[0_14px_32px_rgba(126,75,30,0.14)]"
             aria-label="Weekly specials"
-            data-reveal="up"
           >
             <div className="flex items-center gap-2 border-b border-[#D9A36D]/45 bg-white/35 px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-brandBrown">
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brandBrown text-sm text-white">*</span>
@@ -132,7 +131,7 @@ export default function MenuSection({
           </section>
         ) : null}
 
-        <div className="mt-6 flex flex-wrap gap-2" data-reveal="up">
+        <div className="mt-6 flex flex-wrap gap-2">
           {filters.map((filter) => {
             const isActive = filter === activeFilter;
             return (
@@ -270,7 +269,7 @@ export default function MenuSection({
           })}
         </div>
         {allergenDisclaimer ? (
-          <p className="mt-6 max-w-4xl text-xs leading-6 text-inkMuted" data-reveal="up">
+          <p className="mt-6 max-w-4xl text-xs leading-6 text-inkMuted">
             Baked in a home kitchen. Allergens present in the kitchen may include:{" "}
             {ALLERGEN_NAMES.map((name, i) => (
               <span key={name}>
