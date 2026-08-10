@@ -124,7 +124,13 @@ async function getMenuSnapshot(env, batchKey) {
   const snapshot = await env.MENU_SNAPSHOT.get(key, "json");
   if (!snapshot || snapshot.ok !== true) return null;
 
-  return normalizeMenuSnapshot(snapshot);
+  const normalized = normalizeMenuSnapshot(snapshot);
+
+  // Earlier snapshots stored products only. Do not let one override a Calendar
+  // decision for a specific requested batch; refresh it from Apps Script once.
+  if (batchKey && normalized && !normalized.batchKey) return null;
+
+  return normalized;
 }
 
 async function saveMenuSnapshot(env, snapshot, batchKey) {

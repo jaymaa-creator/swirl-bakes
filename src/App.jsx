@@ -258,7 +258,7 @@ export default function BakesLandingPage() {
       ) : null}
 
       <main className="space-y-6 pb-6 sm:space-y-10 sm:pb-8">
-        <LandingSection brand={BRAND} />
+        <LandingSection brand={BRAND} batchDate={selectedBakeDate || nextSaturday} batchLabel={displayBakeWindow || formatSgDate(nextSaturday)} />
 
         <MenuSection
           menu={menu}
