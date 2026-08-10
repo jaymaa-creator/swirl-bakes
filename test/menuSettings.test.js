@@ -110,3 +110,17 @@ test("mergeMenuSettings uses the sheet allergen statement", () => {
 
   assert.equal(menu[1].allergens, "Contains banana, gluten, dairy and eggs.");
 });
+
+test("mergeMenuSettings only features available weekly specials", () => {
+  const menu = mergeMenuSettings(baseMenu, {
+    products: [
+      { id: "banana-bread", priceSgd: 20, available: true, special: true, maxQuantity: 2 },
+      { id: "cinnamon-rolls", priceSgd: 35, available: false, special: true, maxQuantity: 2 },
+    ],
+  });
+
+  assert.equal(menu[0].available, false);
+  assert.equal(menu[0].special, false);
+  assert.equal(menu[1].available, true);
+  assert.equal(menu[1].special, true);
+});

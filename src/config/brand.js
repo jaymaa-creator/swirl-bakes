@@ -9,7 +9,7 @@ const BRAND = {
   siteUrl: import.meta.env.VITE_SITE_URL || "https://swirlgirl.sg",
   orderCutoffLabel: "Thursday 10pm SGT",
   deliveryMinimumSgd: 50,
-  deliveryFeeSgd: 5,
+  deliveryFeeSgd: 8,
   originLabel: "Baked in Singapore",
   story:
     "Small-batch cinnamon rolls and banana cake, baked fresh on Saturdays from Joo Chiat.",
@@ -20,6 +20,7 @@ const BRAND = {
     "Allergen cross-contamination is possible because ingredients and tools are shared.",
   ],
   collectionLocation: "Joo Chiat collection point",
+  collectionReadyLabel: "Ready to collect from 11am",
   collectionNote:
     "Exact pickup details are shared after your order is confirmed.",
   pickupInstructions: [

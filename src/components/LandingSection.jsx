@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import CutoffCountdown from "./CutoffCountdown";
 import Pill from "./ui/Pill";
 
-export default function LandingSection({ brand }) {
+export default function LandingSection({ brand, batchDate, batchLabel }) {
   const heroVideoRef = useRef(null);
   useEffect(() => {
     if (!heroVideoRef.current) return;
@@ -52,11 +52,11 @@ export default function LandingSection({ brand }) {
                 {brand.tagline}
               </h1>
               <p className="mt-3 max-w-2xl text-[0.88rem] leading-relaxed text-white/95 sm:mt-4 sm:text-[1.12rem]">
-                Treats baked fresh every Saturday.
+                Treats baked fresh for {batchLabel}.
                 <br />
                 Pre-order by Thursday 10pm.
               </p>
-              <CutoffCountdown />
+              <CutoffCountdown batchDate={batchDate} batchLabel={batchLabel} />
               <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-white/90 sm:text-sm">
                 <span className="rounded-full bg-white/12 px-3 py-1.5">{brand.originLabel}</span>
               </div>

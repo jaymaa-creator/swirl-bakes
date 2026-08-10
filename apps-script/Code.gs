@@ -4,13 +4,21 @@ const MENU_SETTINGS_SHEET_NAME = "Products";
 const BAKE_CALENDAR_SHEET_NAME = "Calendar";
 const SECRET_PROPERTY = "ORDER_WEBHOOK_SECRET";
 const MENU_SNAPSHOT_URL_PROPERTY = "MENU_SNAPSHOT_URL";
+const MENU_SNAPSHOT_TEST_URL_PROPERTY = "MENU_SNAPSHOT_TEST_URL";
+const DEFAULT_MENU_SNAPSHOT_TEST_URL = "https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync";
 const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
 const MENU_CACHE_KEY = "live-menu-settings-v1";
 const MENU_CACHE_SECONDS = 300;
 
 function doGet(event) {
   try {
-    return jsonResponse(readMenuPayload(false, event && event.parameter && event.parameter.batch));
+    return jsonResponse(
+      readMenuPayload(
+        false,
+        event && event.parameter && event.parameter.batch,
+        isTestEnvironment(event && event.parameter && event.parameter.environment)
+      )
+    );
   } catch (error) {
     console.error(error);
     return jsonResponse({ ok: false, error: "Unable to load menu settings" });
@@ -27,7 +35,7 @@ function doPost(event) {
     }
 
     if (payload.action === "menuSettings") {
-      return jsonResponse(readMenuPayload(false, payload.batch));
+      return jsonResponse(readMenuPayload(false, payload.batch, isTestEnvironment(payload.environment)));
     }
 
     const order = payload.order || {};
@@ -86,9 +94,9 @@ function setupMenuSettings() {
   }
 
   sheet.clear();
-  sheet.appendRow(["product_id", "price_sgd", "available", "max_quantity", "batch_limit", "description", "allergens", "image_url"]);
-  sheet.appendRow(["cinnamon-rolls", 35, true, 3, 12, "", "", ""]);
-  sheet.appendRow(["banana-bread", 25, true, 3, 6, "", "", ""]);
+  sheet.appendRow(["product_id", "price_sgd", "available", "test-available", "special", "max_quantity", "batch_limit", "description", "allergens", "image_url"]);
+  sheet.appendRow(["cinnamon-rolls", 35, true, "", false, 3, 12, "", "", ""]);
+  sheet.appendRow(["banana-bread", 25, true, "", false, 3, 6, "", "", ""]);
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, 5);
 
@@ -135,7 +143,10 @@ function testDoPost() {
 }
 
 function syncMenuSnapshot() {
-  return publishMenuSnapshot();
+  console.log("Starting manual menu snapshot sync");
+  const result = publishMenuSnapshot();
+  console.log(`Menu snapshot sync completed for ${result.currentBatch || "the current batch"}`);
+  return result;
 }
 
 function installMenuSyncTrigger() {
@@ -160,14 +171,18 @@ function onMenuSheetEdit(event) {
   }
 
   clearMenuCache();
+  console.log(`Menu snapshot sync triggered by an edit to ${sheetName}`);
   publishMenuSnapshot();
 }
 
 function publishMenuSnapshot() {
-  const url = PropertiesService.getScriptProperties().getProperty(MENU_SNAPSHOT_URL_PROPERTY);
+  const productionUrl = PropertiesService.getScriptProperties().getProperty(MENU_SNAPSHOT_URL_PROPERTY);
+  const testUrl =
+    PropertiesService.getScriptProperties().getProperty(MENU_SNAPSHOT_TEST_URL_PROPERTY) ||
+    DEFAULT_MENU_SNAPSHOT_TEST_URL;
   const secret = PropertiesService.getScriptProperties().getProperty(SECRET_PROPERTY);
 
-  if (!url || !secret) {
+  if (!productionUrl || !secret) {
     return { ok: false, error: "Missing menu snapshot configuration" };
   }
 
@@ -176,7 +191,37 @@ function publishMenuSnapshot() {
   const currentBatch = getMenuBatchDate("", spreadsheet, calendar);
   const currentBatchKey = formatBatchKey(currentBatch);
   const batchKeys = getSnapshotBatchKeys(calendar, currentBatchKey);
-  const snapshots = Object.fromEntries(
+  console.log(
+    `Publishing menu snapshot: current batch ${currentBatchKey}; calendar entries ${calendar.length}; snapshots ${batchKeys.join(", ")}`
+  );
+  const productionPayload = {
+    secret,
+    currentBatch: currentBatchKey,
+    snapshots: buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, false),
+  };
+  const productionResult = publishSnapshotToEndpoint(productionUrl, productionPayload, "production");
+  const testResult = testUrl && testUrl !== productionUrl
+    ? publishSnapshotToEndpoint(
+        testUrl,
+        {
+          secret,
+          currentBatch: currentBatchKey,
+          snapshots: buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, true),
+        },
+        "test"
+      )
+    : null;
+
+  return {
+    ...productionResult,
+    currentBatch: currentBatchKey,
+    snapshotCount: batchKeys.length,
+    testPublished: testResult?.ok === true,
+  };
+}
+
+function buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, useTestAvailability) {
+  return Object.fromEntries(
     batchKeys.map((batchKey) => [
       batchKey,
       {
@@ -184,27 +229,40 @@ function publishMenuSnapshot() {
         batchKey,
         defaultBatch: currentBatchKey,
         calendar,
-        products: readMenuSettings(true, batchKey, spreadsheet, calendar),
+        products: readMenuSettings(true, batchKey, spreadsheet, calendar, useTestAvailability),
       },
     ])
   );
+}
+
+function publishSnapshotToEndpoint(url, payload, label) {
   const response = UrlFetchApp.fetch(url, {
     method: "post",
     contentType: "application/json",
-    payload: JSON.stringify({
-      secret,
-      currentBatch: currentBatchKey,
-      snapshots,
-    }),
+    payload: JSON.stringify(payload),
     muteHttpExceptions: true,
   });
-  const result = JSON.parse(response.getContentText() || "{}");
+  const status = response.getResponseCode();
+  const responseText = response.getContentText() || "";
+  console.log(`Menu snapshot ${label} endpoint responded with HTTP ${status}: ${responsePreview(responseText)}`);
 
-  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300 || result.ok !== true) {
-    throw new Error(`Unable to publish menu snapshot (${response.getResponseCode()})`);
+  let result;
+  try {
+    result = JSON.parse(responseText || "{}");
+  } catch {
+    throw new Error(`Menu snapshot ${label} endpoint returned non-JSON (${status}): ${responsePreview(responseText)}`);
+  }
+
+  if (status < 200 || status >= 300 || result.ok !== true) {
+    throw new Error(`Unable to publish ${label} menu snapshot (${status}): ${result.error || "unknown error"}`);
   }
 
   return result;
+}
+
+function responsePreview(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > 500 ? `${text.slice(0, 500)}...` : text;
 }
 
 function appendOrderRow(sheet, orderRow) {
@@ -241,7 +299,7 @@ function appendOrderRow(sheet, orderRow) {
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
 }
 
-function readMenuPayload(forceRefresh, batchKey) {
+function readMenuPayload(forceRefresh, batchKey, useTestAvailability) {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const calendar = readBakeCalendar(spreadsheet);
   const batchDate = getMenuBatchDate(batchKey, spreadsheet, calendar);
@@ -252,16 +310,16 @@ function readMenuPayload(forceRefresh, batchKey) {
     batchKey: resolvedBatchKey,
     defaultBatch: formatBatchKey(getMenuBatchDate("", spreadsheet, calendar)),
     calendar,
-    products: readMenuSettings(forceRefresh, resolvedBatchKey, spreadsheet, calendar),
+    products: readMenuSettings(forceRefresh, resolvedBatchKey, spreadsheet, calendar, useTestAvailability),
   };
 }
 
-function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar) {
+function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTestAvailability) {
   const activeSpreadsheet = spreadsheet || SpreadsheetApp.openById(SPREADSHEET_ID);
   const activeCalendar = calendar || readBakeCalendar(activeSpreadsheet);
   const batchDate = getMenuBatchDate(batchKey, activeSpreadsheet, activeCalendar);
   const resolvedBatchKey = formatBatchKey(batchDate);
-  const cacheKey = `${MENU_CACHE_KEY}:${resolvedBatchKey}`;
+  const cacheKey = `${MENU_CACHE_KEY}:${resolvedBatchKey}:${useTestAvailability ? "test" : "production"}`;
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   if (!forceRefresh && cached) return JSON.parse(cached);
@@ -289,10 +347,15 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar) {
       const soldQuantity = soldByProductId[id] || 0;
       const remainingQuantity = batchLimit === null ? null : Math.max(batchLimit - soldQuantity, 0);
 
+      const productionAvailable = parseBoolean(row[column.available]);
+      const testAvailability = parseAvailabilityOverride(row[column.test_available]);
+      const available = useTestAvailability && testAvailability !== null ? testAvailability : productionAvailable;
+
       return {
         id,
         priceSgd: row[column.price_sgd],
-        available: parseBoolean(row[column.available]),
+        available,
+        special: available && parseOptionalBoolean(row[column.special]),
         maxQuantity: row[column.max_quantity],
         batchLimit,
         soldQuantity,
@@ -306,6 +369,10 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar) {
 
   cache.put(cacheKey, JSON.stringify(products), MENU_CACHE_SECONDS);
   return products;
+}
+
+function isTestEnvironment(value) {
+  return String(value || "").trim().toLowerCase() === "test";
 }
 
 function clearMenuCache() {
@@ -550,6 +617,17 @@ function parseBoolean(value) {
   if (["true", "yes", "y", "1", "available", "on"].includes(text)) return true;
   if (["false", "no", "n", "0", "sold out", "soldout", "off"].includes(text)) return false;
   return true;
+}
+
+function parseOptionalBoolean(value) {
+  if (typeof value === "boolean") return value;
+  const text = String(value || "").trim().toLowerCase();
+  return ["true", "yes", "y", "1", "on"].includes(text);
+}
+
+function parseAvailabilityOverride(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  return parseBoolean(value);
 }
 
 function toPositiveNumber(value) {

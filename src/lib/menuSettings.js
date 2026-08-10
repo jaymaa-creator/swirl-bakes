@@ -1,5 +1,6 @@
 const DEFAULT_MAX_QUANTITY = 3;
 const DEFAULT_PRODUCT_IMAGES = {
+  "pandan-swirl": "/pandan-swirl.webp",
   sourdough: "/sourdough.webp",
 };
 
@@ -72,6 +73,7 @@ export function normalizeMenuSettings(settings = {}) {
         product.id.trim(),
         {
           available: toBoolean(product.available, true),
+          special: toBoolean(product.special, false),
           batchLimit: toPositiveNumber(product.batchLimit),
           maxQuantity: toPositiveNumber(product.maxQuantity),
           priceSgd: toPositiveNumber(product.priceSgd),
@@ -101,6 +103,7 @@ export function mergeMenuSettings(baseMenu, settings) {
     return {
       ...item,
       available: isAvailable,
+      special: Boolean(productSettings?.special) && isAvailable,
       batchLimit: productSettings?.batchLimit,
       // Prices only come from the live Products sheet. There is intentionally no static fallback.
       priceSgd: productSettings?.priceSgd ?? null,
@@ -134,6 +137,7 @@ export function mergeMenuSettings(baseMenu, settings) {
     menu.push({
       ...item,
       available: effectiveMaxQuantity > 0,
+      special: Boolean(productSettings.special) && effectiveMaxQuantity > 0,
       batchLimit: productSettings.batchLimit,
       priceSgd: productSettings.priceSgd,
       remainingQuantity: productSettings.remainingQuantity,

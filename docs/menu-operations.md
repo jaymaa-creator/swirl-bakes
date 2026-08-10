@@ -22,11 +22,15 @@ To change the live menu, edit the relevant row in `Products`. No website code ch
 | `product_id` | Unique product name used by the website, for example `banana-bread`. Do not change it after orders exist. |
 | `price_sgd` | Customer-facing price in Singapore dollars. |
 | `available` | Manual on/off switch. Use `TRUE` to sell the product and `FALSE` to show it as sold out. |
+| `test-available` | Optional test-site override. `TRUE`/`FALSE` applies only on the test site; leave blank to mirror `available`. |
+| `special` | Optional Weekly Special flag. Use `TRUE` to feature the product in the Weekly Special callout. It is ignored whenever `available` is `FALSE`. |
 | `max_quantity` | Maximum one customer can reserve in a single order. |
 | `batch_limit` | Total quantity available for the current Saturday batch. Leave blank only if there is no batch-wide stock limit. |
 | `description` | Optional customer-facing product copy. If blank, the website uses its existing copy for recognised products. |
 | `allergens` | Optional customer-facing allergen statement. |
 | `image_url` | Optional product image URL. |
+
+For images stored with the website, use a root-relative path such as `/pandan-swirl.webp` in `image_url`. The main Pandan Swirl photo is `/pandan-swirl.webp`; `/pandan-swirl-close-up.webp` is available for a future gallery or social post.
 
 ## Stock Calculation
 
@@ -57,7 +61,7 @@ Visitors read the menu from Cloudflare KV, rather than waiting for Google Sheets
 ```text
 Products, Orders, or Calendar edited
   -> Apps Script recalculates products and remaining stock
-  -> Apps Script publishes a signed snapshot to Cloudflare KV
+  -> Apps Script publishes signed snapshots to production and test Cloudflare KV
   -> website serves the new snapshot
 ```
 
@@ -74,7 +78,7 @@ Use this only if you have made a Sheet change and want to force a refresh immedi
 3. Click **Run**.
 4. Check the Execution log for a completed execution without an error.
 
-The project also has an installed `onMenuSheetEdit` trigger. It automatically refreshes the snapshot when someone manually edits either `Products` or `Orders`.
+The project also has an installed `onMenuSheetEdit` trigger. It automatically refreshes the snapshot when someone manually edits `Products`, `Orders`, or `Calendar`.
 
 Website orders refresh the snapshot after the order is written to the `Orders` tab. A failed refresh never rejects a successfully saved order; run `syncMenuSnapshot` if needed.
 
@@ -86,6 +90,7 @@ Google Apps Script **Script Properties** must contain:
 | --- | --- |
 | `ORDER_WEBHOOK_SECRET` | Shared secret for authenticated website orders and menu updates. Keep private. |
 | `MENU_SNAPSHOT_URL` | `https://swirl-girl.jaemcd95.workers.dev/api/menu/sync` |
+| `MENU_SNAPSHOT_TEST_URL` | Optional override for the test sync endpoint. By default Apps Script publishes to `https://test-swirl-girl.jaemcd95.workers.dev/api/menu/sync`. |
 | `ORDER_SEQUENCE` | The latest order number counter. Do not reset it. |
 
 The Cloudflare Worker must have an `ORDER_WEBHOOK_SECRET` secret with the same value as Apps Script. If the secret is rotated, update it in both places and never paste it into chat, code, or Git.

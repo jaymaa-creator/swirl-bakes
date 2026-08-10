@@ -7,7 +7,7 @@ const menu = [
   { id: "bread", name: "Banana Cake" },
 ];
 
-test("buildOrderRecord includes a self-collection slot and excludes an address", () => {
+test("buildOrderRecord includes the collection readiness note and excludes an address", () => {
   const order = buildOrderRecord({
     form: {
       name: "Jamie",
@@ -15,7 +15,7 @@ test("buildOrderRecord includes a self-collection slot and excludes an address",
       bakeWindow: "Sat, 8 Mar 2026",
       items: { rolls: 2, bread: 0 },
       delivery: "Self-collection - agreed pickup point",
-      pickupTime: "Morning",
+      pickupTime: "Ready to collect from 11am",
       address: "123 Test Street",
       notes: "No nuts",
     },
@@ -25,7 +25,7 @@ test("buildOrderRecord includes a self-collection slot and excludes an address",
   });
 
   assert.equal(order.items, "Cinnamon Rolls x2");
-  assert.equal(order.pickupTime, "Morning");
+  assert.equal(order.pickupTime, "Ready to collect from 11am");
   assert.equal(order.address, "");
 });
 
