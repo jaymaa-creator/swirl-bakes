@@ -127,7 +127,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
               ))}
             </ul>
             <div className="mt-4 text-xs text-inkMuted">
-              Delivery is available for orders of S$50 or more, with a flat S$5 fee.
+              Delivery is available for orders of S$50 or more, with a flat S$8 fee.
             </div>
           </div>
         </Card>

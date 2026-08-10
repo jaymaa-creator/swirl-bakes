@@ -24,7 +24,7 @@ export function buildOrderMessage({
   if (form.delivery.toLowerCase().includes("delivery")) {
     lines.push(`Address: ${form.address || "-"}`);
   } else {
-    lines.push(`Self-collection time: ${form.pickupTime || "-"}`);
+    lines.push(`Collection: ${form.pickupTime || "Ready to collect from 11am"}`);
   }
   lines.push("Items:");
   menu.forEach((m) => {

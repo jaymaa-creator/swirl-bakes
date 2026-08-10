@@ -65,7 +65,7 @@ export const FAQ = [
   },
   {
     q: "Delivery pricing?",
-    a: "Delivery is available for orders of S$50 or more. A flat S$5 fee is added to eligible delivery orders.",
+    a: "Delivery is available for orders of S$50 or more. A flat S$8 fee is added to eligible delivery orders.",
   },
   {
     q: "Where is collection?",

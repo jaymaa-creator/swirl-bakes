@@ -82,13 +82,13 @@ test("buildOrderMessage includes the flat delivery fee in an eligible delivery o
   assert.match(message, /Estimated total: S\$55/);
 });
 
-test("buildOrderMessage includes the self-collection time instead of an address", () => {
+test("buildOrderMessage includes the collection readiness note instead of an address", () => {
   const form = {
     name: "Jamie",
     phone: "+65 8123 4567",
     bakeWindow: "Sat, 8 Mar 2026",
     delivery: "Self-collection - agreed pickup point",
-    pickupTime: "Afternoon",
+    pickupTime: "Ready to collect from 11am",
     address: "",
     items: { classic: 2, pecan: 0 },
   };
@@ -101,6 +101,6 @@ test("buildOrderMessage includes the self-collection time instead of an address"
     moneyFormatter: (n) => `S$${n}`,
   });
 
-  assert.match(message, /Self-collection time: Afternoon/);
+  assert.match(message, /Collection: Ready to collect from 11am/);
   assert.doesNotMatch(message, /Address:/);
 });

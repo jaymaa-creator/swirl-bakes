@@ -2,9 +2,6 @@ import { useEffect } from "react";
 
 export default function useScrollReveal() {
   useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll("[data-reveal]"));
-    if (!nodes.length) return undefined;
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -19,7 +16,28 @@ export default function useScrollReveal() {
       }
     );
 
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
+    const observe = (node) => {
+      if (node instanceof Element && node.matches("[data-reveal]") && !node.classList.contains("is-revealed")) {
+        observer.observe(node);
+      }
+    };
+
+    const observeChildren = (node) => {
+      observe(node);
+      if (node instanceof Element) node.querySelectorAll("[data-reveal]").forEach(observe);
+    };
+
+    document.querySelectorAll("[data-reveal]").forEach(observe);
+
+    // The menu is loaded after the page mounts, so observe reveal elements added later too.
+    const mutations = new MutationObserver((records) => {
+      records.forEach((record) => record.addedNodes.forEach(observeChildren));
+    });
+    mutations.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      mutations.disconnect();
+      observer.disconnect();
+    };
   }, []);
 }

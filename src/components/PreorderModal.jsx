@@ -380,7 +380,7 @@ export default function PreorderModal({
 
           <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">
-              3. {isDelivery ? "Delivery address" : "Collection time"}
+              3. {isDelivery ? "Delivery address" : "Collection"}
             </div>
             <div className="mt-4">
               {isDelivery ? (
@@ -396,28 +396,10 @@ export default function PreorderModal({
                   />
                 </Field>
               ) : (
-                <Field label="Preferred self-collection slot" hint="We will confirm the exact handoff time">
-                  <div className="grid grid-cols-2 gap-3">
-                    {["Morning", "Afternoon"].map((slot) => {
-                      const isSelected = form.pickupTime === slot;
-                      return (
-                        <button
-                          key={slot}
-                          type="button"
-                          onClick={() => setForm((f) => ({ ...f, pickupTime: slot }))}
-                          className={`rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
-                            isSelected
-                              ? "border-brandBrown bg-brandBrown text-white"
-                              : "border-line bg-surface text-inkMuted hover:border-brandCinnamon"
-                          }`}
-                          aria-pressed={isSelected}
-                        >
-                          {slot}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </Field>
+                <div className="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink">
+                  <span className="font-semibold">{brand.collectionReadyLabel}.</span>
+                  <span className="mt-1 block text-xs leading-5 text-inkMuted">Exact Joo Chiat handoff details are shared after confirmation.</span>
+                </div>
               )}
             </div>
           </section>
