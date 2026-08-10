@@ -39,6 +39,7 @@ function normalizeMenuProduct(product) {
     id: product.id.trim(),
     priceSgd: finiteNumber(product.priceSgd),
     available: product.available,
+    special: product.special === true,
     batchLimit: finiteNumber(product.batchLimit),
     maxQuantity: finiteNumber(product.maxQuantity),
     description: typeof product.description === "string" ? product.description.trim() : undefined,
@@ -46,6 +47,34 @@ function normalizeMenuProduct(product) {
     allergens: typeof product.allergens === "string" ? product.allergens.trim() : undefined,
     remainingQuantity: finiteNumber(product.remainingQuantity),
     soldQuantity: finiteNumber(product.soldQuantity),
+  };
+}
+
+function normalizeCalendar(calendar) {
+  if (!Array.isArray(calendar)) return [];
+
+  return calendar
+    .map((entry) => {
+      if (!entry || typeof entry.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
+        return null;
+      }
+
+      return { date: entry.date, open: entry.open === true };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function normalizeMenuSnapshot(snapshot) {
+  const source = Array.isArray(snapshot) ? { products: snapshot } : snapshot;
+  if (!source || !Array.isArray(source.products)) return null;
+
+  return {
+    ok: true,
+    batchKey: typeof source.batchKey === "string" ? source.batchKey : "",
+    defaultBatch: typeof source.defaultBatch === "string" ? source.defaultBatch : "",
+    calendar: normalizeCalendar(source.calendar),
+    products: source.products.map(normalizeMenuProduct).filter(Boolean),
   };
 }
 
@@ -81,14 +110,12 @@ async function requestMenuSettings(menuSettingsUrl, secret, batchKey) {
   });
   const data = await response.json().catch(() => null);
 
-  if (!response.ok || data?.ok !== true || !Array.isArray(data.products)) {
+  const snapshot = normalizeMenuSnapshot(data);
+  if (!response.ok || data?.ok !== true || !snapshot) {
     throw new Error(`Menu settings returned ${response.status}`);
   }
 
-  return {
-    ok: true,
-    products: data.products.map(normalizeMenuProduct).filter(Boolean),
-  };
+  return snapshot;
 }
 
 async function getMenuSnapshot(env, batchKey) {
@@ -96,22 +123,24 @@ async function getMenuSnapshot(env, batchKey) {
 
   const key = batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY;
   const snapshot = await env.MENU_SNAPSHOT.get(key, "json");
-  if (!snapshot || snapshot.ok !== true || !Array.isArray(snapshot.products)) return null;
+  if (!snapshot || snapshot.ok !== true) return null;
 
-  return {
-    ok: true,
-    products: snapshot.products.map(normalizeMenuProduct).filter(Boolean),
-  };
+  const normalized = normalizeMenuSnapshot(snapshot);
+
+  // Earlier snapshots stored products only. Do not let one override a Calendar
+  // decision for a specific requested batch; refresh it from Apps Script once.
+  if (batchKey && normalized && !normalized.batchKey) return null;
+
+  return normalized;
 }
 
-async function saveMenuSnapshot(env, products, batchKey) {
+async function saveMenuSnapshot(env, snapshot, batchKey) {
   if (!env.MENU_SNAPSHOT) return;
 
-  const snapshot = {
-    ok: true,
-    products: products.map(normalizeMenuProduct).filter(Boolean),
-  };
-  await env.MENU_SNAPSHOT.put(batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  const normalized = normalizeMenuSnapshot(snapshot);
+  if (!normalized) return;
+
+  await env.MENU_SNAPSHOT.put(batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY, JSON.stringify(normalized));
 }
 
 function fallbackMenuCacheKey(url) {
@@ -135,7 +164,7 @@ async function getMenuSettings(request, env, ctx) {
     headers: { "Cache-Control": `public, max-age=${MENU_FALLBACK_CACHE_SECONDS}` },
   });
   ctx.waitUntil(
-    Promise.all([caches.default.put(cacheKey, cacheResponse), saveMenuSnapshot(env, settings.products, batchKey)])
+    Promise.all([caches.default.put(cacheKey, cacheResponse), saveMenuSnapshot(env, settings, batchKey)])
   );
   return settings;
 }
@@ -197,12 +226,12 @@ export default {
 
       if (payload?.snapshots && typeof payload.snapshots === "object") {
         await Promise.all(
-          Object.entries(payload.snapshots).map(([batchKey, products]) =>
-            Array.isArray(products) ? saveMenuSnapshot(env, products, batchKey) : Promise.resolve()
+          Object.entries(payload.snapshots).map(([batchKey, snapshot]) =>
+            saveMenuSnapshot(env, snapshot, batchKey)
           )
         );
-        const currentProducts = payload.snapshots[payload.currentBatch] || [];
-        await saveMenuSnapshot(env, currentProducts);
+        const currentSnapshot = payload.snapshots[payload.currentBatch] || { products: [] };
+        await saveMenuSnapshot(env, currentSnapshot);
       } else {
         await saveMenuSnapshot(env, payload.products);
       }
@@ -215,6 +244,11 @@ export default {
 
     if (request.method !== "POST") {
       return jsonResponse({ ok: false, error: "Method not allowed" }, { status: 405 });
+    }
+
+    // Preview deployments may share the production bindings, so never let them create real orders.
+    if (url.hostname !== "swirlgirl.sg") {
+      return jsonResponse({ ok: false, error: "Orders are disabled on this preview site" }, { status: 403 });
     }
 
     const origin = request.headers.get("Origin");
