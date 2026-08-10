@@ -187,10 +187,8 @@ function publishMenuSnapshot() {
     batchKeys.map((batchKey) => [
       batchKey,
       {
-        ok: true,
-        batchKey,
-        defaultBatch: currentBatchKey,
-        calendar,
+        // Keep the KV publish payload compatible with the current production Worker.
+        // The public menu endpoint still returns the richer calendar-aware response.
         products: readMenuSettings(true, batchKey, spreadsheet, calendar),
       },
     ])
@@ -201,7 +199,9 @@ function publishMenuSnapshot() {
     payload: JSON.stringify({
       secret,
       currentBatch: currentBatchKey,
-      snapshots,
+      snapshots: Object.fromEntries(
+        Object.entries(snapshots).map(([batchKey, snapshot]) => [batchKey, snapshot.products])
+      ),
     }),
     muteHttpExceptions: true,
   });
