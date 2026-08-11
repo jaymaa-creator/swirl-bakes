@@ -4,6 +4,7 @@ const MENU_SYNC_ENDPOINT = "/api/menu/sync";
 const MENU_SNAPSHOT_KEY = "current";
 const MAX_ORDER_BYTES = 16_000;
 const MENU_FALLBACK_CACHE_SECONDS = 300;
+const MENU_EDGE_CACHE_SECONDS = 900;
 
 function jsonResponse(data, init = {}) {
   return Response.json(data, {
@@ -147,45 +148,75 @@ async function saveMenuSnapshot(env, snapshot, batchKey) {
 }
 
 async function removeStaleBatchSnapshots(env, activeBatchKeys) {
-  if (!env.MENU_SNAPSHOT) return;
+  if (!env.MENU_SNAPSHOT) return [];
 
   const activeKeys = new Set(Object.keys(activeBatchKeys).map((batchKey) => `batch:${batchKey}`));
+  const removedBatchKeys = [];
   let cursor;
 
   do {
     const page = await env.MENU_SNAPSHOT.list({ prefix: "batch:", cursor });
-    await Promise.all(
-      page.keys
-        .filter((entry) => !activeKeys.has(entry.name))
-        .map((entry) => env.MENU_SNAPSHOT.delete(entry.name))
-    );
+    const staleKeys = page.keys.filter((entry) => !activeKeys.has(entry.name));
+    removedBatchKeys.push(...staleKeys.map((entry) => entry.name.slice("batch:".length)));
+    await Promise.all(staleKeys.map((entry) => env.MENU_SNAPSHOT.delete(entry.name)));
     cursor = page.list_complete ? undefined : page.cursor;
   } while (cursor);
+
+  return removedBatchKeys;
 }
 
-function fallbackMenuCacheKey(url) {
+function menuCacheKey(url, batchKey = "", suffix = "") {
   const cacheUrl = new URL(url);
-  cacheUrl.pathname = `${MENU_ENDPOINT}/fallback`;
+  cacheUrl.pathname = `${MENU_ENDPOINT}${suffix}`;
+  cacheUrl.search = batchKey ? `?batch=${encodeURIComponent(batchKey)}` : "";
   return new Request(cacheUrl.toString(), { method: "GET" });
+}
+
+function edgeMenuResponse(settings, maxAge = MENU_EDGE_CACHE_SECONDS) {
+  return Response.json(settings, {
+    headers: { "Cache-Control": `public, max-age=${maxAge}` },
+  });
+}
+
+async function clearMenuEdgeCache(url, batchKeys = []) {
+  const keys = new Set(["", ...batchKeys.filter(Boolean)]);
+
+  await Promise.all(
+    [...keys].flatMap((batchKey) => [
+      caches.default.delete(menuCacheKey(url, batchKey)),
+      caches.default.delete(menuCacheKey(url, batchKey, "/fallback")),
+    ])
+  );
 }
 
 async function getMenuSettings(request, env, ctx) {
   const batchKey = new URL(request.url).searchParams.get("batch") || "";
+  const edgeCacheKey = menuCacheKey(request.url, batchKey);
+
+  // Cloudflare's Cache API is much cheaper than a KV read. The sheet sync deletes
+  // this entry as soon as it publishes a replacement snapshot.
+  const cached = await caches.default.match(edgeCacheKey);
+  if (cached) return cached.json();
+
   const snapshot = await getMenuSnapshot(env, batchKey);
-  if (snapshot) return snapshot;
+  if (snapshot) {
+    ctx.waitUntil(caches.default.put(edgeCacheKey, edgeMenuResponse(snapshot)));
+    return snapshot;
+  }
 
   // Keep the site responsive until the KV binding has been seeded or during recovery.
-  const cacheKey = fallbackMenuCacheKey(request.url);
-  const cached = await caches.default.match(cacheKey);
-  if (cached) return cached.json();
+  const fallbackCacheKey = menuCacheKey(request.url, batchKey, "/fallback");
+  const fallbackCached = await caches.default.match(fallbackCacheKey);
+  if (fallbackCached) return fallbackCached.json();
 
   const isTestWorker = new URL(request.url).hostname.startsWith("test-");
   const settings = await fetchMenuSettings(env, batchKey, isTestWorker);
-  const cacheResponse = Response.json(settings, {
-    headers: { "Cache-Control": `public, max-age=${MENU_FALLBACK_CACHE_SECONDS}` },
-  });
   ctx.waitUntil(
-    Promise.all([caches.default.put(cacheKey, cacheResponse), saveMenuSnapshot(env, settings, batchKey)])
+    Promise.all([
+      caches.default.put(fallbackCacheKey, edgeMenuResponse(settings, MENU_FALLBACK_CACHE_SECONDS)),
+      caches.default.put(edgeCacheKey, edgeMenuResponse(settings)),
+      saveMenuSnapshot(env, settings, batchKey),
+    ])
   );
   return settings;
 }
@@ -251,11 +282,16 @@ export default {
             saveMenuSnapshot(env, snapshot, batchKey)
           )
         );
-        await removeStaleBatchSnapshots(env, payload.snapshots);
+        const removedBatchKeys = await removeStaleBatchSnapshots(env, payload.snapshots);
         const currentSnapshot = payload.snapshots[payload.currentBatch] || { products: [] };
         await saveMenuSnapshot(env, currentSnapshot);
+        await clearMenuEdgeCache(request.url, [
+          ...Object.keys(payload.snapshots),
+          ...removedBatchKeys,
+        ]);
       } else {
         await saveMenuSnapshot(env, payload.products);
+        await clearMenuEdgeCache(request.url);
       }
       return jsonResponse({ ok: true });
     }
