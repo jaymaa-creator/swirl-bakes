@@ -30,7 +30,7 @@ const BRAND = {
   ],
   pickupAreas: ["Central", "East", "North", "North-East", "West"],
   deliveryOptions: [
-    "Delivery - flat S$5 fee",
+    "Delivery - flat S$8 fee",
     "Self-collection - agreed pickup point",
   ],
   colors: {

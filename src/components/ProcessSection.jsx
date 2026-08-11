@@ -77,7 +77,7 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
             step: "3",
             icon: "delivery",
             title: "Collect or deliver",
-            body: "Pickup is in Joo Chiat. Delivery is available from S$50 of bakes, with a flat S$5 fee.",
+            body: "Pickup is in Joo Chiat. Delivery is available from S$50 of bakes, with a flat S$8 fee.",
           },
         ].map((s) => (
           <div
