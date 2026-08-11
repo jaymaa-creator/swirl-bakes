@@ -40,6 +40,7 @@ export default function PreorderModal({
   const [allergenCountdown, setAllergenCountdown] = useState(0);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const countdownRef = useRef(null);
   const orderRequestSubmittedRef = useRef(false);
   const orderNumberRef = useRef("");
@@ -85,6 +86,7 @@ export default function PreorderModal({
     if (open) {
       orderRequestSubmittedRef.current = false;
       orderNumberRef.current = "";
+      setIsSubmitting(false);
     }
   }, [open]);
 
@@ -134,32 +136,36 @@ export default function PreorderModal({
   }
 
   async function completeOrder() {
+    if (isSubmitting) return;
+
     if (TURNSTILE_SITE_KEY && !turnstileToken) {
       setTurnstileError("Please complete the security check before continuing.");
       return;
     }
 
-    const whatsappWindow = window.open("", "_blank");
-    if (whatsappWindow) whatsappWindow.opener = null;
+    // Open WhatsApp inside the original button click. Waiting for Google Sheets
+    // first can leave Safari and mobile browsers stranded on about:blank.
+    const initialWhatsAppLink = getWhatsAppLink();
+    window.open(initialWhatsAppLink, "_blank", "noopener,noreferrer");
+    setIsSubmitting(true);
 
-    let orderNumber = orderNumberRef.current;
-    if (!orderRequestSubmittedRef.current) {
-      orderRequestSubmittedRef.current = true;
-      try {
-        const result = await onOrderRequest?.(turnstileToken);
-        orderNumber = result?.orderNumber || "";
-        orderNumberRef.current = orderNumber;
-      } catch {
-        // WhatsApp remains available if the order tracker is temporarily unavailable.
+    try {
+      let orderNumber = orderNumberRef.current;
+      if (!orderRequestSubmittedRef.current) {
+        orderRequestSubmittedRef.current = true;
+        try {
+          const result = await onOrderRequest?.(turnstileToken);
+          orderNumber = result?.orderNumber || "";
+          orderNumberRef.current = orderNumber;
+        } catch {
+          // WhatsApp remains available if the order tracker is temporarily unavailable.
+        }
       }
-    }
 
-    const whatsappLink = getWhatsAppLink(orderNumber);
-    onOrderIntent?.(whatsappLink, orderNumber);
-    if (whatsappWindow) {
-      whatsappWindow.location.replace(whatsappLink);
-    } else {
-      window.open(whatsappLink, "_blank", "noreferrer");
+      const whatsappLink = getWhatsAppLink(orderNumber);
+      onOrderIntent?.(whatsappLink, orderNumber);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -187,17 +193,17 @@ export default function PreorderModal({
             ) : null}
             <div className="flex flex-col gap-2 sm:flex-row">
               <a
-                href={allergenAcknowledged && canSubmitOrder ? waLinkWithAck : undefined}
+                href={allergenAcknowledged && canSubmitOrder && !isSubmitting ? waLinkWithAck : undefined}
                 onClick={handleWaClick}
                 target="_blank"
                 rel="noreferrer"
-                aria-disabled={!canSubmitOrder}
-                tabIndex={canSubmitOrder ? 0 : -1}
+                aria-disabled={!canSubmitOrder || isSubmitting}
+                tabIndex={canSubmitOrder && !isSubmitting ? 0 : -1}
                 className={`inline-flex justify-center rounded-button bg-brandBrown px-5 py-3 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float ${
-                  canSubmitOrder ? "" : "pointer-events-none opacity-50"
+                  canSubmitOrder && !isSubmitting ? "" : "pointer-events-none opacity-50"
                 }`}
               >
-                Reserve via WhatsApp
+                {isSubmitting ? "Saving order..." : "Reserve via WhatsApp"}
               </a>
             </div>
             <div className="rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
