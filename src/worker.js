@@ -1,7 +1,11 @@
 const ORDER_ENDPOINT = "/api/orders";
 const MENU_ENDPOINT = "/api/menu";
 const MENU_SYNC_ENDPOINT = "/api/menu/sync";
-const MENU_SNAPSHOT_KEY = "current";
+const STOCK_ENDPOINT = "/api/stock";
+// Keep every published batch in one value. A full sheet sync therefore costs one
+// KV write per environment instead of a write (and cleanup) for every batch.
+const MENU_SNAPSHOT_KEY = "menu-snapshots-v1";
+const LEGACY_MENU_SNAPSHOT_KEY = "current";
 const MAX_ORDER_BYTES = 16_000;
 const MENU_FALLBACK_CACHE_SECONDS = 300;
 const MENU_EDGE_CACHE_SECONDS = 900;
@@ -66,6 +70,39 @@ function normalizeCalendar(calendar) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function normalizeShoppingSnapshot(shopping) {
+  const source = shopping && typeof shopping === "object" ? shopping : {};
+  const items = Array.isArray(source.items) ? source.items : [];
+
+  return {
+    batchKey: typeof source.batchKey === "string" ? source.batchKey : "",
+    generatedAt: typeof source.generatedAt === "string" ? source.generatedAt : "",
+    warnings: Array.isArray(source.warnings)
+      ? source.warnings.filter((warning) => typeof warning === "string").slice(0, 20)
+      : [],
+    items: items
+      .map((item) => {
+        if (!item || typeof item.name !== "string") return null;
+        const quantity = Number(item.quantity);
+        if (!Number.isFinite(quantity) || quantity <= 0) return null;
+
+        return {
+          id: typeof item.id === "string" ? item.id : item.name.toLowerCase(),
+          name: item.name.trim(),
+          unit: typeof item.unit === "string" ? item.unit.trim() : "",
+          location: typeof item.location === "string" && item.location.trim()
+            ? item.location.trim().slice(0, 80)
+            : "Other ingredients",
+          quantity,
+          forProducts: Array.isArray(item.forProducts)
+            ? item.forProducts.filter((product) => typeof product === "string").slice(0, 10)
+            : [],
+        };
+      })
+      .filter(Boolean),
+  };
+}
+
 function normalizeMenuSnapshot(snapshot) {
   const source = Array.isArray(snapshot) ? { products: snapshot } : snapshot;
   if (!source || !Array.isArray(source.products)) return null;
@@ -76,6 +113,7 @@ function normalizeMenuSnapshot(snapshot) {
     defaultBatch: typeof source.defaultBatch === "string" ? source.defaultBatch : "",
     calendar: normalizeCalendar(source.calendar),
     products: source.products.map(normalizeMenuProduct).filter(Boolean),
+    shopping: normalizeShoppingSnapshot(source.shopping),
   };
 }
 
@@ -125,8 +163,20 @@ async function requestMenuSettings(menuSettingsUrl, secret, batchKey, useTestAva
 async function getMenuSnapshot(env, batchKey) {
   if (!env.MENU_SNAPSHOT) return null;
 
-  const key = batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY;
-  const snapshot = await env.MENU_SNAPSHOT.get(key, "json");
+  const bundle = await env.MENU_SNAPSHOT.get(MENU_SNAPSHOT_KEY, "json");
+  if (bundle?.ok === true && bundle.snapshots && typeof bundle.snapshots === "object") {
+    const resolvedBatchKey = batchKey || bundle.currentBatch;
+    const normalized = normalizeMenuSnapshot(bundle.snapshots[resolvedBatchKey]);
+
+    if (batchKey && normalized && !normalized.batchKey) return null;
+
+    return normalized;
+  }
+
+  // Read the previous layout only until both Workers have received their first
+  // bundled snapshot. This avoids a blank menu during the rollout.
+  const legacyKey = batchKey ? `batch:${batchKey}` : LEGACY_MENU_SNAPSHOT_KEY;
+  const snapshot = await env.MENU_SNAPSHOT.get(legacyKey, "json");
   if (!snapshot || snapshot.ok !== true) return null;
 
   const normalized = normalizeMenuSnapshot(snapshot);
@@ -138,36 +188,40 @@ async function getMenuSnapshot(env, batchKey) {
   return normalized;
 }
 
-async function saveMenuSnapshot(env, snapshot, batchKey) {
-  if (!env.MENU_SNAPSHOT) return;
+async function saveMenuSnapshotBundle(env, snapshots, currentBatch) {
+  if (!env.MENU_SNAPSHOT) return null;
 
-  const normalized = normalizeMenuSnapshot(snapshot);
-  if (!normalized) return;
+  const normalizedSnapshots = Object.fromEntries(
+    Object.entries(snapshots || {})
+      .map(([batchKey, snapshot]) => [batchKey, normalizeMenuSnapshot(snapshot)])
+      .filter(([, snapshot]) => Boolean(snapshot))
+  );
+  const batchKeys = Object.keys(normalizedSnapshots);
+  if (batchKeys.length === 0) return null;
 
-  await env.MENU_SNAPSHOT.put(batchKey ? `batch:${batchKey}` : MENU_SNAPSHOT_KEY, JSON.stringify(normalized));
-}
+  const resolvedCurrentBatch = normalizedSnapshots[currentBatch] ? currentBatch : batchKeys[0];
+  await env.MENU_SNAPSHOT.put(
+    MENU_SNAPSHOT_KEY,
+    JSON.stringify({
+      ok: true,
+      currentBatch: resolvedCurrentBatch,
+      snapshots: normalizedSnapshots,
+    })
+  );
 
-async function removeStaleBatchSnapshots(env, activeBatchKeys) {
-  if (!env.MENU_SNAPSHOT) return [];
-
-  const activeKeys = new Set(Object.keys(activeBatchKeys).map((batchKey) => `batch:${batchKey}`));
-  const removedBatchKeys = [];
-  let cursor;
-
-  do {
-    const page = await env.MENU_SNAPSHOT.list({ prefix: "batch:", cursor });
-    const staleKeys = page.keys.filter((entry) => !activeKeys.has(entry.name));
-    removedBatchKeys.push(...staleKeys.map((entry) => entry.name.slice("batch:".length)));
-    await Promise.all(staleKeys.map((entry) => env.MENU_SNAPSHOT.delete(entry.name)));
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor);
-
-  return removedBatchKeys;
+  return resolvedCurrentBatch;
 }
 
 function menuCacheKey(url, batchKey = "", suffix = "") {
   const cacheUrl = new URL(url);
   cacheUrl.pathname = `${MENU_ENDPOINT}${suffix}`;
+  cacheUrl.search = batchKey ? `?batch=${encodeURIComponent(batchKey)}` : "";
+  return new Request(cacheUrl.toString(), { method: "GET" });
+}
+
+function stockCacheKey(url, batchKey = "") {
+  const cacheUrl = new URL(url);
+  cacheUrl.pathname = STOCK_ENDPOINT;
   cacheUrl.search = batchKey ? `?batch=${encodeURIComponent(batchKey)}` : "";
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
@@ -185,6 +239,7 @@ async function clearMenuEdgeCache(url, batchKeys = []) {
     [...keys].flatMap((batchKey) => [
       caches.default.delete(menuCacheKey(url, batchKey)),
       caches.default.delete(menuCacheKey(url, batchKey, "/fallback")),
+      caches.default.delete(stockCacheKey(url, batchKey)),
     ])
   );
 }
@@ -215,10 +270,42 @@ async function getMenuSettings(request, env, ctx) {
     Promise.all([
       caches.default.put(fallbackCacheKey, edgeMenuResponse(settings, MENU_FALLBACK_CACHE_SECONDS)),
       caches.default.put(edgeCacheKey, edgeMenuResponse(settings)),
-      saveMenuSnapshot(env, settings, batchKey),
     ])
   );
   return settings;
+}
+
+async function getStockSettings(request, env, ctx) {
+  const requestUrl = new URL(request.url);
+  const requestedBatchKey = requestUrl.searchParams.get("batch") || "";
+  const edgeCacheKey = stockCacheKey(request.url, requestedBatchKey);
+  const cached = await caches.default.match(edgeCacheKey);
+  if (cached) return cached;
+
+  let menu = await getMenuSettings(request, env, ctx);
+
+  // Older `current` snapshots can predate the kitchen checklist. Once we know
+  // today's batch, read its batch-specific snapshot, which is published in the
+  // same Apps Script sync and includes the ingredient calculations.
+  if (!requestedBatchKey && (!menu.shopping?.generatedAt || menu.shopping.batchKey !== menu.batchKey) && menu.batchKey) {
+    requestUrl.searchParams.set("batch", menu.batchKey);
+    menu = await getMenuSettings(new Request(requestUrl.toString(), request), env, ctx);
+  }
+
+  if (!menu.shopping?.generatedAt || menu.shopping.batchKey !== menu.batchKey) {
+    return jsonResponse(
+      { ok: false, error: "Stock checklist has not been published for this bake yet." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  const response = edgeMenuResponse({
+    ok: true,
+    batchKey: menu.batchKey,
+    shopping: menu.shopping,
+  });
+  ctx.waitUntil(caches.default.put(edgeCacheKey, response.clone()));
+  return response;
 }
 
 async function verifyTurnstile(token, secret, remoteIp) {
@@ -252,6 +339,25 @@ export default {
       }
     }
 
+    if (url.pathname === STOCK_ENDPOINT) {
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "Method not allowed" }, { status: 405 });
+      }
+
+      // The phone-first stock list is deliberately a private test feature until
+      // Cloudflare Access is configured for Jia's account.
+      if (!url.hostname.startsWith("test-")) {
+        return jsonResponse({ ok: false, error: "Not found" }, { status: 404 });
+      }
+
+      try {
+        return await getStockSettings(request, env, ctx);
+      } catch (error) {
+        console.error("Unable to load stock settings", error);
+        return jsonResponse({ ok: false, error: "Stock list is temporarily unavailable" }, { status: 503 });
+      }
+    }
+
     if (url.pathname === MENU_SYNC_ENDPOINT) {
       if (request.method !== "POST") {
         return jsonResponse({ ok: false, error: "Method not allowed" }, { status: 405 });
@@ -277,20 +383,19 @@ export default {
       }
 
       if (payload?.snapshots && typeof payload.snapshots === "object") {
-        await Promise.all(
-          Object.entries(payload.snapshots).map(([batchKey, snapshot]) =>
-            saveMenuSnapshot(env, snapshot, batchKey)
-          )
+        const currentBatch = await saveMenuSnapshotBundle(
+          env,
+          payload.snapshots,
+          payload.currentBatch
         );
-        const removedBatchKeys = await removeStaleBatchSnapshots(env, payload.snapshots);
-        const currentSnapshot = payload.snapshots[payload.currentBatch] || { products: [] };
-        await saveMenuSnapshot(env, currentSnapshot);
-        await clearMenuEdgeCache(request.url, [
-          ...Object.keys(payload.snapshots),
-          ...removedBatchKeys,
-        ]);
+        if (!currentBatch) {
+          return jsonResponse({ ok: false, error: "Invalid menu snapshots" }, { status: 400 });
+        }
+        await clearMenuEdgeCache(request.url, Object.keys(payload.snapshots));
       } else {
-        await saveMenuSnapshot(env, payload.products);
+        const snapshot = normalizeMenuSnapshot(payload.products);
+        const batchKey = snapshot?.batchKey || "current";
+        await saveMenuSnapshotBundle(env, { [batchKey]: snapshot }, batchKey);
         await clearMenuEdgeCache(request.url);
       }
       return jsonResponse({ ok: true });
