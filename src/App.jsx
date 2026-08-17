@@ -12,6 +12,7 @@ import SiteFooter from "./components/SiteFooter";
 import InstagramReelSection from "./components/InstagramReelSection";
 import WhatsAppHandoffNotice from "./components/WhatsAppHandoffNotice";
 import CinnamonLoader from "./components/ui/CinnamonLoader";
+import StockPage from "./components/StockPage";
 import BRAND from "./config/brand";
 import { ALLERGEN_DISCLAIMER, FAQ, MENU, QUANTITY_OPTIONS } from "./config/products";
 import {
@@ -30,7 +31,16 @@ import usePreorderModalOpen from "./hooks/usePreorderModalOpen";
 import useScrollReveal from "./hooks/useScrollReveal";
 import { buildOrderRecord, submitOrderRequest } from "./lib/orderSubmission";
 
-export default function BakesLandingPage() {
+export default function App() {
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (path === "/stock") {
+    return <StockPage isTestSite={window.location.hostname.startsWith("test-")} />;
+  }
+
+  return <BakesLandingPage />;
+}
+
+function BakesLandingPage() {
   const ribbonItems = [
     "We wake, then bake every Saturday",
     "Pre-orders close Thursday 10pm",
@@ -39,7 +49,9 @@ export default function BakesLandingPage() {
   ];
   const nextSaturday = getNearestOpenSaturday(new Date());
   const nextSaturdayKey = toSingaporeDateKey(nextSaturday);
-  const [activeBatchKey, setActiveBatchKey] = useState(nextSaturdayKey);
+  // The Worker chooses the current open batch. Do not briefly show a locally
+  // guessed Saturday while the authoritative calendar snapshot is loading.
+  const [activeBatchKey, setActiveBatchKey] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [whatsappHandoffLink, setWhatsappHandoffLink] = useState("");
   const [whatsappOrderNumber, setWhatsappOrderNumber] = useState("");
@@ -86,14 +98,15 @@ export default function BakesLandingPage() {
     return { ...form, items };
   }, [form, menu]);
 
-  const selectedBatchKey = menuStatus === "ready" && resolvedBatchKey ? resolvedBatchKey : activeBatchKey;
-  const selectedBakeDate = fromSingaporeDateKey(selectedBatchKey);
+  const selectedBatchKey = menuStatus === "ready" && resolvedBatchKey ? resolvedBatchKey : "";
+  const selectedBakeDate = selectedBatchKey ? fromSingaporeDateKey(selectedBatchKey) : null;
   const isCurrentBatchSoldOut =
     menuStatus === "ready" && menu.length > 0 && menu.every((item) => item.available === false);
   const hasCalendar = calendar.length > 0;
-  const followingBatchKey =
-    calendar.find((entry) => entry.open && entry.date > selectedBatchKey)?.date ||
-    (hasCalendar ? "" : toSingaporeDateKey(getFollowingSaturday(selectedBakeDate || nextSaturday)));
+  const followingBatchKey = selectedBatchKey
+    ? calendar.find((entry) => entry.open && entry.date > selectedBatchKey)?.date ||
+      (hasCalendar ? "" : toSingaporeDateKey(getFollowingSaturday(selectedBakeDate || nextSaturday)))
+    : "";
   const isSelectedBakeOpen = selectedBakeDate ? isSaturdayOpen(selectedBakeDate, new Date()) : false;
   const displayBakeWindow = selectedBakeDate ? formatSgDate(selectedBakeDate) : "";
 
@@ -258,7 +271,7 @@ export default function BakesLandingPage() {
       ) : null}
 
       <main className="space-y-6 pb-6 sm:space-y-10 sm:pb-8">
-        <LandingSection brand={BRAND} batchDate={selectedBakeDate || nextSaturday} batchLabel={displayBakeWindow || formatSgDate(nextSaturday)} />
+        <LandingSection brand={BRAND} batchDate={selectedBakeDate} batchLabel={displayBakeWindow} />
 
         <MenuSection
           menu={menu}
@@ -270,10 +283,11 @@ export default function BakesLandingPage() {
           onSelectItem={openMenuPreorder}
           onRetry={retryMenu}
           batchLabel={displayBakeWindow}
-          isNextWeek={selectedBatchKey !== nextSaturdayKey}
+          isNextWeek={Boolean(selectedBatchKey) && selectedBatchKey !== nextSaturdayKey}
           showFollowingBatch={Boolean(followingBatchKey) && isCurrentBatchSoldOut}
           followingBatchLabel={followingBatchKey ? formatSgDate(fromSingaporeDateKey(followingBatchKey)) : ""}
           onShowFollowingBatch={showFollowingBatch}
+          canOrderFollowingBatch={Boolean(followingBatchKey)}
         />
 
         <InstagramReelSection />

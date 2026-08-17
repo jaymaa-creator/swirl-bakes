@@ -15,6 +15,7 @@ export default function MenuSection({
   showFollowingBatch,
   followingBatchLabel,
   onShowFollowingBatch,
+  canOrderFollowingBatch,
 }) {
   const [activeFilter, setActiveFilter] = useState("All");
   const filters = useMemo(() => ["All", ...new Set(menu.map((item) => item.category))], [menu]);
@@ -232,7 +233,7 @@ export default function MenuSection({
                   ) : null}
                   <div className="mt-4 text-sm font-semibold text-ink">S${m.priceSgd} {m.unitLabel || "each"}</div>
                   <div className="mt-5 flex flex-wrap items-center gap-2">
-                    {quantityChoices.map((qty) => {
+                    {isAvailable ? quantityChoices.map((qty) => {
                       const isSelected = Number(form.items[m.id] || 0) === qty;
                       return (
                         <button
@@ -260,8 +261,17 @@ export default function MenuSection({
                           {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
                         </button>
                       );
-                    })}
+                    }) : null}
                   </div>
+                  {!isAvailable && canOrderFollowingBatch ? (
+                    <button
+                      type="button"
+                      onClick={onShowFollowingBatch}
+                      className="mt-5 rounded-full bg-brandBrown px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-px"
+                    >
+                      Order for {followingBatchLabel}
+                    </button>
+                  ) : null}
                   <div className="mt-4 text-xs text-inkMuted">{m.allergens}</div>
                 </div>
               </div>

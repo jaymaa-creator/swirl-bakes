@@ -2,6 +2,8 @@ const SPREADSHEET_ID = "12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A";
 const ORDERS_SHEET_NAME = "Orders";
 const MENU_SETTINGS_SHEET_NAME = "Products";
 const BAKE_CALENDAR_SHEET_NAME = "Calendar";
+const RECIPE_SHEET_NAME = "Recipe";
+const COSTS_SHEET_NAME = "Costs";
 const SECRET_PROPERTY = "ORDER_WEBHOOK_SECRET";
 const MENU_SNAPSHOT_URL_PROPERTY = "MENU_SNAPSHOT_URL";
 const MENU_SNAPSHOT_TEST_URL_PROPERTY = "MENU_SNAPSHOT_TEST_URL";
@@ -9,6 +11,8 @@ const DEFAULT_MENU_SNAPSHOT_TEST_URL = "https://test-swirl-girl.jaemcd95.workers
 const ORDER_SEQUENCE_PROPERTY = "ORDER_SEQUENCE";
 const MENU_CACHE_KEY = "live-menu-settings-v1";
 const MENU_CACHE_SECONDS = 300;
+const MENU_SYNC_DELAY_MS = 60 * 1000;
+const MENU_SYNC_TRIGGER_HANDLER = "publishQueuedMenuSnapshot";
 
 function doGet(event) {
   try {
@@ -151,7 +155,11 @@ function syncMenuSnapshot() {
 
 function installMenuSyncTrigger() {
   ScriptApp.getProjectTriggers()
-    .filter((trigger) => trigger.getHandlerFunction() === "onMenuSheetEdit")
+    .filter(
+      (trigger) =>
+        trigger.getHandlerFunction() === "onMenuSheetEdit" ||
+        trigger.getHandlerFunction() === MENU_SYNC_TRIGGER_HANDLER
+    )
     .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
 
   ScriptApp.newTrigger("onMenuSheetEdit")
@@ -165,14 +173,46 @@ function onMenuSheetEdit(event) {
   if (
     sheetName !== MENU_SETTINGS_SHEET_NAME &&
     sheetName !== ORDERS_SHEET_NAME &&
-    sheetName !== BAKE_CALENDAR_SHEET_NAME
+    sheetName !== BAKE_CALENDAR_SHEET_NAME &&
+    sheetName !== RECIPE_SHEET_NAME &&
+    sheetName !== COSTS_SHEET_NAME
   ) {
     return;
   }
 
   clearMenuCache();
-  console.log(`Menu snapshot sync triggered by an edit to ${sheetName}`);
-  publishMenuSnapshot();
+  queueMenuSnapshotSync(sheetName);
+}
+
+function queueMenuSnapshotSync(sheetName) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10 * 1000);
+
+  try {
+    const queued = ScriptApp.getProjectTriggers().some(
+      (trigger) => trigger.getHandlerFunction() === MENU_SYNC_TRIGGER_HANDLER
+    );
+
+    if (queued) {
+      console.log(`Menu snapshot already queued; bundled edit from ${sheetName}.`);
+      return;
+    }
+
+    ScriptApp.newTrigger(MENU_SYNC_TRIGGER_HANDLER)
+      .timeBased()
+      .after(MENU_SYNC_DELAY_MS)
+      .create();
+    console.log(`Menu snapshot queued from ${sheetName}; publishing in about 60 seconds.`);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function publishQueuedMenuSnapshot() {
+  console.log("Publishing queued menu snapshot after the 60-second edit window.");
+  const result = publishMenuSnapshot();
+  console.log(`Queued menu snapshot sync completed for ${result.currentBatch || "the current batch"}.`);
+  return result;
 }
 
 function publishMenuSnapshot() {
@@ -194,10 +234,15 @@ function publishMenuSnapshot() {
   console.log(
     `Publishing menu snapshot: current batch ${currentBatchKey}; calendar entries ${calendar.length}; snapshots ${batchKeys.join(", ")}`
   );
+  const productionSnapshots = buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, false);
+  const testSnapshots = buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, true);
+  logShoppingSnapshot("production", productionSnapshots[currentBatchKey]?.shopping);
+  logShoppingSnapshot("test", testSnapshots[currentBatchKey]?.shopping);
+
   const productionPayload = {
     secret,
     currentBatch: currentBatchKey,
-    snapshots: buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, false),
+    snapshots: productionSnapshots,
   };
   const productionResult = publishSnapshotToEndpoint(productionUrl, productionPayload, "production");
   const testResult = testUrl && testUrl !== productionUrl
@@ -206,7 +251,7 @@ function publishMenuSnapshot() {
         {
           secret,
           currentBatch: currentBatchKey,
-          snapshots: buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, true),
+          snapshots: testSnapshots,
         },
         "test"
       )
@@ -220,18 +265,50 @@ function publishMenuSnapshot() {
   };
 }
 
+function logShoppingSnapshot(environment, shopping) {
+  const itemCount = Array.isArray(shopping?.items) ? shopping.items.length : 0;
+  const warnings = Array.isArray(shopping?.warnings) ? shopping.warnings : [];
+  console.log(
+    `Stock snapshot ${environment}: ${itemCount} ingredient(s); ${warnings.length} warning(s)${warnings.length ? ` - ${warnings.join(" | ")}` : ""}`
+  );
+}
+
+function testShoppingSnapshot() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const calendar = readBakeCalendar(spreadsheet);
+  const batchDate = getMenuBatchDate("", spreadsheet, calendar);
+  const batchKey = formatBatchKey(batchDate);
+  const products = readMenuSettings(true, batchKey, spreadsheet, calendar, true);
+  const shopping = buildShoppingSnapshot(batchKey, spreadsheet, products);
+  console.log(JSON.stringify({ batchKey, products: products.map((product) => ({
+    id: product.id,
+    recipeName: product.recipeName,
+    recipeYield: product.recipeYield,
+    unitsPerSale: product.unitsPerSale,
+  })), shopping }));
+  return shopping;
+}
+
 function buildMenuSnapshots(batchKeys, currentBatchKey, calendar, spreadsheet, useTestAvailability) {
   return Object.fromEntries(
-    batchKeys.map((batchKey) => [
-      batchKey,
-      {
-        ok: true,
+    batchKeys.map((batchKey) => {
+      const products = readMenuSettings(true, batchKey, spreadsheet, calendar, useTestAvailability);
+      return [
         batchKey,
-        defaultBatch: currentBatchKey,
-        calendar,
-        products: readMenuSettings(true, batchKey, spreadsheet, calendar, useTestAvailability),
-      },
-    ])
+        {
+          ok: true,
+          batchKey,
+          defaultBatch: currentBatchKey,
+          calendar,
+          products,
+          // The stock page only needs the next active bake. Keeping its payload in the
+          // existing snapshot avoids a second Workers KV read for every phone visit.
+          shopping: batchKey === currentBatchKey
+            ? buildShoppingSnapshot(batchKey, spreadsheet, products)
+            : emptyShoppingSnapshot(batchKey),
+        },
+      ];
+    })
   );
 }
 
@@ -304,13 +381,15 @@ function readMenuPayload(forceRefresh, batchKey, useTestAvailability) {
   const calendar = readBakeCalendar(spreadsheet);
   const batchDate = getMenuBatchDate(batchKey, spreadsheet, calendar);
   const resolvedBatchKey = formatBatchKey(batchDate);
+  const products = readMenuSettings(forceRefresh, resolvedBatchKey, spreadsheet, calendar, useTestAvailability);
 
   return {
     ok: true,
     batchKey: resolvedBatchKey,
     defaultBatch: formatBatchKey(getMenuBatchDate("", spreadsheet, calendar)),
     calendar,
-    products: readMenuSettings(forceRefresh, resolvedBatchKey, spreadsheet, calendar, useTestAvailability),
+    products,
+    shopping: buildShoppingSnapshot(resolvedBatchKey, spreadsheet, products),
   };
 }
 
@@ -333,10 +412,18 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTest
   const values = sheet.getDataRange().getValues();
   const headers = values.shift().map((header) => normalizeHeader(header));
   const column = Object.fromEntries(headers.map((header, index) => [header, index]));
-  const productIds = values
-    .map((row) => String(row[column.product_id] || "").trim())
+  const productRows = values
+    .map((row) => {
+      const id = String(row[column.product_id] || "").trim();
+      if (!id) return null;
+
+      return {
+        id,
+        productName: String(row[column.product_name] || row[column.product] || productNameFromId(id)).trim(),
+      };
+    })
     .filter(Boolean);
-  const soldByProductId = getSoldQuantitiesForBatch(activeSpreadsheet, productIds, batchDate);
+  const soldByProductId = getSoldQuantitiesForBatch(activeSpreadsheet, productRows, batchDate);
 
   const products = values
     .map((row) => {
@@ -353,6 +440,7 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTest
 
       return {
         id,
+        productName: String(row[column.product_name] || row[column.product] || productNameFromId(id)).trim(),
         priceSgd: row[column.price_sgd],
         available,
         special: available && parseOptionalBoolean(row[column.special]),
@@ -363,6 +451,9 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTest
         description: row[column.description],
         allergens: row[column.allergens],
         imageUrl: row[column.image_url],
+        recipeName: String(row[column.recipe_name] || "").trim(),
+        recipeYield: row[column.recipe_yield],
+        unitsPerSale: row[column.units_per_sale],
       };
     })
     .filter(Boolean);
@@ -379,7 +470,7 @@ function clearMenuCache() {
   // CacheService has no prefix delete. New snapshots always force a fresh read.
 }
 
-function getSoldQuantitiesForBatch(spreadsheet, productIds, batchDate) {
+function getSoldQuantitiesForBatch(spreadsheet, products, batchDate) {
   const ordersSheet = spreadsheet.getSheetByName(ORDERS_SHEET_NAME);
   if (!ordersSheet || ordersSheet.getLastRow() < 2) {
     return {};
@@ -394,8 +485,12 @@ function getSoldQuantitiesForBatch(spreadsheet, productIds, batchDate) {
     if (isCancelledStatus(row[column.status])) return;
 
     const items = String(row[column.items] || "");
-    productIds.forEach((productId) => {
-      const quantity = getOrderedQuantity(items, productNamesFromId(productId));
+    products.forEach((product) => {
+      const productId = typeof product === "string" ? product : product.id;
+      const names = typeof product === "string"
+        ? productNamesFromId(productId)
+        : [...new Set([product.productName, ...productNamesFromId(productId)].filter(Boolean))];
+      const quantity = getOrderedQuantity(items, names);
       if (quantity > 0) {
         soldByProductId[productId] = (soldByProductId[productId] || 0) + quantity;
       }
@@ -403,6 +498,136 @@ function getSoldQuantitiesForBatch(spreadsheet, productIds, batchDate) {
   });
 
   return soldByProductId;
+}
+
+function emptyShoppingSnapshot(batchKey) {
+  return { batchKey, items: [], warnings: [], generatedAt: new Date().toISOString() };
+}
+
+function buildShoppingSnapshot(batchKey, spreadsheet, products) {
+  const recipeSheet = spreadsheet.getSheetByName(RECIPE_SHEET_NAME);
+  if (!recipeSheet || recipeSheet.getLastRow() < 2) {
+    return {
+      ...emptyShoppingSnapshot(batchKey),
+      warnings: ["Add recipe rows to the Recipe sheet to create the stock checklist."],
+    };
+  }
+
+  const batchDate = new Date(`${batchKey}T00:00:00+08:00`);
+  const soldByProductId = getSoldQuantitiesForBatch(spreadsheet, products, batchDate);
+  const recipes = readRecipeIngredients(recipeSheet);
+  const ingredientLocations = readIngredientLocations(spreadsheet.getSheetByName(COSTS_SHEET_NAME));
+  const totals = new Map();
+  const warnings = [];
+
+  products.forEach((product) => {
+    const sold = Number(soldByProductId[product.id] || 0);
+    if (sold <= 0) return;
+
+    const recipeKey = normalizeRecipeKey(product.recipeName);
+    const recipeIngredients = recipeKey ? recipes.get(recipeKey) : null;
+    const recipeYield = toFiniteNumber(product.recipeYield);
+    const unitsPerSale = toFiniteNumber(product.unitsPerSale);
+
+    if (!recipeIngredients || !recipeYield || !unitsPerSale) {
+      warnings.push(`Add recipe mapping for ${product.productName || product.id}.`);
+      return;
+    }
+
+    const scale = (sold * unitsPerSale) / recipeYield;
+    recipeIngredients.forEach((ingredient) => {
+      const key = `${normalizeHeader(ingredient.name)}:${normalizeHeader(ingredient.unit)}`;
+      const current = totals.get(key) || {
+        id: key,
+        name: ingredient.name,
+        unit: ingredient.unit,
+        location: ingredientLocations.get(normalizeHeader(ingredient.name)) || "Other ingredients",
+        quantity: 0,
+        forProducts: [],
+      };
+      current.quantity += ingredient.quantity * scale;
+      if (!current.forProducts.includes(product.productName || product.id)) {
+        current.forProducts.push(product.productName || product.id);
+      }
+      totals.set(key, current);
+    });
+  });
+
+  const items = [...totals.values()]
+    .map((item) => ({
+      ...item,
+      quantity: Math.round(item.quantity * 100) / 100,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return { batchKey, items, warnings, generatedAt: new Date().toISOString() };
+}
+
+function readRecipeIngredients(sheet) {
+  const values = sheet.getDataRange().getValues();
+  const headers = values.shift().map((header) => normalizeHeader(header));
+  const column = Object.fromEntries(headers.map((header, index) => [header, index]));
+  const recipeColumn = column.recipe;
+  const ingredientColumn = column.ingredient;
+  const amountColumn = column.amount ?? column.ammount ?? column.quantity;
+  const unitColumn = column.g_ml ?? column.unit ?? column.units;
+
+  if (recipeColumn === undefined || ingredientColumn === undefined || amountColumn === undefined) {
+    return new Map();
+  }
+
+  const recipes = new Map();
+  values.forEach((row) => {
+    const recipeKey = normalizeRecipeKey(row[recipeColumn]);
+    const name = String(row[ingredientColumn] || "").trim();
+    const quantity = toFiniteNumber(row[amountColumn]);
+    if (!recipeKey || !name || !quantity) return;
+
+    const ingredients = recipes.get(recipeKey) || [];
+    ingredients.push({
+      name,
+      quantity,
+      unit: String(unitColumn === undefined ? "" : row[unitColumn] || "").trim(),
+    });
+    recipes.set(recipeKey, ingredients);
+  });
+
+  return recipes;
+}
+
+function readIngredientLocations(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) return new Map();
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values.shift().map((header) => normalizeHeader(header));
+  const column = Object.fromEntries(headers.map((header, index) => [header, index]));
+  const ingredientColumn = column.cost_tracker ?? column.ingredient ?? column.ingredients;
+  const locationColumn = column.location ?? column.storage_location;
+
+  if (ingredientColumn === undefined || locationColumn === undefined) return new Map();
+
+  const locations = new Map();
+  values.forEach((row) => {
+    const ingredient = normalizeHeader(row[ingredientColumn]);
+    const location = String(row[locationColumn] || "").trim();
+    if (ingredient && location) locations.set(ingredient, location);
+  });
+  return locations;
+}
+
+function normalizeRecipeKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/cinnamon/g, "cinamon")
+    .replace(/\b\d+\s*x?\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function toFiniteNumber(value) {
+  const match = String(value ?? "").replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  const number = match ? Number(match[0]) : NaN;
+  return Number.isFinite(number) && number > 0 ? number : null;
 }
 
 function readBakeCalendar(spreadsheet) {

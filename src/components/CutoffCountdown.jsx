@@ -24,12 +24,26 @@ function TimeUnit({ value, label }) {
 
 export default function CutoffCountdown({ batchDate, batchLabel }) {
   const [now, setNow] = useState(() => new Date());
-  const remaining = getTimeRemaining(now, batchDate);
+  const hasBatch = Boolean(batchDate && batchLabel);
+  const remaining = hasBatch ? getTimeRemaining(now, batchDate) : null;
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+
+  if (!hasBatch) {
+    return (
+      <div className="cutoff-timer mt-5" aria-live="polite">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">Next available bake</div>
+          <div className="cutoff-timer__description mt-1 text-sm font-medium text-white sm:text-base">
+            Loading current availability...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cutoff-timer mt-5" aria-live="polite">

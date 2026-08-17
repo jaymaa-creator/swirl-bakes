@@ -47,12 +47,13 @@ function productNameFromId(productId) {
 
 function fallbackProduct(productId, productSettings) {
   const isLoaf = /bread|sourdough|loaf/i.test(productId);
+  const isSourdough = String(productId).trim().toLowerCase() === "sourdough";
   const name = productNameFromId(productId);
 
   return {
     id: productId,
     name,
-    category: "Weekly bakes",
+    category: isSourdough ? "Staples" : "Weekly bakes",
     unitLabel: isLoaf ? "per loaf" : "each",
     quantityLabel: isLoaf ? "loaf" : "item",
     quantityLabelPlural: isLoaf ? "loaves" : "items",
@@ -117,15 +118,16 @@ export function mergeMenuSettings(baseMenu, settings) {
   });
 
   settingsById.forEach((productSettings, productId) => {
-    const isConfiguredForSale =
-      productSettings.available &&
+    // Availability decides whether customers can order this batch, not whether
+    // a fully configured product is visible. This keeps sold-out bakes visible
+    // with their sold-out treatment instead of making them appear to vanish.
+    const isConfiguredForMenu =
       productSettings.priceSgd !== null &&
       productSettings.batchLimit !== null &&
       productSettings.remainingQuantity !== null;
 
     // Sheet-only products stay private until their stock configuration is complete.
-    // Once published, they remain visible as sold out when the batch reaches zero.
-    if (baseIds.has(productId) || !isConfiguredForSale) return;
+    if (baseIds.has(productId) || !isConfiguredForMenu) return;
 
     const item = fallbackProduct(productId, productSettings);
     const customerMaxQuantity = productSettings.maxQuantity || DEFAULT_MAX_QUANTITY;
@@ -134,10 +136,12 @@ export function mergeMenuSettings(baseMenu, settings) {
         ? customerMaxQuantity
         : Math.min(customerMaxQuantity, productSettings.remainingQuantity);
 
+    const isAvailable = productSettings.available && effectiveMaxQuantity > 0;
+
     menu.push({
       ...item,
-      available: effectiveMaxQuantity > 0,
-      special: Boolean(productSettings.special) && effectiveMaxQuantity > 0,
+      available: isAvailable,
+      special: Boolean(productSettings.special) && isAvailable,
       batchLimit: productSettings.batchLimit,
       priceSgd: productSettings.priceSgd,
       remainingQuantity: productSettings.remainingQuantity,

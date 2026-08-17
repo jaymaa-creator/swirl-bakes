@@ -10,14 +10,18 @@ export default function useMenuSettings(baseMenu, batchKey) {
   useEffect(() => {
     let isMounted = true;
     let retryTimer;
+    let controller;
     let attempts = 0;
 
+    setStatus("loading");
+
     async function loadMenuSettings() {
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 8_000);
+      controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 4_000);
+      const query = batchKey ? `?batch=${encodeURIComponent(batchKey)}` : "";
 
       try {
-        const response = await fetch(`/api/menu?batch=${encodeURIComponent(batchKey)}`, {
+        const response = await fetch(`/api/menu${query}`, {
           headers: { Accept: "application/json" },
           cache: "no-store",
           signal: controller.signal,
@@ -41,7 +45,7 @@ export default function useMenuSettings(baseMenu, batchKey) {
         if (isMounted) {
           if (attempts < 1) {
             attempts += 1;
-            retryTimer = window.setTimeout(loadMenuSettings, attempts * 2_000);
+            retryTimer = window.setTimeout(loadMenuSettings, 500);
             return;
           }
           setMenu(mergeMenuSettings(baseMenu));
@@ -56,6 +60,7 @@ export default function useMenuSettings(baseMenu, batchKey) {
 
     return () => {
       isMounted = false;
+      controller?.abort();
       window.clearTimeout(retryTimer);
     };
   }, [baseMenu, batchKey, reloadKey]);

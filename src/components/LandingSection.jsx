@@ -52,9 +52,15 @@ export default function LandingSection({ brand, batchDate, batchLabel }) {
                 {brand.tagline}
               </h1>
               <p className="mt-3 max-w-2xl text-[0.88rem] leading-relaxed text-white/95 sm:mt-4 sm:text-[1.12rem]">
-                Treats baked fresh for {batchLabel}.
-                <br />
-                Pre-order by Thursday 10pm.
+                {batchLabel ? (
+                  <>
+                    Treats baked fresh for {batchLabel}.
+                    <br />
+                    Pre-order by Thursday 10pm.
+                  </>
+                ) : (
+                  "Checking the next available bake..."
+                )}
               </p>
               <CutoffCountdown batchDate={batchDate} batchLabel={batchLabel} />
               <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-white/90 sm:text-sm">
