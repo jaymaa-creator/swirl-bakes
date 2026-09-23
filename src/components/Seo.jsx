@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { priceOffer, productOffer } from "../lib/seoStructuredData";
 
 function upsertMeta(selector, attributes) {
   let node = document.head.querySelector(selector);
@@ -10,18 +11,6 @@ function upsertMeta(selector, attributes) {
   Object.entries(attributes).forEach(([key, value]) => {
     node.setAttribute(key, value);
   });
-}
-
-function priceOffer(item) {
-  if (typeof item.priceSgd !== "number" || !Number.isFinite(item.priceSgd) || item.priceSgd <= 0) {
-    return undefined;
-  }
-
-  return {
-    "@type": "Offer",
-    priceCurrency: "SGD",
-    price: item.priceSgd,
-  };
 }
 
 export default function Seo({ brand, menu, faq }) {
@@ -112,15 +101,8 @@ export default function Seo({ brand, menu, faq }) {
         })),
       },
       makesOffer: menu
-        .filter((item) => priceOffer(item))
-        .map((item) => ({
-          ...priceOffer(item),
-          itemOffered: {
-            "@type": "Product",
-            name: item.name,
-            description: item.note,
-          },
-        })),
+        .map(productOffer)
+        .filter(Boolean),
       faq: faq.map((item) => ({
         "@type": "Question",
         name: item.q,
