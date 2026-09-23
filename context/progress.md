@@ -6,6 +6,19 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Google Search Console onboarding and Product structured-data repair completed
+  (2026-09-23). The `swirlgirl.sg` domain property is verified by Cloudflare
+  DNS, `https://swirlgirl.sg/sitemap.xml` is submitted, and Google live tests
+  can fetch both the sitemap and homepage. The live homepage is indexable and
+  its four priced products now pass Product snippet validation using their real
+  SGD offers; no prices, reviews, or policies were invented. Merchant listing
+  policy warnings remain non-blocking. PR #7 merged as
+  `21aba9bed59f9c895033bec2ce64c822fd486c8c`; release run `35854371227`
+  passed prepare, test deployment, production approval, and both smoke checks.
+  Production Worker version is `5e8c31c1-1760-456c-a672-b94f4e01d171`.
+  Search Console accepted the homepage into its priority crawl queue. Indexing
+  timing and final inclusion remain Google's decision.
+
 - Order idempotency and authoritative validation deployed to production
   (2026-09-22). Browser submissions now carry structured line items and one
   UUID; Apps Script stores `Request ID` and `Request Fingerprint`, returns the
@@ -31,15 +44,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Google Search Console onboarding and structured-data repair (2026-09-23):
-  domain ownership is verified, the sitemap is submitted, and Google's live
-  tests can fetch both the sitemap and homepage. The homepage is indexable, but
-  the deployed page has four priced menu products failing Product rich-result
-  validation because their offers are attached only to the Bakery rather than
-  each Product. The local fix now nests each real SGD offer under its Product;
-  81 tests, lint, production build, and diff checks pass. Release and a fresh
-  Google live test remain pending.
 
 - Guarded release automation (2026-09-23): local implementation now includes
   PR/main CI, exact-commit test and production workflows, immutable/checksummed
