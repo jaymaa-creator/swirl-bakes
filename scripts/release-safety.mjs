@@ -32,3 +32,7 @@ export function parseExpectedStatuses(value) {
   if (!statuses.length) throw new Error("At least one expected order status is required.");
   return statuses;
 }
+
+export function isRetryableSmokeStatus(status) {
+  return status === 403 || status === 408 || status === 425 || status === 429 || status >= 500;
+}

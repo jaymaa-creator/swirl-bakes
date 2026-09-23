@@ -36,7 +36,7 @@ Architecture baseline and payment discovery.
   PR/main CI, exact-commit test and production workflows, immutable/checksummed
   build artifacts, GitHub environment approval gates, post-deploy smoke checks,
   deployment evidence, an exact-version rollback workflow, and a clean-tree
-  local production guard. 77 tests, lint, production build, diff checks, YAML
+  local production guard. 78 tests, lint, production build, diff checks, YAML
   parsing, checksum-verified `actionlint`, and live non-writing smoke checks on
   both production and test pass. The local guard also refused missing
   confirmation and the current dirty tree as designed. Commit `4d7fb25` is on
@@ -56,7 +56,12 @@ Architecture baseline and payment discovery.
   `b36fe167-2407-4222-a6fb-1102d580a196`; the production job was skipped. Live
   follow-up smoke checks passed on test (homepage 200, eight menu products,
   invalid order 403) and production (homepage 200, eight menu products, invalid
-  order 400).
+  order 400). Controlled production rehearsal run `35840585138` deployed the
+  same artifact as deployment `fc4b1209-bab4-4722-93ae-8943f5a098bf` / Worker
+  version `7ee780d4-422c-48db-8015-ac4b3e0978ce`; its immediate GitHub-runner
+  smoke check received one HTTP 403, although independent live checks passed.
+  The smoke client now retries transient 403, 408, 425, 429, and 5xx responses;
+  a corrected rehearsal remains pending.
 
 - Production email monitoring for `jaemcd95@gmail.com`: implementation deployed
   as Apps Script version 30 and Worker
