@@ -39,11 +39,17 @@ Architecture baseline and payment discovery.
   local production guard. 77 tests, lint, production build, diff checks, YAML
   parsing, checksum-verified `actionlint`, and live non-writing smoke checks on
   both production and test pass. The local guard also refused missing
-  confirmation and the current dirty tree as designed. Activation is pending a
-  clean commit/push plus GitHub
-  `test`/`production` environment secrets and a required production reviewer;
-  the current GitHub CLI login is invalid, so none of those remote controls are
-  claimed active yet.
+  confirmation and the current dirty tree as designed. Commit `4f8c143` is on
+  `main`; CI passed. GitHub `test` and `production` environments exist,
+  production requires `jaymaa-creator` approval and only accepts `main`, and
+  protected `main` requires a pull request plus the `verify` check. Cloudflare's
+  legacy Git integration was disconnected after it auto-deployed that commit as
+  Worker version `615d4acf-f572-400b-bf8f-d1e0d95e8d7a`; production remained
+  healthy afterward (homepage 200, eight menu products, invalid order 400).
+  A non-expiring account API token is limited to Individual Workers Editor for
+  `swirl-girl` and `test-swirl-girl`; `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID` are stored in both GitHub environments. Activation is
+  pending an end-to-end test release.
 
 - Production email monitoring for `jaemcd95@gmail.com`: implementation deployed
   as Apps Script version 30 and Worker
