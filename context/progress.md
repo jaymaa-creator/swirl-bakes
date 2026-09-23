@@ -74,10 +74,10 @@ Architecture baseline and payment discovery.
   live-menu-versus-Sheet checks, oversell detection, durable Worker failure
   events, deduplicated alerts, and recovery notifications. 74 tests, lint,
   build, and diff checks pass; live menu is healthy and `/api/monitor` rejects
-  unauthenticated access. Scheduling is pending one manual authorization run of
-  `setupProductionMonitoring` in the Apps Script editor because the project has
-  no API-executable deployment (`clasp run` returned `NOT_FOUND`). No test alert
-  email has been confirmed yet.
+  unauthenticated access. `setupProductionMonitoring` was manually authorized
+  on 2026-09-23; its confirmation email reached `jaemcd95@gmail.com`, reports a
+  15-minute schedule, and recorded the initial result as healthy. A deliberately
+  induced failure/recovery alert has not been live-tested.
 
 - Coffee queue now uses dedicated side-profile phone users, all facing the
   shop, in one line. All 18 have phones; skin palette retained. Lint/build pass,
