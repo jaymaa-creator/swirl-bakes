@@ -1,4 +1,4 @@
-import { parseExpectedStatuses } from "./release-safety.mjs";
+import { isRetryableSmokeStatus, parseExpectedStatuses } from "./release-safety.mjs";
 
 const [baseUrlInput, expectedStatusInput] = process.argv.slice(2);
 const baseUrl = new URL(baseUrlInput || "");
@@ -14,7 +14,12 @@ async function request(path, init = {}, attempts = 1) {
         signal: AbortSignal.timeout(timeoutMs),
         headers: { "User-Agent": "swirl-girl-release-smoke/1", ...init.headers },
       });
-      if (response.status >= 500 && attempt < attempts) throw new Error(`HTTP ${response.status}`);
+      if (isRetryableSmokeStatus(response.status) && attempt < attempts) {
+        console.warn(`Smoke request ${path} returned HTTP ${response.status}; retrying.`);
+        await response.body?.cancel();
+        await new Promise((resolve) => setTimeout(resolve, 2_000 * attempt));
+        continue;
+      }
       return response;
     } catch (error) {
       lastError = error;
