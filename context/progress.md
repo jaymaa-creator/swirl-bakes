@@ -32,6 +32,15 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Google Search Console onboarding and structured-data repair (2026-09-23):
+  domain ownership is verified, the sitemap is submitted, and Google's live
+  tests can fetch both the sitemap and homepage. The homepage is indexable, but
+  the deployed page has four priced menu products failing Product rich-result
+  validation because their offers are attached only to the Bakery rather than
+  each Product. The local fix now nests each real SGD offer under its Product;
+  81 tests, lint, production build, and diff checks pass. Release and a fresh
+  Google live test remain pending.
+
 - Guarded release automation (2026-09-23): local implementation now includes
   PR/main CI, exact-commit test and production workflows, immutable/checksummed
   build artifacts, GitHub environment approval gates, post-deploy smoke checks,
