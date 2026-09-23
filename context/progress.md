@@ -11,13 +11,24 @@ Architecture baseline and payment discovery.
   DNS, `https://swirlgirl.sg/sitemap.xml` is submitted, and Google live tests
   can fetch both the sitemap and homepage. The live homepage is indexable and
   its four priced products now pass Product snippet validation using their real
-  SGD offers; no prices, reviews, or policies were invented. Merchant listing
-  policy warnings remain non-blocking. PR #7 merged as
+  SGD offers; no prices, reviews, or policies were invented. PR #7 merged as
   `21aba9bed59f9c895033bec2ce64c822fd486c8c`; release run `35854371227`
   passed prepare, test deployment, production approval, and both smoke checks.
   Production Worker version is `5e8c31c1-1760-456c-a672-b94f4e01d171`.
   Search Console accepted the homepage into its priority crawl queue. Indexing
   timing and final inclusion remain Google's decision.
+
+- Merchant listing product-image repair completed (2026-09-23). PR #9 merged
+  as `be67b4e644d83d0a312eb78c1783759318c14cdc`; each priced Product now uses
+  its existing storefront photo as an absolute URL, and products without both
+  a valid live price and usable image are omitted from rich-result markup.
+  Release run `35858097426` passed prepare, test deployment, production
+  approval, and both smoke checks. Production Worker version is
+  `6b69958c-2b64-47e9-9c92-307b35494fda`. Google's post-deployment live test
+  reports the URL available with all relevant enhancements, four valid Product
+  snippets, and four valid Merchant listings. Remaining notices are
+  non-critical optional fields; no identifiers, shipping terms, availability,
+  or return policy were invented.
 
 - Order idempotency and authoritative validation deployed to production
   (2026-09-22). Browser submissions now carry structured line items and one
@@ -44,14 +55,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Merchant listing image repair (2026-09-23): Google's post-release live test
-  confirms four valid Product snippets, but Merchant listings still reject the
-  same items because their existing storefront photos are not included in the
-  Product JSON-LD. A focused fix is adding each real product image as an
-  absolute URL while omitting any Product that lacks both a valid live price
-  and usable image. Optional identifiers, shipping, availability, and return
-  policy fields will not be invented.
 
 - Guarded release automation (2026-09-23): local implementation now includes
   PR/main CI, exact-commit test and production workflows, immutable/checksummed
