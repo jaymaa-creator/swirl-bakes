@@ -61,7 +61,12 @@ Architecture baseline and payment discovery.
   version `7ee780d4-422c-48db-8015-ac4b3e0978ce`; its immediate GitHub-runner
   smoke check received one HTTP 403, although independent live checks passed.
   The smoke client now retries transient 403, 408, 425, 429, and 5xx responses;
-  a corrected rehearsal remains pending.
+  corrected production rehearsal run `35841919055` then passed end to end for
+  exact commit `15163543dae9a1cb3a7a8e49e217a2b542c9fa92` and Apps Script
+  version 30. It produced production deployment
+  `e24c93c1-92b1-4258-b938-d056cce14641` / Worker version
+  `625d0e44-cd5c-4805-85fa-5e4809859ad0`; both workflow and independent live
+  smoke checks passed (homepage 200, eight menu products, invalid order 400).
 
 - Production email monitoring for `jaemcd95@gmail.com`: implementation deployed
   as Apps Script version 30 and Worker
