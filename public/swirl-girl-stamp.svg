@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Swirl Girl spiral stamp</title>
+  <desc id="desc">A chocolate-brown spiral stamp mark with cream Swirl Girl lettering.</desc>
+
+  <rect width="1000" height="1000" fill="#ffffff"/>
+
+  <defs>
+    <path id="outer-spiral" d="M 875 500
+      C 875 292 708 125 500 125
+      C 292 125 125 292 125 500
+      C 125 708 292 875 500 875
+      C 708 875 833 750 833 583
+      C 833 416 708 292 541 292
+      C 374 292 250 416 250 583
+      C 250 750 374 833 500 833
+      C 625 833 708 750 708 625
+      C 708 500 625 416 500 416
+      C 375 416 333 500 333 583
+      C 333 666 375 708 458 708
+      C 541 708 583 666 583 583
+      C 583 541 541 500 500 500"/>
+
+    <path id="label-arc" d="M 125 500 A 375 375 0 0 1 875 500"/>
+  </defs>
+
+  <g fill="none" stroke-linecap="round">
+    <!-- The broad light-brown ribbon gives the mark its cinnamon-roll shape. -->
+    <use href="#outer-spiral" stroke="#d9a46f" stroke-width="76"/>
+    <!-- The dark centre line represents the cinnamon filling. -->
+    <use href="#outer-spiral" stroke="#57351f" stroke-width="42"/>
+    <use href="#outer-spiral" stroke="#8a5a35" stroke-width="3"/>
+  </g>
+
+  <g fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-weight="700" letter-spacing="3" text-anchor="middle">
+    <text dy="18" font-size="38">
+      <textPath xlink:href="#label-arc" startOffset="50%">SWIRL GIRL</textPath>
+    </text>
+  </g>
+
+  <circle cx="500" cy="500" r="18" fill="#ffffff"/>
+</svg>

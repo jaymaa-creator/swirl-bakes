@@ -1,0 +1,63 @@
+name: Roll back Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment environment
+        required: true
+        type: choice
+        options: [test, production]
+      version_id:
+        description: Exact Cloudflare Worker version UUID from release evidence
+        required: true
+        type: string
+      confirmation:
+        description: Type ROLLBACK test-swirl-girl or ROLLBACK swirl-girl
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: ${{ inputs.target }}
+    concurrency:
+      group: deploy-${{ inputs.target }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify exact rollback request
+        env:
+          TARGET: ${{ inputs.target }}
+          VERSION_ID: ${{ inputs.version_id }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          [[ "$VERSION_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "Invalid Worker version UUID"; exit 1; }
+          worker=swirl-girl
+          [[ "$TARGET" == "test" ]] && worker=test-swirl-girl
+          [[ "$CONFIRMATION" == "ROLLBACK $worker" ]] || { echo "Confirmation did not match $worker"; exit 1; }
+      - name: Roll back exact Worker version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          config=wrangler.jsonc
+          [[ "${{ inputs.target }}" == "test" ]] && config=wrangler.test.jsonc
+          npx wrangler rollback "${{ inputs.version_id }}" --config "$config" --yes --message "GitHub rollback run ${{ github.run_id }}"
+      - name: Smoke-check restored target
+        run: |
+          if [[ "${{ inputs.target }}" == "production" ]]; then
+            npm run smoke:production
+          else
+            npm run smoke:test
+          fi

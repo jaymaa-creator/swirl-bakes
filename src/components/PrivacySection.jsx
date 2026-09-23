@@ -1,40 +1,27 @@
-import Card from "./ui/Card";
-
 export default function PrivacySection({ brand }) {
   return (
-    <section id="privacy" className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
-      <Card>
-        <div className="p-6 sm:p-8" data-reveal="up">
-          <div className="text-xs uppercase tracking-[0.22em] text-inkMuted">Privacy</div>
-          <h2 className="mt-3 text-3xl text-ink sm:text-4xl">How we use order details.</h2>
+    <section id="privacy" className="mx-auto max-w-6xl px-4">
+      <details className="group rounded-[24px] border border-line bg-surface shadow-soft">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 text-xl font-semibold text-ink marker:content-none sm:px-7">
+          <span>Privacy</span><span className="text-2xl font-normal text-brandBrown transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+        </summary>
+        <div className="border-t border-line p-6 sm:p-8">
           <div className="mt-5 grid gap-5 text-sm leading-7 text-inkMuted sm:grid-cols-2">
             <div>
-              <div className="font-semibold text-ink">What we collect</div>
+              <div className="font-semibold text-ink">What we keep</div>
               <p className="mt-2">
-                We collect your name, WhatsApp number, order details, and collection or delivery information to manage your reservation.
+                Your name, WhatsApp number, order details, and collection or delivery information.
               </p>
             </div>
             <div>
               <div className="font-semibold text-ink">How we use it</div>
               <p className="mt-2">
-                Your details are used only to confirm, prepare, and fulfil your order, including arranging a courier where requested. We do not sell personal data.
-              </p>
-            </div>
-            <div>
-              <div className="font-semibold text-ink">Where it goes</div>
-              <p className="mt-2">
-                Order requests are handled through Cloudflare and Google Sheets, with WhatsApp used for confirmation. Delivery details are shared only with the selected courier when needed.
-              </p>
-            </div>
-            <div>
-              <div className="font-semibold text-ink">Keeping it safe</div>
-              <p className="mt-2">
-                We keep order records only as long as needed for fulfilment, customer support, and legal or accounting requirements. Do not include card details, NRIC details, or unnecessary sensitive information in your notes.
+                To confirm, prepare, and fulfil your order. We do not sell personal data.
               </p>
             </div>
           </div>
           <p className="mt-6 text-xs leading-6 text-inkMuted">
-            For questions about your order data, contact {brand.name} via{" "}
+            Orders are handled through Cloudflare, WhatsApp, and Google Sheets. Please do not include card details, NRIC details, or other sensitive information in your notes. For questions about your order data, contact {brand.name} via{" "}
             <a
               href={brand.instagramUrl}
               target="_blank"
@@ -46,7 +33,7 @@ export default function PrivacySection({ brand }) {
             .
           </p>
         </div>
-      </Card>
+      </details>
     </section>
   );
 }

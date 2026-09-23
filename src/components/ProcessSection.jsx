@@ -28,7 +28,10 @@ function StepIcon({ kind }) {
   );
 }
 
-export default function ProcessSection({ brand, brandColors, deliveryOptions }) {
+export default function ProcessSection({ brand, brandColors }) {
+  const deliveryMinimum = `S$${brand.deliveryMinimumSgd}`;
+  const deliveryFee = `S$${brand.deliveryFeeSgd}`;
+
   return (
     <section
       id="how"
@@ -54,9 +57,6 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
       <div className="relative max-w-3xl" data-reveal="left">
         <div className="text-xs tracking-[0.2em] uppercase text-inkMuted">Process</div>
         <h2 className="mt-2 text-3xl text-ink sm:text-4xl">How Saturday batches work</h2>
-        <p className="mt-3 text-inkMuted leading-relaxed">
-          Pre-order first, then collect or arrange delivery on Saturday.
-        </p>
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -64,20 +64,20 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
           {
             step: "1",
             icon: "calendar",
-            title: "Pick your baked treat of choice",
-            body: "Choose from this week's freshly baked menu.",
+            title: "Choose your bakes",
+            body: "Pick from the current menu.",
           },
           {
             step: "2",
             icon: "payment",
-            title: "Send your order",
-            body: "Your order message is prefilled and sent via WhatsApp. Payment is then made via PayNow.",
+            title: "Review and reserve",
+            body: "Check your order details, then reserve via WhatsApp. PayNow details follow confirmation.",
           },
           {
             step: "3",
             icon: "delivery",
             title: "Collect or deliver",
-            body: "Pickup is in Joo Chiat. Delivery is available from S$50 of bakes, with a flat S$8 fee.",
+            body: `Pickup is in Joo Chiat. Delivery is available from ${deliveryMinimum} with a flat ${deliveryFee} fee.`,
           },
         ].map((s) => (
           <div
@@ -114,34 +114,22 @@ export default function ProcessSection({ brand, brandColors, deliveryOptions }) 
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <div className="p-5" data-reveal="left">
-            <div className="text-sm font-semibold">Delivery options</div>
-            <ul className="mt-3 space-y-2 text-sm text-inkMuted">
-              {deliveryOptions.map((d) => (
-                <li key={d} className="flex gap-2">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-[#C47A3A]" />
-                  <span>{d}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 text-xs text-inkMuted">
-              Delivery is available for orders of S$50 or more, with a flat S$8 fee.
+      <div className="mt-6 rounded-3xl border border-line/70 bg-surface p-5 shadow-card" data-reveal="up">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+          <div>
+            <div className="text-sm font-semibold text-ink">Delivery and pickup</div>
+            <div className="mt-2 text-sm leading-6 text-inkMuted">
+              Delivery is available from {deliveryMinimum} with a flat {deliveryFee} fee. Pickup details are confirmed after your order is accepted.
             </div>
           </div>
-        </Card>
-        <Card>
-          <div className="p-5" data-reveal="right">
-            <div className="text-sm font-semibold">Pickup and cut-off guidance</div>
-            <div className="mt-3 text-sm text-inkMuted leading-relaxed">
-              Pre-orders close at {brand.orderCutoffLabel}. Pickup details are confirmed after your order is accepted.
-            </div>
-            <div className="mt-4 rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
-              {brand.collectionNote}
+          <div className="hidden h-10 w-px bg-line/80 lg:block" aria-hidden="true" />
+          <div>
+            <div className="text-sm font-semibold text-ink">Good to know</div>
+            <div className="mt-2 text-sm leading-6 text-inkMuted">
+              Pre-orders close at {brand.orderCutoffLabel}.
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </section>
   );

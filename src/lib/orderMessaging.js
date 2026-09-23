@@ -1,3 +1,5 @@
+import { BANANA_CHOCOLATE_CHIPS_PRICE_SGD } from "./pricing.js";
+
 export function buildWhatsAppLink(numberE164, message) {
   const digits = numberE164.replace(/\D/g, "");
   const text = encodeURIComponent(message);
@@ -34,6 +36,14 @@ export function buildOrderMessage({
       lines.push(`- ${m.name}${description} x${qty}`);
     }
   });
+  const bananaQuantity = Number(form.items?.["banana-bread"] || 0);
+  if (form.bananaChocolateChips && bananaQuantity > 0) {
+    lines.push(
+      `- Chocolate chips for Banana Cake x${bananaQuantity} (+${moneyFormatter(
+        bananaQuantity * BANANA_CHOCOLATE_CHIPS_PRICE_SGD
+      )})`
+    );
+  }
   lines.push(`Items subtotal: ${moneyFormatter(itemsTotal)}`);
   if (deliveryFee > 0) lines.push(`Delivery fee: ${moneyFormatter(deliveryFee)}`);
   lines.push(`Estimated total: ${moneyFormatter(estimatedTotal)}`);

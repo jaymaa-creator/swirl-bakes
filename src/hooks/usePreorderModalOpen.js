@@ -1,35 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-
 export default function usePreorderModalOpen(setForm, setModalOpen) {
-  const [isOpeningModal, setIsOpeningModal] = useState(false);
-  const [openingTriggerId, setOpeningTriggerId] = useState(null);
-  const openingTimeoutRef = useRef(null);
-
-  const handleOpenPreorder = (optionalBakeDate, triggerId) => {
-    if (isOpeningModal) return;
-
+  const handleOpenPreorder = (optionalBakeDate) => {
     if (optionalBakeDate) {
-      setForm((f) => ({ ...f, bakeWindow: optionalBakeDate }));
+      setForm((form) => ({ ...form, bakeWindow: optionalBakeDate }));
     }
-
-    setOpeningTriggerId(triggerId || null);
-    setIsOpeningModal(true);
-
-    openingTimeoutRef.current = window.setTimeout(() => {
-      setModalOpen(true);
-      setIsOpeningModal(false);
-      setOpeningTriggerId(null);
-    }, 1000);
+    setModalOpen(true);
   };
 
-  useEffect(
-    () => () => {
-      if (openingTimeoutRef.current) {
-        window.clearTimeout(openingTimeoutRef.current);
-      }
-    },
-    []
-  );
-
-  return { isOpeningModal, openingTriggerId, handleOpenPreorder };
+  return { isOpeningModal: false, openingTriggerId: null, handleOpenPreorder };
 }

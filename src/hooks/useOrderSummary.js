@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { buildOrderMessage, buildWhatsAppLink } from "../lib/orderMessaging";
-import { calculateLineTotalSgd, money } from "../lib/pricing";
+import { calculateAddOnTotalSgd, calculateLineTotalSgd, money } from "../lib/pricing";
 
 export default function useOrderSummary({
   form,
@@ -21,10 +21,12 @@ export default function useOrderSummary({
     [form.items, menu]
   );
 
-  const itemsTotal = useMemo(
+  const productsTotal = useMemo(
     () => Object.values(lineTotals).reduce((sum, lineTotal) => sum + Number(lineTotal || 0), 0),
     [lineTotals]
   );
+  const addOnTotal = calculateAddOnTotalSgd(form);
+  const itemsTotal = productsTotal + addOnTotal;
   const isDelivery = form.delivery.toLowerCase().includes("delivery");
   const isDeliveryEligible = itemsTotal >= deliveryMinimumSgd;
   const deliveryFee = isDelivery && isDeliveryEligible ? deliveryFeeSgd : 0;
@@ -56,6 +58,7 @@ export default function useOrderSummary({
 
   return {
     itemsTotal,
+    addOnTotal,
     deliveryFee,
     estimatedTotal,
     isDeliveryEligible,

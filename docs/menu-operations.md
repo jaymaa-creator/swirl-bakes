@@ -82,6 +82,30 @@ The project also has an installed `onMenuSheetEdit` trigger. It automatically re
 
 Website orders refresh the snapshot after the order is written to the `Orders` tab. A failed refresh never rejects a successfully saved order; run `syncMenuSnapshot` if needed.
 
+## Production Monitoring
+
+Run `setupProductionMonitoring` once from the Apps Script editor and approve
+the requested permissions. It creates one 15-minute trigger and sends a setup
+confirmation to `jaemcd95@gmail.com`.
+
+The scheduled check verifies:
+
+- the production homepage responds;
+- the live batch, calendar, products, prices, availability, and stock match the
+  current Google Sheet;
+- sold quantities have not exceeded configured batch limits;
+- the authenticated Worker monitoring endpoint responds; and
+- new Worker failures, including failed order relays and failed post-order menu
+  refreshes, are reported.
+
+Identical failures are suppressed instead of sending an email every 15 minutes.
+A continuing homepage or menu incident sends another email only if its failure
+details change, followed by a recovery email when all checks pass again. Alerts
+do not contain customer contact details, addresses, notes, or order contents.
+
+Running `setupProductionMonitoring` again safely replaces the existing monitor
+trigger instead of creating a duplicate.
+
 ## Setup Values
 
 Google Apps Script **Script Properties** must contain:

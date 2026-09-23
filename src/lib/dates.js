@@ -95,9 +95,8 @@ export function getOrderWindowStartForSaturday(satDate) {
 }
 
 export function isSaturdayOpen(satDate, now = new Date()) {
-  const opensAt = getOrderWindowStartForSaturday(satDate);
   const cutoff = getCutoffForSaturday(satDate);
-  return now >= opensAt && now < cutoff;
+  return now < cutoff;
 }
 
 export function getNearestOpenSaturday(now = new Date()) {

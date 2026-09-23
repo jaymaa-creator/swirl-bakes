@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "test-swirl-girl",
+  "main": "./src/worker.js",
+  "compatibility_date": "2026-07-26",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MENU_SNAPSHOT",
+      "id": "dd1d03c666db445299adbf64c0cc4630"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "PAYMENT_ORDERS",
+      "database_name": "swirl-girl-payment-test",
+      "database_id": "abf7bc8e-08dc-4eac-850d-2ce3af083931"
+    }
+  ]
+}

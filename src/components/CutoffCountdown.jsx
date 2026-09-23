@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCutoffForSaturday } from "../lib/dates";
+import { formatSgDate, getCutoffForSaturday } from "../lib/dates";
 
 function getTimeRemaining(now, batchDate) {
   const cutoff = getCutoffForSaturday(batchDate);
@@ -50,7 +50,7 @@ export default function CutoffCountdown({ batchDate, batchLabel }) {
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">Thursday cut-off</div>
         <div className="cutoff-timer__description mt-1 text-sm font-medium text-white sm:text-base">
-          Reserve by 10pm SGT for the {batchLabel} batch.
+          Closes {formatSgDate(getCutoffForSaturday(batchDate))}, 10pm SGT.
         </div>
       </div>
       <div className="flex shrink-0 gap-2" aria-label={`${remaining.days} days, ${remaining.hours} hours, and ${remaining.minutes} minutes remaining`}>

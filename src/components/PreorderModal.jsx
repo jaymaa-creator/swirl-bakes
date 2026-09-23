@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { buildWhatsAppLink } from "../lib/orderMessaging";
-import { calculateLineTotalSgd } from "../lib/pricing";
+import { formatSgDate, fromSingaporeDateKey, getCutoffForSaturday } from "../lib/dates";
+import {
+  BANANA_CHOCOLATE_CHIPS_PRICE_SGD,
+  calculateAddOnTotalSgd,
+  calculateLineTotalSgd,
+} from "../lib/pricing";
 import Card from "./ui/Card";
 import Field from "./ui/Field";
 import Input from "./ui/Input";
@@ -18,6 +22,7 @@ export default function PreorderModal({
   setForm,
   estimatedTotal,
   itemsTotal,
+  addOnTotal,
   deliveryFee,
   isDeliveryEligible,
   waMessage,
@@ -32,32 +37,39 @@ export default function PreorderModal({
   allergenDisclaimer,
   money,
   brand,
+  hasRequiredFulfilmentDetails,
   onOrderIntent,
-  onOrderRequest,
 }) {
   const [showAllergenPopup, setShowAllergenPopup] = useState(false);
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
   const [allergenCountdown, setAllergenCountdown] = useState(0);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const countdownRef = useRef(null);
   const orderRequestSubmittedRef = useRef(false);
-  const orderNumberRef = useRef("");
   const isDelivery = form.delivery.toLowerCase().includes("delivery") && isDeliveryEligible;
+  const cutoffLabel = form.bakeWindow
+    ? `${formatSgDate(getCutoffForSaturday(fromSingaporeDateKey(form.bakeWindow)))}, 10pm SGT`
+    : brand.orderCutoffLabel;
 
   function setItemQuantity(productId, quantity) {
     setForm((current) => {
       const items = { ...current.items, [productId]: quantity };
+      const bananaChocolateChips =
+        productId === "banana-bread" && Number(quantity) === 0
+          ? false
+          : current.bananaChocolateChips;
+      const nextForm = { ...current, items, bananaChocolateChips };
       const nextItemsTotal = menu.reduce(
         (sum, item) => sum + calculateLineTotalSgd(item, Number(items[item.id] || 0)),
         0
-      );
+      ) + calculateAddOnTotalSgd(nextForm);
       const mustUseCollection = nextItemsTotal < brand.deliveryMinimumSgd;
 
       return {
         ...current,
         items,
+        bananaChocolateChips,
         delivery: mustUseCollection ? brand.deliveryOptions[1] : current.delivery,
         address: mustUseCollection ? "" : current.address,
       };
@@ -85,8 +97,6 @@ export default function PreorderModal({
   useEffect(() => {
     if (open) {
       orderRequestSubmittedRef.current = false;
-      orderNumberRef.current = "";
-      setIsSubmitting(false);
     }
   }, [open]);
 
@@ -97,15 +107,6 @@ export default function PreorderModal({
     "",
     ...rest,
   ].join("\n");
-  function getWhatsAppLink(orderNumber = "") {
-    const message = orderNumber
-      ? [firstLine, `Order reference: ${orderNumber}`, ...waMessageWithAck.split("\n").slice(1)].join("\n")
-      : waMessageWithAck;
-    return buildWhatsAppLink(brand.waNumberE164, message);
-  }
-
-  const waLinkWithAck = getWhatsAppLink();
-
   function handleWaClick(e) {
     if (!canSubmitOrder) {
       e.preventDefault();
@@ -135,38 +136,14 @@ export default function PreorderModal({
     setShowAllergenPopup(false);
   }
 
-  async function completeOrder() {
-    if (isSubmitting) return;
-
+  function completeOrder() {
+    if (!canSubmitOrder || orderRequestSubmittedRef.current) return;
     if (TURNSTILE_SITE_KEY && !turnstileToken) {
       setTurnstileError("Please complete the security check before continuing.");
       return;
     }
-
-    // Open WhatsApp inside the original button click. Waiting for Google Sheets
-    // first can leave Safari and mobile browsers stranded on about:blank.
-    const initialWhatsAppLink = getWhatsAppLink();
-    window.open(initialWhatsAppLink, "_blank", "noopener,noreferrer");
-    setIsSubmitting(true);
-
-    try {
-      let orderNumber = orderNumberRef.current;
-      if (!orderRequestSubmittedRef.current) {
-        orderRequestSubmittedRef.current = true;
-        try {
-          const result = await onOrderRequest?.(turnstileToken);
-          orderNumber = result?.orderNumber || "";
-          orderNumberRef.current = orderNumber;
-        } catch {
-          // WhatsApp remains available if the order tracker is temporarily unavailable.
-        }
-      }
-
-      const whatsappLink = getWhatsAppLink(orderNumber);
-      onOrderIntent?.(whatsappLink, orderNumber);
-    } finally {
-      setIsSubmitting(false);
-    }
+    orderRequestSubmittedRef.current = true;
+    onOrderIntent?.(waMessageWithAck, turnstileToken);
   }
 
   return (
@@ -174,55 +151,14 @@ export default function PreorderModal({
       <Modal
         open={open}
         onClose={onClose}
-        title="Reserve for Saturday"
+        fullScreen
+        title="Your order"
         footer={
           <div className="grid gap-2">
-            {TURNSTILE_SITE_KEY ? (
-              <div className="rounded-2xl border border-line bg-cream px-3 py-3">
-                <div className="mb-2 text-xs font-medium text-inkMuted">Quick security check</div>
-                <TurnstileWidget
-                  siteKey={TURNSTILE_SITE_KEY}
-                  onTokenChange={(token) => {
-                    setTurnstileToken(token);
-                    setTurnstileError("");
-                  }}
-                  onError={() => setTurnstileError("Security check could not load. Please refresh and try again.")}
-                />
-                {turnstileError ? <div className="mt-2 text-xs text-red-700">{turnstileError}</div> : null}
-              </div>
-            ) : null}
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <a
-                href={allergenAcknowledged && canSubmitOrder && !isSubmitting ? waLinkWithAck : undefined}
-                onClick={handleWaClick}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!canSubmitOrder || isSubmitting}
-                tabIndex={canSubmitOrder && !isSubmitting ? 0 : -1}
-                className={`inline-flex justify-center rounded-button bg-brandBrown px-5 py-3 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float ${
-                  canSubmitOrder && !isSubmitting ? "" : "pointer-events-none opacity-50"
-                }`}
-              >
-                {isSubmitting ? "Saving order..." : "Reserve via WhatsApp"}
-              </a>
-            </div>
-            <div className="rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
-              Reservations close {brand.orderCutoffLabel}. You will receive confirmation, PayNow details, and pickup or dispatch timing before bake day.
-            </div>
-            {!hasSelectedItems ? (
-              <div className="text-xs text-inkMuted">Select at least one item.</div>
-            ) : null}
-            {!hasRequiredContactDetails ? (
-              <div className="text-xs text-inkMuted">Enter your name and contact number to continue.</div>
-            ) : null}
-            {hasSelectedItems && !isBakeWindowOpen ? (
-              <div className="text-xs text-inkMuted">
-                Reservations are currently closed. The next order window opens Friday at 12am SGT.
-              </div>
-            ) : null}
-            {menuStatus !== "ready" ? (
-              <div className="text-xs text-inkMuted">Prices are loading from the current menu.</div>
-            ) : null}
+            <div className="flex items-center justify-between text-sm font-semibold"><span>Order total</span><span>{money(estimatedTotal)}</span></div>
+            <button type="button" onClick={handleWaClick} disabled={!canSubmitOrder} className="w-full rounded-button bg-brandBrown px-5 py-3 text-sm font-medium text-white disabled:opacity-50">
+              Review order receipt
+            </button>
           </div>
         }
       >
@@ -278,6 +214,7 @@ export default function PreorderModal({
               {menuStatus === "ready" ? (
                 <div className="mt-2 text-xs text-inkMuted">
                   Items {money(itemsTotal)}
+                  {addOnTotal > 0 ? ` (includes ${money(addOnTotal)} chocolate chips)` : ""}
                   {deliveryFee > 0 ? ` + delivery ${money(deliveryFee)}` : ""}
                 </div>
               ) : null}
@@ -302,8 +239,42 @@ export default function PreorderModal({
                       <div>
                         <div className="text-sm font-medium text-ink">{m.name}</div>
                         <div className="text-xs text-inkMuted">
-                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : "Sold out this week"}
+                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : "Sold out for this bake"}
                         </div>
+                        {m.id === "banana-bread" && isAvailable ? (
+                          <button
+                            type="button"
+                            disabled={Number(form.items[m.id] || 0) === 0}
+                            onClick={() =>
+                              setForm((current) => {
+                                const nextForm = {
+                                  ...current,
+                                  bananaChocolateChips: !current.bananaChocolateChips,
+                                };
+                                const nextItemsTotal = menu.reduce(
+                                  (sum, item) =>
+                                    sum + calculateLineTotalSgd(item, Number(current.items[item.id] || 0)),
+                                  0
+                                ) + calculateAddOnTotalSgd(nextForm);
+                                const mustUseCollection = nextItemsTotal < brand.deliveryMinimumSgd;
+
+                                return {
+                                  ...nextForm,
+                                  delivery: mustUseCollection ? brand.deliveryOptions[1] : current.delivery,
+                                  address: mustUseCollection ? "" : current.address,
+                                };
+                              })
+                            }
+                            className={`mt-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                              form.bananaChocolateChips
+                                ? "border-brandBrown bg-brandBrown text-white"
+                                : "border-[#DCCEBF] text-inkMuted hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
+                            }`}
+                            aria-pressed={Boolean(form.bananaChocolateChips)}
+                          >
+                            Add chocolate chips +{money(BANANA_CHOCOLATE_CHIPS_PRICE_SGD)} per cake
+                          </button>
+                        ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {quantityChoices.map((qty) => {
@@ -402,9 +373,28 @@ export default function PreorderModal({
                   />
                 </Field>
               ) : (
-                <div className="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink">
-                  <span className="font-semibold">{brand.collectionReadyLabel}.</span>
-                  <span className="mt-1 block text-xs leading-5 text-inkMuted">Exact Joo Chiat handoff details are shared after confirmation.</span>
+                <div>
+                  <div className="text-sm font-semibold text-ink">Choose a one-hour pickup window</div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {brand.pickupWindows.map((pickupWindow) => (
+                      <button
+                        key={pickupWindow}
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, pickupTime: pickupWindow }))}
+                        className={`rounded-full border px-3 py-2 text-sm transition-colors ${
+                          form.pickupTime === pickupWindow
+                            ? "border-brandBrown bg-brandBrown text-white"
+                            : "border-[#DCCEBF] bg-surface text-inkMuted hover:border-brandCinnamon"
+                        }`}
+                        aria-pressed={form.pickupTime === pickupWindow}
+                      >
+                        {pickupWindow}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 rounded-xl border border-line bg-surface px-4 py-3 text-xs leading-5 text-inkMuted">
+                    Exact Joo Chiat handoff details are shared after confirmation.
+                  </div>
                 </div>
               )}
             </div>
@@ -426,6 +416,45 @@ export default function PreorderModal({
             </a>
             .
           </p>
+
+            {TURNSTILE_SITE_KEY ? (
+              <div className="rounded-2xl border border-line bg-cream px-3 py-3">
+                <div className="mb-2 text-xs font-medium text-inkMuted">Quick security check</div>
+                <TurnstileWidget
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onTokenChange={(token) => {
+                    setTurnstileToken(token);
+                    setTurnstileError("");
+                  }}
+                  onError={() => setTurnstileError("Security check could not load. Please refresh and try again.")}
+                />
+                {turnstileError ? <div className="mt-2 text-xs text-red-700">{turnstileError}</div> : null}
+              </div>
+            ) : null}
+            <div className="rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
+              Reservations close {cutoffLabel}. You will receive confirmation, PayNow details, and pickup or dispatch timing before bake day.
+            </div>
+            {!hasSelectedItems ? (
+              <div className="text-xs text-inkMuted">Select at least one item.</div>
+            ) : null}
+            {!hasRequiredContactDetails ? (
+              <div className="text-xs text-inkMuted">Enter your name and contact number to continue.</div>
+            ) : null}
+            {!hasRequiredFulfilmentDetails ? (
+              <div className="text-xs text-inkMuted">
+                {form.delivery.toLowerCase().includes("delivery")
+                  ? "Enter your delivery address to continue."
+                  : "Choose a pickup window to continue."}
+              </div>
+            ) : null}
+            {hasSelectedItems && !isBakeWindowOpen ? (
+              <div className="text-xs text-inkMuted">
+                Reservations for this batch are currently closed.
+              </div>
+            ) : null}
+            {menuStatus !== "ready" ? (
+              <div className="text-xs text-inkMuted">Prices are loading from the current menu.</div>
+            ) : null}
 
           <div className="hidden sm:block rounded-2xl border border-line bg-cream p-4 text-xs text-inkMuted whitespace-pre-wrap">
             {waMessageWithAck}

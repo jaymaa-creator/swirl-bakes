@@ -1,6 +1,15 @@
+import { BANANA_CHOCOLATE_CHIPS_PRICE_SGD } from "../config/orderPolicy.js";
+
 export function money(n) {
-  if (!n) return "TBC";
-  return `S$${Number(n).toFixed(0)}`;
+  if (n === null || n === undefined || n === "" || !Number.isFinite(Number(n))) return "TBC";
+  return `S$${Number(n).toFixed(2)}`;
+}
+
+export { BANANA_CHOCOLATE_CHIPS_PRICE_SGD };
+
+export function calculateAddOnTotalSgd(form) {
+  if (!form.bananaChocolateChips) return 0;
+  return Math.max(0, Number(form.items?.["banana-bread"]) || 0) * BANANA_CHOCOLATE_CHIPS_PRICE_SGD;
 }
 
 function normalizePricing(item) {

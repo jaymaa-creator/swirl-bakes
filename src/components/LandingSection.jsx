@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import CutoffCountdown from "./CutoffCountdown";
-import Pill from "./ui/Pill";
+import { formatSgDate, getCutoffForSaturday } from "../lib/dates";
 
 export default function LandingSection({ brand, batchDate, batchLabel }) {
   const heroVideoRef = useRef(null);
@@ -43,20 +43,15 @@ export default function LandingSection({ brand, batchDate, batchLabel }) {
                   decoding="async"
                 />
               </div>
-              <div className="hidden flex-wrap gap-2 sm:flex">
-                <Pill>Saturday batch baking</Pill>
-                <Pill>Pre-order window each week</Pill>
-                <Pill>GrabExpress / Lalamove delivery</Pill>
-              </div>
               <h1 className="mt-0 max-w-3xl text-[1.8rem] leading-[0.98] text-white sm:mt-5 sm:text-5xl">
                 {brand.tagline}
               </h1>
               <p className="mt-3 max-w-2xl text-[0.88rem] leading-relaxed text-white/95 sm:mt-4 sm:text-[1.12rem]">
                 {batchLabel ? (
                   <>
-                    Treats baked fresh for {batchLabel}.
+                    Next bake: {batchLabel}.
                     <br />
-                    Pre-order by Thursday 10pm.
+                    Pre-order by {formatSgDate(getCutoffForSaturday(batchDate))}, 10pm SGT.
                   </>
                 ) : (
                   "Checking the next available bake..."

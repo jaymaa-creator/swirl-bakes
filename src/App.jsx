@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from "react";
-import BananaBreadGallery from "./components/BananaBreadGallery";
+import React, { useEffect, useMemo, useState } from "react";
 import PrivacySection from "./components/PrivacySection";
 import FaqSection from "./components/FaqSection";
 import Seo from "./components/Seo";
@@ -10,7 +9,8 @@ import PreorderModal from "./components/PreorderModal";
 import ProcessSection from "./components/ProcessSection";
 import SiteFooter from "./components/SiteFooter";
 import InstagramReelSection from "./components/InstagramReelSection";
-import WhatsAppHandoffNotice from "./components/WhatsAppHandoffNotice";
+import OrderReceipt from "./components/OrderReceipt";
+import { watchOrderRequest } from "./lib/orderReceipt";
 import CinnamonLoader from "./components/ui/CinnamonLoader";
 import StockPage from "./components/StockPage";
 import BRAND from "./config/brand";
@@ -31,8 +31,14 @@ import usePreorderModalOpen from "./hooks/usePreorderModalOpen";
 import useScrollReveal from "./hooks/useScrollReveal";
 import { buildOrderRecord, submitOrderRequest } from "./lib/orderSubmission";
 
+const SwirlGame = React.lazy(() => import("./components/SwirlGame"));
+const miniGameEnabled = window.location.hostname.startsWith("test-") || ["swirlgirl.sg", "www.swirlgirl.sg", "localhost", "127.0.0.1"].includes(window.location.hostname);
+
 export default function App() {
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (path === "/minigame" && miniGameEnabled) {
+    return <React.Suspense fallback={<p className="p-8">Loading Bun Bounce...</p>}><SwirlGame /></React.Suspense>;
+  }
   if (path === "/stock") {
     return <StockPage isTestSite={window.location.hostname.startsWith("test-")} />;
   }
@@ -42,7 +48,7 @@ export default function App() {
 
 function BakesLandingPage() {
   const ribbonItems = [
-    "We wake, then bake every Saturday",
+    "Small-batch Saturday baking",
     "Pre-orders close Thursday 10pm",
     "Small-batch bakes in Singapore",
     "Reserve early - limited batch",
@@ -53,8 +59,41 @@ function BakesLandingPage() {
   // guessed Saturday while the authoritative calendar snapshot is loading.
   const [activeBatchKey, setActiveBatchKey] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [whatsappHandoffLink, setWhatsappHandoffLink] = useState("");
-  const [whatsappOrderNumber, setWhatsappOrderNumber] = useState("");
+  const [receipt, setReceipt] = useState(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem("swirl-order-receipt") || "null");
+      if (!stored?.id || !stored?.message) return null;
+      return { ...stored, status: stored.status === "pending" ? "delayed" : stored.status };
+    } catch { return null; }
+  });
+  const [showReceipt, setShowReceipt] = useState(window.location.hash === "#receipt");
+  useEffect(() => {
+    if (receipt) {
+      try { sessionStorage.setItem("swirl-order-receipt", JSON.stringify(receipt)); } catch { /* Receipt remains available in memory. */ }
+    }
+  }, [receipt]);
+  useEffect(() => {
+    const onHashChange = () => setShowReceipt(window.location.hash === "#receipt");
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  const [showRibbon, setShowRibbon] = useState(true);
+
+  useEffect(() => {
+    const updateRibbonVisibility = () => {
+      const menu = document.getElementById("menu");
+      setShowRibbon(!menu || menu.getBoundingClientRect().top > 120);
+    };
+
+    updateRibbonVisibility();
+    window.addEventListener("scroll", updateRibbonVisibility, { passive: true });
+    window.addEventListener("resize", updateRibbonVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", updateRibbonVisibility);
+      window.removeEventListener("resize", updateRibbonVisibility);
+    };
+  }, []);
 
   const [form, setForm] = useState({
     name: "",
@@ -63,7 +102,8 @@ function BakesLandingPage() {
     delivery: BRAND.deliveryOptions[1],
     area: BRAND.pickupAreas[0],
     address: "",
-    pickupTime: BRAND.collectionReadyLabel,
+    pickupTime: BRAND.pickupWindows[0],
+    bananaChocolateChips: false,
     notes: "",
     items: Object.fromEntries(MENU.map((item) => [item.id, 0])),
   });
@@ -112,6 +152,7 @@ function BakesLandingPage() {
 
   const {
     itemsTotal,
+    addOnTotal,
     deliveryFee,
     estimatedTotal,
     isDeliveryEligible,
@@ -127,6 +168,10 @@ function BakesLandingPage() {
     deliveryFeeSgd: BRAND.deliveryFeeSgd,
   });
   const hasRequiredContactDetails = Boolean(form.name.trim() && form.phone.trim());
+  const isDeliverySelection = form.delivery.toLowerCase().includes("delivery");
+  const hasRequiredFulfilmentDetails = isDeliverySelection
+    ? Boolean(form.address.trim())
+    : Boolean(form.pickupTime.trim());
 
   useBodyScrollLock(modalOpen);
   useScrollReveal();
@@ -134,8 +179,14 @@ function BakesLandingPage() {
 
   const isHeaderLoading = isOpeningModal && openingTriggerId === "header-primary";
 
-  const openHeaderPreorder = () => handleOpenPreorder(selectedBatchKey, "header-primary");
-  const openMenuPreorder = () => handleOpenPreorder(selectedBatchKey, "menu-item");
+  const basketQuantity = orderableMenu.reduce((total, item) => total + Number(orderForm.items[item.id] || 0), 0);
+  const openHeaderPreorder = () => {
+    if (!hasSelectedItems) {
+      document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    handleOpenPreorder(selectedBatchKey, "header-primary");
+  };
   const showFollowingBatch = () => {
     if (!followingBatchKey) return;
 
@@ -149,61 +200,83 @@ function BakesLandingPage() {
 
   const closePreorderModal = () => setModalOpen(false);
 
-  const handleOrderIntent = (whatsappLink, orderNumber) => {
-    setModalOpen(false);
-    setWhatsappHandoffLink(whatsappLink || "");
-    setWhatsappOrderNumber(orderNumber || "");
-    window.history.replaceState(null, "", "#confirmation");
-  };
-
-  const handleOrderRequest = (turnstileToken) => {
+  const handleOrderIntent = (message, turnstileToken) => {
     const order = buildOrderRecord({
-      form: { ...orderForm, bakeWindow: displayBakeWindow },
+      form: { ...orderForm, bakeWindow: selectedBatchKey },
       menu: orderableMenu,
       estimatedTotal,
       moneyFormatter: money,
     });
-
-    return submitOrderRequest(order, turnstileToken);
+    const id = crypto.randomUUID();
+    setReceipt({
+      ...order, id, message, status: "pending", orderNumber: "",
+      bakeLabel: displayBakeWindow, itemsTotal: money(itemsTotal),
+      deliveryFee: money(deliveryFee), whatsappOpened: false,
+    });
+    setModalOpen(false);
+    setShowReceipt(true);
+    window.history.pushState(null, "", "#receipt");
+    window.scrollTo(0, 0);
+    setForm((current) => ({
+      ...current, items: {}, bananaChocolateChips: false,
+      notes: "", address: "", delivery: BRAND.deliveryOptions[1],
+    }));
+    // The request runs once. Timeouts never retry a possibly saved order.
+    watchOrderRequest(submitOrderRequest(id, order, turnstileToken), (update) => {
+      setReceipt((current) => current?.id === id ? { ...current, ...update } : current);
+    });
   };
+
+  if (showReceipt && receipt) {
+    return <OrderReceipt receipt={receipt} brand={BRAND}
+      onOpenWhatsApp={() => setReceipt((current) => ({ ...current, whatsappOpened: true }))}
+      onBrowse={() => {
+        setShowReceipt(false);
+        window.history.pushState(null, "", "#menu");
+        requestAnimationFrame(() => document.getElementById("menu")?.scrollIntoView());
+      }}
+    />;
+  }
 
   return (
     <div className="min-h-screen bg-cream text-ink">
       <Seo brand={BRAND} menu={menu} faq={FAQ} />
       <div className="sticky top-0 z-40">
-        <div className="ribbon border-b border-line bg-[#F7EBDD]">
-          <div className="ribbon-track py-2 text-xs font-medium text-inkMuted sm:text-sm">
-            {[0, 1, 2, 3].map((dupIdx) => (
-              <div className="ribbon-group" aria-hidden={dupIdx > 0} key={dupIdx}>
-                {ribbonItems.map((item) => (
-                  <span className="ribbon-item" key={`${dupIdx}-${item}`}>
-                    <span>{item}</span>
-                    <span
-                      className="inline-flex flex-none items-center justify-center text-brandBrown"
-                      aria-hidden="true"
-                    >
-                      <span className="inline-flex h-5 w-5 flex-none items-center justify-center sm:hidden">
-                        <CinnamonLoader size={20} />
-                      </span>
-                      <span className="hidden h-12 w-12 flex-none items-center justify-center sm:inline-flex">
-                        <CinnamonLoader size={48} />
+        <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ${showRibbon ? "max-h-24 opacity-100" : "pointer-events-none max-h-0 opacity-0"}`}>
+          <div className="ribbon flex min-h-[60px] items-center border-b border-line bg-[#F7EBDD] sm:min-h-[88px]">
+            <div className="ribbon-track py-2 text-xl font-medium text-inkMuted sm:text-3xl">
+              {[0, 1, 2, 3].map((dupIdx) => (
+                <div className="ribbon-group" aria-hidden={dupIdx > 0} key={dupIdx}>
+                  {ribbonItems.map((item) => (
+                    <span className="ribbon-item" key={`${dupIdx}-${item}`}>
+                      <span>{item}</span>
+                      <span
+                        className="inline-flex flex-none items-center justify-center text-brandBrown"
+                        aria-hidden="true"
+                      >
+                        <span className="inline-flex h-8 w-8 flex-none items-center justify-center sm:hidden">
+                          <CinnamonLoader size={32} />
+                        </span>
+                        <span className="hidden h-12 w-12 flex-none items-center justify-center sm:inline-flex">
+                          <CinnamonLoader size={48} />
+                        </span>
                       </span>
                     </span>
-                  </span>
-                ))}
-              </div>
-            ))}
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         <header className="border-b border-line bg-surface/90 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <span className="sticker-perk__mark inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-10 sm:w-10">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-10 sm:w-10">
                 <img
                   src="/logo.webp"
                   alt="Swirl Girl logo"
-                  className="sticker-perk__logo h-full w-full object-cover"
+                  className="h-full w-full object-cover"
                   loading="eager"
                   fetchPriority="high"
                   decoding="async"
@@ -213,15 +286,6 @@ function BakesLandingPage() {
                 <div className="truncate text-sm font-semibold leading-none">{BRAND.name}</div>
                 <div className="truncate text-xs text-inkMuted">{BRAND.originLabel}</div>
               </div>
-            </div>
-            <div className="sticker-perk mx-5 hidden max-w-[25rem] flex-1 items-center gap-2 rounded-button px-3 py-2 shadow-soft xl:flex">
-              <span className="sticker-perk__mark inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg">
-                <img src="/logo.webp" alt="" className="sticker-perk__logo h-full w-full object-cover" aria-hidden="true" decoding="async" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-[#38241A]">A little extra for you</span>
-                <span className="block truncate text-xs font-semibold text-[#38241A]">Free holographic sticker with every purchase</span>
-              </span>
             </div>
             <div className="flex items-center gap-2">
               <a
@@ -242,13 +306,18 @@ function BakesLandingPage() {
               >
                 About
               </a>
+              {receipt ? <button type="button" className="rounded-xl px-2 py-2 text-xs text-brandBrown" onClick={() => {
+                setShowReceipt(true);
+                window.history.pushState(null, "", "#receipt");
+                window.scrollTo(0, 0);
+              }}>View receipt</button> : null}
               <button
                 onClick={openHeaderPreorder}
                 disabled={isHeaderLoading}
                 className="relative inline-flex touch-manipulation items-center whitespace-nowrap rounded-button bg-brandBrown px-3 py-2 text-xs font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCinnamon/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:translate-y-0 disabled:shadow-soft sm:px-4 sm:py-2.5 sm:text-sm"
               >
                 <span className={isHeaderLoading ? "opacity-0" : "opacity-100"}>
-                  {BRAND.primaryCTA}
+                  {hasSelectedItems ? "View order" : "Choose your bakes"}
                 </span>
                 {isHeaderLoading ? (
                   <span className="absolute inset-0 flex items-center justify-center">
@@ -270,7 +339,7 @@ function BakesLandingPage() {
         </div>
       ) : null}
 
-      <main className="space-y-6 pb-6 sm:space-y-10 sm:pb-8">
+      <main className="space-y-6 pb-24 sm:space-y-10 sm:pb-24">
         <LandingSection brand={BRAND} batchDate={selectedBakeDate} batchLabel={displayBakeWindow} />
 
         <MenuSection
@@ -280,19 +349,15 @@ function BakesLandingPage() {
           setForm={setForm}
           menuStatus={menuStatus}
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
-          onSelectItem={openMenuPreorder}
           onRetry={retryMenu}
           batchLabel={displayBakeWindow}
-          isNextWeek={Boolean(selectedBatchKey) && selectedBatchKey !== nextSaturdayKey}
           showFollowingBatch={Boolean(followingBatchKey) && isCurrentBatchSoldOut}
           followingBatchLabel={followingBatchKey ? formatSgDate(fromSingaporeDateKey(followingBatchKey)) : ""}
           onShowFollowingBatch={showFollowingBatch}
           canOrderFollowingBatch={Boolean(followingBatchKey)}
         />
 
-        <InstagramReelSection />
-
-        <BananaBreadGallery />
+        <InstagramReelSection brand={BRAND} />
 
         <ProcessSection
           brand={BRAND}
@@ -308,18 +373,25 @@ function BakesLandingPage() {
 
         <PrivacySection brand={BRAND} />
 
+        {miniGameEnabled && <section className="rounded-3xl border border-line bg-surface p-6 sm:p-8" aria-label="Mini-game">
+          <p className="text-xs uppercase tracking-[0.2em] text-inkMuted">Mini-game</p>
+          <a href="/minigame" target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-between gap-4 text-2xl text-brandBrown">
+            <span>Play Bun Bounce <span className="mt-1 block text-sm text-inkMuted">A flying cinnamon swirl. Opens in a new tab.</span></span>
+            <CinnamonLoader size={56} />
+          </a>
+        </section>}
+
       </main>
 
       <SiteFooter brand={BRAND} />
-
-      <WhatsAppHandoffNotice
-        whatsappLink={whatsappHandoffLink}
-        orderNumber={whatsappOrderNumber}
-        onDismiss={() => {
-          setWhatsappHandoffLink("");
-          setWhatsappOrderNumber("");
-        }}
-      />
+      {hasSelectedItems && !modalOpen && !showReceipt ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+          <button type="button" onClick={openHeaderPreorder} className="mx-auto flex w-full max-w-2xl items-center justify-between rounded-button bg-brandBrown px-5 py-3 font-semibold text-white">
+            <span>View order · {basketQuantity} {basketQuantity === 1 ? "item" : "items"}</span>
+            <span>{money(itemsTotal)}</span>
+          </button>
+        </div>
+      ) : null}
 
       <PreorderModal
         open={modalOpen}
@@ -328,6 +400,7 @@ function BakesLandingPage() {
         setForm={setForm}
         estimatedTotal={estimatedTotal}
         itemsTotal={itemsTotal}
+        addOnTotal={addOnTotal}
         deliveryFee={deliveryFee}
         isDeliveryEligible={isDeliveryEligible}
         waMessage={waMessage}
@@ -337,11 +410,13 @@ function BakesLandingPage() {
           hasSelectedItems &&
           isSelectedBakeOpen &&
           hasRequiredContactDetails &&
+          hasRequiredFulfilmentDetails &&
           menuStatus === "ready" &&
           hasCurrentPrices &&
           (!form.delivery.toLowerCase().includes("delivery") || isDeliveryEligible)
         }
         hasRequiredContactDetails={hasRequiredContactDetails}
+        hasRequiredFulfilmentDetails={hasRequiredFulfilmentDetails}
         isBakeWindowOpen={isSelectedBakeOpen}
         menuStatus={menuStatus}
         menu={menu}
@@ -350,7 +425,6 @@ function BakesLandingPage() {
         money={money}
         brand={BRAND}
         onOrderIntent={handleOrderIntent}
-        onOrderRequest={handleOrderRequest}
       />
     </div>
   );

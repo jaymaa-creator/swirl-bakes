@@ -104,3 +104,25 @@ test("buildOrderMessage includes the collection readiness note instead of an add
   assert.match(message, /Collection: Ready to collect from 11am/);
   assert.doesNotMatch(message, /Address:/);
 });
+
+test("buildOrderMessage includes the Banana Cake chocolate-chip add-on", () => {
+  const message = buildOrderMessage({
+    brandName: "Swirl Girl",
+    form: {
+      name: "Jamie",
+      phone: "+65 8123 4567",
+      bakeWindow: "Sat, 8 Mar 2026",
+      delivery: "Self-collection - agreed pickup point",
+      pickupTime: "12pm-1pm",
+      bananaChocolateChips: true,
+      items: { classic: 0, pecan: 0, "banana-bread": 2 },
+    },
+    menu: [{ id: "banana-bread", name: "Banana Cake" }],
+    itemsTotal: 44,
+    estimatedTotal: 44,
+    moneyFormatter: (n) => `S$${n}`,
+  });
+
+  assert.match(message, /Chocolate chips for Banana Cake x2 \(\+S\$4\)/);
+  assert.match(message, /Collection: 12pm-1pm/);
+});

@@ -4,15 +4,13 @@
 flowchart LR
   U[Customer browser] -->|HTML/CSS/JS/images\n~20-150ms| CF[Cloudflare Worker + CDN]
 
-  CF -->|Menu request\n/api/menu| EC{Edge menu cache}
-  EC -->|Cache hit\n~1-10ms| M[Live menu response]
-  EC -->|Cache miss\n~10-100ms| KV[Workers KV\nmenu snapshots]
-  KV --> M
+  CF -->|Menu request\n/api/menu| KV[Workers KV\nmenu snapshots]
+  KV --> M[Live menu response]
   M --> U
 
   U -->|Reserve order| CF
   CF -->|Optional bot check\n~100-500ms| T[Cloudflare Turnstile]
-  CF -->|Save order\nusually 1-10s| AS[Google Apps Script]
+  CF -->|Validated request ID + order\nusually 1-10s| AS[Google Apps Script]
   AS --> GS[Google Sheet\nOrders tab]
   CF -->|Order number returned| U
   U -->|Prefilled message| WA[WhatsApp]
@@ -22,7 +20,6 @@ flowchart LR
   AS -->|Same sync| Q[Test Worker\n/api/menu/sync]
   P -->|Write snapshots| KV
   Q -->|Write snapshots| KVT[Test KV]
-  P -->|Immediately clear| EC
 ```
 
 ## Timing guide
@@ -30,8 +27,7 @@ flowchart LR
 | Path | Typical time |
 | --- | --- |
 | Website assets from Cloudflare | 20-150ms |
-| Menu edge-cache hit | 1-10ms |
-| Menu cache miss, read from KV | 10-100ms |
+| Published menu read from KV | 10-100ms |
 | Turnstile verification | 100-500ms |
 | Order write through Apps Script to Google Sheets | 1-10 seconds |
 | Apps Script menu/calendar sync to production and test | 5-15 seconds |
@@ -41,5 +37,17 @@ flowchart LR
 1. Update `Products` or `Calendar` in Google Sheets.
 2. Run `syncMenuSnapshot` in Apps Script.
 3. Apps Script sends snapshots to production and test Workers.
-4. Each Worker updates KV and clears its edge menu cache.
-5. The next visitor receives the new menu immediately; later visitors use the fast edge cache.
+4. Each Worker updates its environment's KV snapshot.
+5. Each menu request reads the published KV value; the legacy unseeded fallback
+   alone may use a short edge cache.
+
+## Order write flow
+
+1. The browser creates one UUID request ID and submits structured product IDs
+   and quantities; display strings and totals are not authoritative.
+2. The Worker validates size, shape, origin, contact and fulfilment fields,
+   menu availability, prices, quantities, batch, and Turnstile when configured.
+3. Apps Script takes the order lock and checks `Request ID` before inventory.
+   An exact replay returns its original reference without consuming stock again.
+4. For a new ID, Apps Script recalculates availability and price from current
+   Sheet data while still holding the lock, then appends one canonical row.

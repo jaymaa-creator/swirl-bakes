@@ -1,3 +1,11 @@
+import {
+  COLLECTION_OPTION,
+  DELIVERY_FEE_SGD,
+  DELIVERY_MINIMUM_SGD,
+  DELIVERY_OPTION,
+  PICKUP_WINDOWS,
+} from "./orderPolicy.js";
+
 const BRAND = {
   name: "Swirl Girl",
   tagline: "Small-batch Saturday bakes, made fresh in Singapore.",
@@ -6,13 +14,25 @@ const BRAND = {
   waNumberE164: "+6581307971",
   instagramUrl: "https://www.instagram.com/swirlgirl.sg/",
   instagramHandle: "@swirlgirl.sg",
+  instagramFeed: {
+    heading: "From The Kitchen",
+    title: "See more on Instagram.",
+    intro:
+      "More bakes and updates on Instagram.",
+    embeds: [
+      {
+        permalink: "https://www.instagram.com/reel/CtRgv3kpfEI/?utm_source=ig_embed&utm_campaign=loading",
+        label: "Featured reel",
+      },
+    ],
+  },
   siteUrl: import.meta.env.VITE_SITE_URL || "https://swirlgirl.sg",
   orderCutoffLabel: "Thursday 10pm SGT",
-  deliveryMinimumSgd: 50,
-  deliveryFeeSgd: 8,
+  deliveryMinimumSgd: DELIVERY_MINIMUM_SGD,
+  deliveryFeeSgd: DELIVERY_FEE_SGD,
   originLabel: "Baked in Singapore",
   story:
-    "Small-batch cinnamon rolls and banana cake, baked fresh on Saturdays from Joo Chiat.",
+    "Small-batch Saturday bakes from Joo Chiat. See the menu for our next bake date.",
   ingredients: [
     "Banana cake is made with banana, butter, self-raising flour, caster sugar, eggs, and baking powder.",
     "Cinnamon rolls contain gluten, dairy, and eggs.",
@@ -20,19 +40,17 @@ const BRAND = {
     "Allergen cross-contamination is possible because ingredients and tools are shared.",
   ],
   collectionLocation: "Joo Chiat collection point",
-  collectionReadyLabel: "Ready to collect from 11am",
+  collectionReadyLabel: "Pickup from 11am-3pm",
+  pickupWindows: PICKUP_WINDOWS,
   collectionNote:
-    "Exact pickup details are shared after your order is confirmed.",
+    "Exact pickup details are shared after confirmation.",
   pickupInstructions: [
     "Pickup time is confirmed after your order is accepted.",
-    "Bring a bag if you are collecting multiple boxes.",
-    "Reheat notes are included with each order.",
+    "Bring a bag for larger orders.",
+    "Reheating notes are included.",
   ],
   pickupAreas: ["Central", "East", "North", "North-East", "West"],
-  deliveryOptions: [
-    "Delivery - flat S$8 fee",
-    "Self-collection - agreed pickup point",
-  ],
+  deliveryOptions: [DELIVERY_OPTION, COLLECTION_OPTION],
   colors: {
     brown: "#5A3825",
     cinnamon: "#C47A3A",

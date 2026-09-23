@@ -38,6 +38,23 @@ npx clasp update-deployment YOUR_DEPLOYMENT_ID --versionNumber VERSION_NUMBER --
 
 The live deployment ID is the `AKfy...` value from the `/exec` URL.
 
+Order-boundary releases must update the Worker and the Apps Script web-app
+deployment as one reviewed release. `clasp push` updates editor source only; it
+does not change the `/exec` version used by the Worker.
+
+## Order Identity And Validation
+
+Every browser submission carries a UUID request ID. The Worker validates the
+JSON size and shape, contact and fulfilment fields, structured product
+quantities, the selected batch, current menu prices, and optional Turnstile
+token. Apps Script repeats the batch, stock, quantity, price, add-on, delivery,
+and total checks against fresh Sheet data while holding the order lock.
+
+On the first new-format order, Apps Script adds `Request ID` and
+`Request Fingerprint` columns to `Orders` if they are missing. Keep these
+columns: an exact replay returns the original order number, while reuse of the
+same request ID for changed details fails without writing another row.
+
 ## Product Stock Columns
 
 The `Products` tab should use:

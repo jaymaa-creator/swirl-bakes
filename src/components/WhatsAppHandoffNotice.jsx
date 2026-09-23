@@ -12,9 +12,11 @@ export default function WhatsAppHandoffNotice({ whatsappLink, orderNumber, onDis
             W
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-base font-semibold text-ink">Your WhatsApp order is ready</div>
+            <div className="text-base font-semibold text-ink">{orderNumber ? "Your order message is ready" : "Continue your request on WhatsApp"}</div>
             <p className="mt-1 text-sm leading-6 text-inkMuted">
-              WhatsApp should have opened in a new tab. Review the prefilled message and tap Send to submit your reservation.
+              {orderNumber
+                ? "Open WhatsApp below and tap Send. Your message includes your order reference. Your bake is awaiting our confirmation."
+                : "We could not obtain an order reference. You can still send your request on WhatsApp; please ask us to confirm receipt."}
             </p>
             {orderNumber ? (
               <div className="mt-2 text-sm font-semibold text-brandBrown">Order reference: {orderNumber}</div>
@@ -36,7 +38,7 @@ export default function WhatsAppHandoffNotice({ whatsappLink, orderNumber, onDis
             rel="noreferrer"
             className="inline-flex rounded-button bg-[#1B5E20] px-4 py-2.5 text-sm font-medium text-white shadow-soft transition hover:-translate-y-px"
           >
-            Open WhatsApp again
+            Send via WhatsApp
           </a>
           <button
             type="button"
