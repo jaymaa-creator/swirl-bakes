@@ -17,7 +17,8 @@ test("productOffer places the real offer inside the Product for Google", () => {
       name: "Pandan Coconut Swirl",
       note: "Pandan dough with coconut and gula Melaka.",
       priceSgd: 18,
-    }),
+      image: "/pandan-coconut.webp",
+    }, "https://swirlgirl.sg"),
     {
       "@type": "Offer",
       priceCurrency: "SGD",
@@ -26,6 +27,7 @@ test("productOffer places the real offer inside the Product for Google", () => {
         "@type": "Product",
         name: "Pandan Coconut Swirl",
         description: "Pandan dough with coconut and gula Melaka.",
+        image: "https://swirlgirl.sg/pandan-coconut.webp",
         offers: {
           "@type": "Offer",
           priceCurrency: "SGD",
@@ -37,6 +39,12 @@ test("productOffer places the real offer inside the Product for Google", () => {
 });
 
 test("products without a valid live price are omitted from product offers", () => {
-  assert.equal(productOffer({ name: "Unavailable", priceSgd: undefined }), undefined);
-  assert.equal(productOffer({ name: "Invalid", priceSgd: 0 }), undefined);
+  const product = { image: "/product.webp" };
+  assert.equal(productOffer({ ...product, name: "Unavailable", priceSgd: undefined }, "https://swirlgirl.sg"), undefined);
+  assert.equal(productOffer({ ...product, name: "Invalid", priceSgd: 0 }, "https://swirlgirl.sg"), undefined);
+});
+
+test("products without a usable image URL are omitted from product offers", () => {
+  assert.equal(productOffer({ name: "Missing image", priceSgd: 18 }, "https://swirlgirl.sg"), undefined);
+  assert.equal(productOffer({ name: "Invalid image", priceSgd: 18, image: "/product.webp" }), undefined);
 });
