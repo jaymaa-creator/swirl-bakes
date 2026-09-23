@@ -10,9 +10,16 @@ export function priceOffer(item) {
   };
 }
 
-export function productOffer(item) {
+export function productOffer(item, siteUrl) {
   const offer = priceOffer(item);
-  if (!offer) return undefined;
+  if (!offer || !item.image) return undefined;
+
+  let image;
+  try {
+    image = new URL(item.image, siteUrl).toString();
+  } catch {
+    return undefined;
+  }
 
   return {
     ...offer,
@@ -20,6 +27,7 @@ export function productOffer(item) {
       "@type": "Product",
       name: item.name,
       description: item.note,
+      image,
       offers: { ...offer },
     },
   };

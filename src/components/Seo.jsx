@@ -101,7 +101,7 @@ export default function Seo({ brand, menu, faq }) {
         })),
       },
       makesOffer: menu
-        .map(productOffer)
+        .map((item) => productOffer(item, pageUrl))
         .filter(Boolean),
       faq: faq.map((item) => ({
         "@type": "Question",

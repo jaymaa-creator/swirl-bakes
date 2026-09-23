@@ -45,6 +45,14 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Merchant listing image repair (2026-09-23): Google's post-release live test
+  confirms four valid Product snippets, but Merchant listings still reject the
+  same items because their existing storefront photos are not included in the
+  Product JSON-LD. A focused fix is adding each real product image as an
+  absolute URL while omitting any Product that lacks both a valid live price
+  and usable image. Optional identifiers, shipping, availability, and return
+  policy fields will not be invented.
+
 - Guarded release automation (2026-09-23): local implementation now includes
   PR/main CI, exact-commit test and production workflows, immutable/checksummed
   build artifacts, GitHub environment approval gates, post-deploy smoke checks,
