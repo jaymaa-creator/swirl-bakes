@@ -91,6 +91,21 @@ test("order boundary ignores display text and sends recalculated canonical value
   await Promise.all(background);
 });
 
+test("delivery adds S$15 to the server-calculated food subtotal", async (t) => {
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    const { order: saved } = JSON.parse(options.body);
+    assert.equal(saved.deliveryFeeSgd, 15);
+    assert.equal(saved.totalSgd, 50);
+    assert.equal(saved.estimatedTotal, "S$50.00");
+    return Response.json({ ok: true, orderNumber: "SG-DELIVERY" });
+  });
+  const response = await worker.fetch(orderRequest({
+    requestId: REQUEST_ID,
+    order: order({ delivery: "Delivery - flat S$15 fee", pickupTime: "", address: "10 Test Road", quotedTotalSgd: 50 }),
+  }), environment(), { waitUntil() {} });
+  assert.equal(response.status, 200);
+});
+
 test("test host cannot create orders", async () => {
   const response = await worker.fetch(new Request("https://test-swirl-girl.jaemcd95.workers.dev/api/orders", { method: "POST" }), {}, {});
   assert.equal(response.status, 403);

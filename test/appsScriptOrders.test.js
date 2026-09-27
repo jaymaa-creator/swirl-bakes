@@ -193,22 +193,29 @@ test("locked validation rejects closed batches and forged fulfilment details", (
 test("locked validation applies delivery threshold and fee", () => {
   const context = validationHarness();
   const accepted = context.validateOrderForWrite(requestPayload({
-    delivery: "Delivery - flat S$10 fee",
+    delivery: "Delivery - flat S$15 fee",
+    pickupTime: "",
+    address: "10 Joo Chiat Road #01-01",
+    quotedTotalSgd: 50,
+    totalSgd: 50,
+  }).order, {});
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.order.estimatedTotal, "S$50.00");
+  assert.equal(context.validateOrderForWrite(requestPayload({
+    delivery: "Delivery - flat S$15 fee",
     pickupTime: "",
     address: "10 Joo Chiat Road #01-01",
     quotedTotalSgd: 45,
     totalSgd: 45,
-  }).order, {});
-  assert.equal(accepted.ok, true);
-  assert.equal(accepted.order.estimatedTotal, "S$45.00");
+  }).order, {}).errorCode, "PRICE_CHANGED");
 
   const belowMinimum = validationHarness({ priceSgd: 29 });
   assert.equal(belowMinimum.validateOrderForWrite(requestPayload({
-    delivery: "Delivery - flat S$10 fee",
+    delivery: "Delivery - flat S$15 fee",
     pickupTime: "",
     address: "10 Joo Chiat Road #01-01",
-    quotedTotalSgd: 39,
-    totalSgd: 39,
+    quotedTotalSgd: 44,
+    totalSgd: 44,
   }).order, {}).errorCode, "ORDER_UNAVAILABLE");
 });
 

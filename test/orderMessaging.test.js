@@ -66,20 +66,20 @@ test("buildOrderMessage includes the flat delivery fee in an eligible delivery o
       name: "Jamie",
       phone: "+65 8123 4567",
       bakeWindow: "Sat, 8 Mar 2026",
-      delivery: "Delivery - flat S$8 fee",
+      delivery: "Delivery - flat S$15 fee",
       address: "123 Test St #01-02",
       items: { classic: 2, pecan: 0 },
     },
     menu,
     itemsTotal: 50,
-    deliveryFee: 8,
-    estimatedTotal: 55,
+    deliveryFee: 15,
+    estimatedTotal: 65,
     moneyFormatter: (n) => `S$${n}`,
   });
 
   assert.match(message, /Items subtotal: S\$50/);
-  assert.match(message, /Delivery fee: S\$8/);
-  assert.match(message, /Estimated total: S\$55/);
+  assert.match(message, /Delivery fee: S\$15/);
+  assert.match(message, /Estimated total: S\$65/);
 });
 
 test("buildOrderMessage includes the collection readiness note instead of an address", () => {
