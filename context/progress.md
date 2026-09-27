@@ -61,7 +61,7 @@ Architecture baseline and payment discovery.
   unchanged. All 83 tests, lint, production build and diff checks pass,
   including S$35 + S$15 = S$50 and rejection of the former delivery total.
   Coordinated Worker and Apps Script deployment required before the new price
-  is live; no deployment or existing order changes made.
+  is live. Apps Script version 31 staged; live deployment remains version 30.
 
 - Guarded release automation (2026-09-23): local implementation now includes
   PR/main CI, exact-commit test and production workflows, immutable/checksummed
