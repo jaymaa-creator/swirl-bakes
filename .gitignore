@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+apps-script-test/
 *.local
 .dev.vars
 .clasprc.json

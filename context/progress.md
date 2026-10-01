@@ -56,12 +56,113 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Referral production rollout preparation (2026-10-01): the user accepted a
+  visible launch. A fresh isolated test order earned one S$5 credit only after
+  its `Paid?` edit; toggling paid off/on did not duplicate it. Production's
+  `Paid?` checkbox column and single on-edit trigger were checked read-only.
+  The WhatsApp draft no longer repeats an outdated estimated total when a
+  confirmed discounted amount is present. All 107 tests, lint, build, and
+  production/test smoke checks pass. The updated test Worker is
+  `6460ee0f-6d30-4aca-829f-2c2a61fbc354`. Production is unchanged pending
+  the guarded Git release and matching Apps Script version. Production's Orders
+  Table ends at row 40; the next order will be outside it, so the writer now
+  explicitly inserts an unchecked `Paid?` checkbox before setting row values.
+
+- Referral production readiness review (2026-09-30): isolated live test
+  confirmed a S$41 friend order discounted to S$36, a credit earned after its
+  `Paid?` checkbox was checked, and S$5 FIFO redemption on a later S$40
+  referrer order. The production read-only smoke baseline passed (homepage
+  200, eight menu products, invalid order 400). A paid-edit lock and explicit
+  referral-program-version guard were added locally; they are not deployed.
+  Ledger writes now follow a saved order row, with a reserved credit event ID,
+  idempotent event repair, and a monitoring alert for deferred audit writes.
+  Known stock/price rejection copy now directs the customer back to a refreshed
+  menu without a WhatsApp handoff. 107 tests, lint, build and generated test
+  script checks pass. Isolated test Apps Script version 8 and test Worker
+  e6053895-60c2-49cb-91cf-045968c4b972 are active; the test smoke check
+  passed after allowing more time for its authenticated backend identity check.
+  Production Table/dropdown behavior and a fresh live paid-edit rehearsal remain
+  rollout gates. See `docs/referral-production-readiness.md`. Production is
+  unchanged.
+
+- Pickup-only referral MVP deployed to TEST only (2026-09-28): REF-001 fixes
+  the test-first rules at Give S$5/get S$5, S$35 bakes minimum, automatic FIFO
+  redemption, 90-day expiry, one reward per order, and credit creation only
+  after the referred order is marked Paid. Apps Script remains authoritative
+  and uses a private customer key plus append-only referral ledger. All 99
+  tests, lint, build, generated-script parsing and diff checks pass. Test Apps
+  Script version 2 and test Worker ebd2d883-aca2-4e01-a286-ca87436e88e0 are
+  deployed. Live test orders proved code generation (`SG6EF332`) and a S$5
+  friend discount (S$40 to S$35). Production is unchanged. Manual `Paid` edit
+  and the resulting live FIFO redemption remain to complete the rehearsal.
+  Operator feedback requires the normalized WhatsApp number in the referral
+  registry and every ledger event. The copied Orders sheet uses a `Paid?`
+  checkbox rather than `Status = Paid`; authority and reconciliation are being
+  corrected to match that real operator workflow. Test version 3 reconciled the
+  existing checked friend order and live FIFO redemption reduced S$35.50 to
+  S$30.50. The pasted table extract also
+  exposed that blank scripted checkbox cells inherit the Table's TRUE default;
+  test version 4 now explicitly preserves Boolean false. Control order
+  TEST-b76eb968-be87-4988-b6aa-f63a5c7b5e2d was recorded for visual checkbox
+  confirmation. Referral registry and ledger now include normalized phone
+  numbers. Screenshot evidence showed the Orders Table ending at row 43 while
+  worksheet-wide metadata pushed new orders to rows 54-56; the writer is being
+  corrected to use the first blank `Order no` row. Test Apps Script version 5
+  is deployed and control order TEST-5684ecb7-769e-47e7-a5b6-f8750abcb569
+  was accepted for row-44 verification. Referral-phone screenshots
+  confirmed the field exists; new values are being forced to plain text so the
+  visible `+65` prefix is retained. The row-44 screenshot confirmed normal
+  Apps Script writes do not expand the copied Google Table or inherit its UX;
+  the next test revision copies the preceding row's format and data validation
+  so Status dropdowns and Paid checkboxes remain available. All 101 tests,
+  lint, build, generated-script parsing and diff checks pass. Test Apps Script
+  version 7 is active; control order
+  TEST-d129a0e2-fc51-4da0-a8e7-03ad67410273 was written for row-45 UX
+  confirmation. Production remains unchanged.
+
+- Isolated test backend connected (2026-09-28): separate Apps Script deployment
+  version 1 and dedicated test Worker entry use only the new test secret.
+  Backend identity is verified before order writes; menu reads use isolated KV
+  keys, with the legacy production publish endpoint acknowledged but ignored.
+  One labelled dummy order TEST-ef93c53e-3091-422b-8f0a-1ac2dbd258f4 saved;
+  exact replay returned the same reference and duplicate=true. Test stock moved
+  by one, proving background test-only menu publication. Production smoke checks
+  pass. Test receipt suppresses real WhatsApp links. Manual edit-trigger setup
+  remains for the user; referral implementation and Git publication outstanding.
+  Final test Worker a1daa335-33c6-4152-9daa-287d9af52659; all 96 tests,
+  lint/build/diff checks and live test smoke pass (200, 8 products, invalid 400).
+
+- Separate test Apps Script preparation (2026-09-28): `.clasp.test.json`
+  identifies the user's copied project. Generated test variant prefixes custom
+  functions, restricts Sheet/network targets, disables email and order writes,
+  and uses a separate secret property. 88 tests, lint/build and diff checks pass.
+  Copied remote source matched production baseline and was backed up before
+  uploading the isolated editor source; no web-app deployment was created.
+  User's execution screenshot confirms isolation check completed. User approved
+  retaining copied records: no sanitization will be performed. New test order
+  references use TEST-prefixed UUIDs. Read-only TEST_inspectSetup reports only
+  setup flags and trigger names. Secrets, trigger inspection and Worker cutover
+  remain outstanding; production code/configuration unchanged. Referral
+  processing is not implemented; historical records must be excluded when built.
+
+- Receipt Bun Bounce link (2026-09-28): added a new-tab game link gated on a
+  saved order reference and the customer's WhatsApp click, retaining the
+  hostname game gate and honest awaiting-confirmation copy. All 84 tests,
+  lint, build and diff checks pass, including rendered receipt gates and
+  new-tab link attributes. Deployed TEST ONLY as
+  e9d74008-c9e0-4bee-a751-912b31d42483. Test/local-only `/receipt-preview`
+  provides a demo receipt and intercepts the WhatsApp click without sending
+  messages or creating orders. Production unchanged. Interactive browser
+  verification unavailable in this session; user preview ready.
+
 - Delivery fee increase to S$15 (2026-09-27): updated shared storefront/Worker
   policy, FAQ, and Apps Script validation. S$30 food minimum and free pickup
   unchanged. All 83 tests, lint, production build and diff checks pass,
   including S$35 + S$15 = S$50 and rejection of the former delivery total.
-  Coordinated Worker and Apps Script deployment required before the new price
-  is live. Apps Script version 31 staged; live deployment remains version 30.
+  Production release completed 2026-09-28 (run 36301300247); matching Apps
+  Script version 31 activated. Live storefront asset confirms S$15; production
+  smoke checks pass (homepage 200, 8 menu products, invalid order 400).
+  No successful real customer order was created during verification.
 
 - Guarded release automation (2026-09-23): local implementation now includes
   PR/main CI, exact-commit test and production workflows, immutable/checksummed

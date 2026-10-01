@@ -1,9 +1,12 @@
 import { isRetryableSmokeStatus, parseExpectedStatuses } from "./release-safety.mjs";
 
-const [baseUrlInput, expectedStatusInput] = process.argv.slice(2);
+const [baseUrlInput, expectedStatusInput, timeoutInput] = process.argv.slice(2);
 const baseUrl = new URL(baseUrlInput || "");
 const expectedOrderStatuses = parseExpectedStatuses(expectedStatusInput);
-const timeoutMs = 12_000;
+const timeoutMs = timeoutInput ? Number(timeoutInput) : 12_000;
+if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 60_000) {
+  throw new Error("Smoke timeout must be between 1000 and 60000 milliseconds.");
+}
 
 async function request(path, init = {}, attempts = 1) {
   let lastError;

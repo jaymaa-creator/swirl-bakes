@@ -18,6 +18,7 @@ test("buildOrderRecord includes the collection readiness note and excludes an ad
       pickupTime: "Ready to collect from 11am",
       address: "123 Test Street",
       notes: "No nuts",
+      referralCode: "sgabc123",
     },
     menu,
     estimatedTotal: 10,
@@ -29,6 +30,7 @@ test("buildOrderRecord includes the collection readiness note and excludes an ad
   assert.equal(order.quotedTotalSgd, 10);
   assert.equal(order.pickupTime, "Ready to collect from 11am");
   assert.equal(order.address, "");
+  assert.equal(order.referralCode, "sgabc123");
 });
 
 test("buildOrderRecord includes a delivery address and excludes collection slot", () => {

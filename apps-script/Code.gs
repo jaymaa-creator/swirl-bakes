@@ -29,6 +29,13 @@ const MONITOR_HEALTH_STATE_PROPERTY = "PRODUCTION_MONITOR_HEALTH_STATE";
 const MONITOR_EVENT_STATE_PROPERTY = "PRODUCTION_MONITOR_EVENT_STATE";
 const MONITOR_IMMEDIATE_STATE_PROPERTY = "PRODUCTION_MONITOR_IMMEDIATE_STATE";
 const MONITOR_ALERT_THROTTLE_MS = 60 * 60 * 1000;
+const REFERRAL_PROGRAM_VERSION = "REFERRAL_MVP_V1";
+const REFERRAL_CUSTOMERS_SHEET_NAME = "Referral Customers";
+const REFERRAL_LEDGER_SHEET_NAME = "Referral Ledger";
+const REFERRAL_MINIMUM_SGD = 35;
+const REFERRAL_CREDIT_SGD = 5;
+const REFERRAL_EXPIRY_DAYS = 90;
+const REFERRAL_MONTHLY_EARN_CAP = 5;
 
 function doGet(event) {
   try {
@@ -78,6 +85,8 @@ function doPost(event) {
     lock.waitLock(10000);
 
     let orderNumber = "";
+    let referralResult = null;
+    let ledgerSyncDeferred = false;
     try {
       ensureOrderRequestColumns(sheet);
       const existing = findOrderRequest(sheet, requestId);
@@ -89,33 +98,60 @@ function doPost(event) {
             error: "Request ID already belongs to different order details",
           });
         }
-        return jsonResponse({ ok: true, orderNumber: existing.orderNumber, duplicate: true });
+        try {
+          reconcileReferralLedgerForSavedOrders(spreadsheet, sheet);
+        } catch (syncError) {
+          ledgerSyncDeferred = true;
+          reportReferralLedgerSyncFailure(syncError);
+        }
+        return jsonResponse({ ok: true, orderNumber: existing.orderNumber, duplicate: true,
+          ledgerSyncDeferred, ...existing.referral });
       }
 
       const validation = validateOrderForWrite(order, spreadsheet);
       if (!validation.ok) return jsonResponse(validation);
 
+      reconcileReferralLedgerForSavedOrders(spreadsheet, sheet);
+      reconcilePaidReferralOrders(spreadsheet, sheet);
       orderNumber = getNextOrderNumber();
+      referralResult = applyReferralToOrder(spreadsheet, sheet, validation.order, orderNumber);
       appendOrderRow(sheet, {
         requestId,
         requestFingerprint,
         orderNumber,
         createdAt: new Date(),
         status: "New",
+        paid: false,
         name: safeCell(validation.order.name),
         whatsApp: whatsAppLink(validation.order.phone),
         // Store a real date when the site sends its canonical Saturday key so Sheets
         // keeps the same date formatting as the existing Orders rows.
         saturdayBatch: parseCalendarDate(validation.order.bakeWindow),
         items: safeCell(validation.order.items),
-        total: safeCell(validation.order.estimatedTotal),
+        total: safeCell(`S$${referralResult.amountDueSgd.toFixed(2)}`),
         fulfilment: safeCell(validation.order.delivery),
         collectionSlot: safeCell(validation.order.pickupTime),
         deliveryAddress: safeCell(validation.order.address),
         notes: safeCell(validation.order.notes),
+        referralProgramVersion: REFERRAL_PROGRAM_VERSION,
+        customerKey: referralResult.customerKey,
+        customerReferralCode: referralResult.referralCode,
+        enteredReferralCode: validation.order.referralCode,
+        referralDiscount: referralResult.referralDiscountSgd,
+        creditRedeemed: referralResult.creditRedeemedSgd,
+        creditSourceEventId: referralResult.creditSourceEventId,
+        amountDue: referralResult.amountDueSgd,
+        referredByCustomerKey: referralResult.referredByCustomerKey,
       });
 
       SpreadsheetApp.flush();
+      try {
+        reconcileReferralLedgerForSavedOrders(spreadsheet, sheet);
+        SpreadsheetApp.flush();
+      } catch (syncError) {
+        ledgerSyncDeferred = true;
+        reportReferralLedgerSyncFailure(syncError);
+      }
     } finally {
       lock.releaseLock();
     }
@@ -129,10 +165,23 @@ function doPost(event) {
       reportImmediateMonitoringFailure("order-refresh-scheduling", "An order was saved but its backup menu refresh could not be scheduled.");
     }
     console.log(`Order saved; returning reference ${orderNumber} without waiting for menu publication.`);
-    return jsonResponse({ ok: true, orderNumber, menuRefreshDeferred: true });
+    return jsonResponse({ ok: true, orderNumber, menuRefreshDeferred: true, ledgerSyncDeferred,
+      referralCode: referralResult.referralCode,
+      referralDiscountSgd: referralResult.referralDiscountSgd,
+      creditRedeemedSgd: referralResult.creditRedeemedSgd,
+      amountDueSgd: referralResult.amountDueSgd });
   } catch (error) {
     console.error(error);
     return jsonResponse({ ok: false, error: "Invalid order payload" });
+  }
+}
+
+function reportReferralLedgerSyncFailure(error) {
+  console.error("Saved order referral audit deferred", error);
+  try {
+    reportImmediateMonitoringFailure("referral-ledger-sync", "A saved order needs referral ledger reconciliation.");
+  } catch (monitorError) {
+    console.error("Referral ledger alert could not be sent", monitorError);
   }
 }
 
@@ -231,6 +280,7 @@ function installMenuSyncTrigger() {
 
 function onMenuSheetEdit(event) {
   const sheetName = event && event.range && event.range.getSheet().getName();
+  if (sheetName === ORDERS_SHEET_NAME) processPaidReferralEdit(event);
   if (
     sheetName !== MENU_SETTINGS_SHEET_NAME &&
     sheetName !== ORDERS_SHEET_NAME &&
@@ -728,6 +778,7 @@ function appendOrderRow(sheet, orderRow) {
     order_number: orderRow.orderNumber,
     created_at: orderRow.createdAt,
     status: orderRow.status,
+    paid: orderRow.paid,
     name: orderRow.name,
     whatsapp: orderRow.whatsApp,
     phone: orderRow.whatsApp,
@@ -744,14 +795,44 @@ function appendOrderRow(sheet, orderRow) {
     delivery_address: orderRow.deliveryAddress,
     address: orderRow.deliveryAddress,
     notes: orderRow.notes,
+    referral_program_version: orderRow.referralProgramVersion,
+    customer_key: orderRow.customerKey,
+    customer_referral_code: orderRow.customerReferralCode,
+    entered_referral_code: orderRow.enteredReferralCode,
+    referral_discount: orderRow.referralDiscount,
+    credit_redeemed: orderRow.creditRedeemed,
+    credit_source_event_id: orderRow.creditSourceEventId,
+    amount_due: orderRow.amountDue,
+    referred_by_customer_key: orderRow.referredByCustomerKey,
   };
 
-  const row = headers.map((header) => valueByHeader[header] || "");
-  sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  const row = headers.map((header) => Object.prototype.hasOwnProperty.call(valueByHeader, header)
+    ? valueByHeader[header]
+    : "");
+  const targetRow = findNextOrderRow(sheet, headers);
+  const targetRange = sheet.getRange(targetRow, 1, 1, row.length);
+  if (targetRow > 2) {
+    const templateRange = sheet.getRange(targetRow - 1, 1, 1, row.length);
+    templateRange.copyTo(targetRange, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+    templateRange.copyTo(targetRange, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
+  }
+  const paidColumn = headers.indexOf("paid");
+  if (paidColumn >= 0) sheet.getRange(targetRow, paidColumn + 1).insertCheckboxes();
+  targetRange.setValues([row]);
+}
+
+function findNextOrderRow(sheet, headers) {
+  const orderNumberColumn = Math.max(headers.indexOf("order_no"), headers.indexOf("order_number"));
+  if (orderNumberColumn < 0 || sheet.getLastRow() < 2) return 2;
+  const values = sheet.getRange(2, orderNumberColumn + 1, sheet.getLastRow() - 1, 1).getValues();
+  const firstBlank = values.findIndex((row) => !String(row[0] || "").trim());
+  return firstBlank >= 0 ? firstBlank + 2 : sheet.getLastRow() + 1;
 }
 
 function ensureOrderRequestColumns(sheet) {
-  const required = ["Request ID", "Request Fingerprint"];
+  const required = ["Request ID", "Request Fingerprint", "Referral Program Version", "Customer Key",
+    "Customer Referral Code", "Entered Referral Code", "Referral Discount", "Credit Redeemed",
+    "Credit Source Event ID", "Amount Due", "Referred By Customer Key"];
   const lastColumn = sheet.getLastColumn();
   const existing = lastColumn
     ? sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map((header) => normalizeHeader(header))
@@ -781,7 +862,18 @@ function findOrderRequest(sheet, requestId) {
   return row ? {
     requestFingerprint: String(row[fingerprintColumn] || "").trim().toLowerCase(),
     orderNumber: String(row[orderNumberColumn] || "").trim(),
+    referral: {
+      referralCode: valueFromRow(headers, row, "customer_referral_code"),
+      referralDiscountSgd: Number(valueFromRow(headers, row, "referral_discount") || 0),
+      creditRedeemedSgd: Number(valueFromRow(headers, row, "credit_redeemed") || 0),
+      amountDueSgd: Number(valueFromRow(headers, row, "amount_due") || 0),
+    },
   } : null;
+}
+
+function valueFromRow(headers, row, header) {
+  const column = headers.indexOf(header);
+  return column < 0 ? "" : row[column];
 }
 
 function validateOrderForWrite(order, spreadsheet) {
@@ -797,11 +889,13 @@ function validateOrderForWrite(order, spreadsheet) {
   const pickupTime = text(order.pickupTime || "", 40, false);
   const address = text(order.address || "", 300, false);
   const notes = text(order.notes || "", 500, false);
+  const referralCode = text(order.referralCode || "", 16, false);
   const phoneDigits = phone ? phone.replace(/\D/g, "") : "";
   const quotedTotalSgd = Number(order.quotedTotalSgd);
   if (
     !name || !phone || phoneDigits.length < 8 || phoneDigits.length > 15 ||
-    !getRequestedSaturday(bakeWindow) || !delivery || pickupTime === null || address === null || notes === null ||
+    !getRequestedSaturday(bakeWindow) || !delivery || pickupTime === null || address === null || notes === null || referralCode === null ||
+    (referralCode && !/^[a-z0-9]{6,12}$/i.test(referralCode)) ||
     !Number.isFinite(quotedTotalSgd) || quotedTotalSgd < 0 || quotedTotalSgd > 10000 ||
     Math.abs(quotedTotalSgd * 100 - Math.round(quotedTotalSgd * 100)) >= 1e-7 ||
     !Array.isArray(order.lineItems) || order.lineItems.length < 1 || order.lineItems.length > 20
@@ -880,10 +974,233 @@ function validateOrderForWrite(order, spreadsheet) {
   }
 
   return { ok: true, order: {
-    name, phone, bakeWindow, delivery, pickupTime, address, notes,
+    name, phone, bakeWindow, delivery, pickupTime, address, notes, referralCode: referralCode.toUpperCase(),
     items: itemParts.join(", "),
     estimatedTotal: `S$${(totalCents / 100).toFixed(2)}`,
+    itemsTotalSgd: itemsTotalCents / 100,
+    totalSgd: totalCents / 100,
   } };
+}
+
+function applyReferralToOrder(spreadsheet, ordersSheet, order, orderNumber) {
+  ensureReferralSheets(spreadsheet);
+  const customerKey = referralCustomerKey(order.phone);
+  const customer = getOrCreateReferralCustomer(spreadsheet, customerKey, orderNumber, order.phone);
+  const result = { customerKey, referralCode: customer.code, referredByCustomerKey: "", creditSourceEventId: "",
+    referralDiscountSgd: 0, creditRedeemedSgd: 0, amountDueSgd: order.totalSgd };
+  const qualifying = order.delivery === COLLECTION_OPTION && order.itemsTotalSgd >= REFERRAL_MINIMUM_SGD;
+  if (!qualifying) return result;
+
+  const entered = String(order.referralCode || "").toUpperCase();
+  const referrer = entered ? findReferralCustomerByCode(spreadsheet, entered) : null;
+  if (referrer && referrer.customerKey !== customerKey && isFirstCustomerOrder(ordersSheet, order.phone, customerKey)) {
+    result.referralDiscountSgd = REFERRAL_CREDIT_SGD;
+    result.referredByCustomerKey = referrer.customerKey;
+    result.amountDueSgd -= REFERRAL_CREDIT_SGD;
+    return result;
+  }
+
+  const credit = findOldestReferralCredit(spreadsheet, ordersSheet, customerKey, new Date());
+  if (credit) {
+    result.creditRedeemedSgd = REFERRAL_CREDIT_SGD;
+    result.amountDueSgd -= REFERRAL_CREDIT_SGD;
+    result.creditSourceEventId = credit.eventId;
+  }
+  return result;
+}
+
+function ensureReferralSheets(spreadsheet) {
+  let customers = spreadsheet.getSheetByName(REFERRAL_CUSTOMERS_SHEET_NAME);
+  if (!customers) {
+    customers = spreadsheet.insertSheet(REFERRAL_CUSTOMERS_SHEET_NAME);
+    customers.appendRow(["Customer Key", "Referral Code", "Created At", "Source Order", "Phone"]);
+    customers.setFrozenRows(1);
+  }
+  ensureSheetColumn(customers, "Phone");
+  let ledger = spreadsheet.getSheetByName(REFERRAL_LEDGER_SHEET_NAME);
+  if (!ledger) {
+    ledger = spreadsheet.insertSheet(REFERRAL_LEDGER_SHEET_NAME);
+    ledger.appendRow(["Event ID", "Timestamp", "Event Type", "Customer Key", "Referral Code", "Amount SGD",
+      "Source Order", "Redemption Order", "Expires At", "Related Event ID", "Detail", "Phone"]);
+    ledger.setFrozenRows(1);
+  }
+  ensureSheetColumn(ledger, "Phone");
+}
+
+function ensureSheetColumn(sheet, header) {
+  const lastColumn = sheet.getLastColumn();
+  const headers = lastColumn ? sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(normalizeHeader) : [];
+  if (!headers.includes(normalizeHeader(header))) sheet.getRange(1, lastColumn + 1).setValue(header);
+}
+
+function referralCustomerKey(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, digits)
+    .map((value) => (value < 0 ? value + 256 : value).toString(16).padStart(2, "0")).join("");
+}
+
+function getOrCreateReferralCustomer(spreadsheet, customerKey, orderNumber, phone) {
+  const sheet = spreadsheet.getSheetByName(REFERRAL_CUSTOMERS_SHEET_NAME);
+  const values = sheet.getDataRange().getValues();
+  const existingIndex = values.slice(1).findIndex((row) => String(row[0]) === customerKey);
+  if (existingIndex >= 0) {
+    if (!values[existingIndex + 1][4]) sheet.getRange(existingIndex + 2, 5).setValue(safeCell(normalizeReferralPhone(phone)));
+    return { customerKey, code: String(values[existingIndex + 1][1]), phone: normalizeReferralPhone(phone) };
+  }
+  let code = "";
+  do { code = `SG${Utilities.getUuid().replace(/-/g, "").slice(0, 6).toUpperCase()}`; }
+  while (values.slice(1).some((row) => String(row[1]) === code));
+  const normalizedPhone = normalizeReferralPhone(phone);
+  sheet.appendRow([customerKey, code, new Date(), orderNumber, safeCell(normalizedPhone)]);
+  return { customerKey, code, phone: normalizedPhone };
+}
+
+function findReferralCustomerByCode(spreadsheet, code) {
+  const values = spreadsheet.getSheetByName(REFERRAL_CUSTOMERS_SHEET_NAME).getDataRange().getValues();
+  const row = values.slice(1).find((entry) => String(entry[1]).toUpperCase() === code);
+  return row ? { customerKey: String(row[0]), code: String(row[1]), phone: String(row[4] || "") } : null;
+}
+
+function findReferralCustomerByKey(spreadsheet, customerKey) {
+  const values = spreadsheet.getSheetByName(REFERRAL_CUSTOMERS_SHEET_NAME).getDataRange().getValues();
+  const row = values.slice(1).find((entry) => String(entry[0]) === customerKey);
+  return row ? { customerKey: String(row[0]), code: String(row[1]), phone: String(row[4] || "") } : null;
+}
+
+function normalizeReferralPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits ? `+${digits}` : "";
+}
+
+function isFirstCustomerOrder(sheet, phone, customerKey) {
+  if (sheet.getLastRow() < 2) return true;
+  const values = sheet.getDataRange().getDisplayValues();
+  const headers = values[0].map(normalizeHeader);
+  const phoneColumn = Math.max(headers.indexOf("whatsapp"), headers.indexOf("phone"), headers.indexOf("contact_number"));
+  const keyColumn = headers.indexOf("customer_key");
+  const digits = String(phone).replace(/\D/g, "");
+  return !values.slice(1).some((row) =>
+    (keyColumn >= 0 && String(row[keyColumn]) === customerKey) ||
+    (phoneColumn >= 0 && String(row[phoneColumn]).replace(/\D/g, "").includes(digits))
+  );
+}
+
+function appendReferralLedger(spreadsheet, type, customerKey, code, amount, sourceOrder, redemptionOrder, relatedEventId, detail, expiresAt, phone) {
+  const sheet = spreadsheet.getSheetByName(REFERRAL_LEDGER_SHEET_NAME);
+  const eventId = Utilities.getUuid();
+  sheet.appendRow([eventId, new Date(), type, customerKey, code, amount, sourceOrder, redemptionOrder,
+    expiresAt || "", relatedEventId || "", detail || "", safeCell(normalizeReferralPhone(phone))]);
+  return eventId;
+}
+
+function findOldestReferralCredit(spreadsheet, ordersSheet, customerKey, now) {
+  const rows = spreadsheet.getSheetByName(REFERRAL_LEDGER_SHEET_NAME).getDataRange().getValues().slice(1);
+  const redeemed = new Set(rows.filter((row) => row[2] === "CREDIT_REDEEMED").map((row) => String(row[9])));
+  const orderValues = ordersSheet.getDataRange().getValues();
+  const orderHeaders = orderValues[0].map(normalizeHeader);
+  orderValues.slice(1).forEach((row) => {
+    if (valueFromRow(orderHeaders, row, "order_no") || valueFromRow(orderHeaders, row, "order_number")) {
+      const reserved = String(valueFromRow(orderHeaders, row, "credit_source_event_id") || "");
+      if (reserved) redeemed.add(reserved);
+    }
+  });
+  return rows.filter((row) => row[2] === "CREDIT_EARNED" && String(row[3]) === customerKey &&
+      !redeemed.has(String(row[0])) && new Date(row[8]).getTime() > now.getTime())
+    .sort((a, b) => new Date(a[1]) - new Date(b[1]))
+    .map((row) => ({ eventId: String(row[0]), sourceOrder: String(row[6]) }))[0] || null;
+}
+
+// The saved order is the commitment. Rebuild a missing audit event from that
+// row after a transient Sheet failure, including on an exact request replay.
+function reconcileReferralLedgerForSavedOrders(spreadsheet, ordersSheet) {
+  if (ordersSheet.getLastRow() < 2) return;
+  const values = ordersSheet.getDataRange().getValues();
+  const headers = values[0].map(normalizeHeader);
+  values.slice(1).forEach((row) => {
+    if (String(valueFromRow(headers, row, "referral_program_version")) !== REFERRAL_PROGRAM_VERSION) return;
+    const orderNumber = String(valueFromRow(headers, row, "order_no") || valueFromRow(headers, row, "order_number") || "");
+    if (!orderNumber) return;
+    const customerKey = String(valueFromRow(headers, row, "customer_key") || "");
+    const customer = customerKey ? findReferralCustomerByKey(spreadsheet, customerKey) : null;
+    if (Number(valueFromRow(headers, row, "referral_discount")) === REFERRAL_CREDIT_SGD &&
+        valueFromRow(headers, row, "referred_by_customer_key")) {
+      const ledger = spreadsheet.getSheetByName(REFERRAL_LEDGER_SHEET_NAME).getDataRange().getValues().slice(1);
+      if (!ledger.some((event) => event[2] === "FRIEND_DISCOUNT" && String(event[6]) === orderNumber)) {
+        appendReferralLedger(spreadsheet, "FRIEND_DISCOUNT", customerKey,
+          String(valueFromRow(headers, row, "entered_referral_code") || ""), REFERRAL_CREDIT_SGD,
+          orderNumber, "", "", String(valueFromRow(headers, row, "referred_by_customer_key")),
+          "", customer && customer.phone || "");
+      }
+    }
+    const creditEventId = String(valueFromRow(headers, row, "credit_source_event_id") || "");
+    if (Number(valueFromRow(headers, row, "credit_redeemed")) === REFERRAL_CREDIT_SGD && creditEventId) {
+      const ledger = spreadsheet.getSheetByName(REFERRAL_LEDGER_SHEET_NAME).getDataRange().getValues().slice(1);
+      if (!ledger.some((event) => event[2] === "CREDIT_REDEEMED" && String(event[7]) === orderNumber)) {
+        const source = ledger.find((event) => event[2] === "CREDIT_EARNED" && String(event[0]) === creditEventId);
+        if (!source || String(source[3]) !== customerKey) throw new Error("Referral credit source missing for saved order");
+        appendReferralLedger(spreadsheet, "CREDIT_REDEEMED", customerKey, customer && customer.code || "",
+          REFERRAL_CREDIT_SGD, String(source[6]), orderNumber, creditEventId, "FIFO", "",
+          customer && customer.phone || "");
+      }
+    }
+  });
+}
+
+function processPaidReferralEdit(event) {
+  const range = event && event.range;
+  if (!range || typeof range.getRow !== "function" || typeof range.getColumn !== "function" ||
+      typeof range.getNumRows !== "function" || typeof range.getNumColumns !== "function" ||
+      range.getRow() < 2 || range.getNumRows() !== 1 || range.getNumColumns() !== 1) return;
+  const sheet = range.getSheet();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(normalizeHeader);
+  const editedHeader = headers[range.getColumn() - 1];
+  const isPaidEdit = (editedHeader === "paid" && String(event.value || "").toLowerCase() === "true") ||
+    (editedHeader === "status" && String(event.value || "").toLowerCase() === "paid");
+  if (!isPaidEdit) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const row = sheet.getRange(range.getRow(), 1, 1, sheet.getLastColumn()).getValues()[0];
+    const paidColumn = headers.indexOf("paid");
+    const statusColumn = headers.indexOf("status");
+    const stillPaid = (paidColumn >= 0 && row[paidColumn] === true) ||
+      (statusColumn >= 0 && String(row[statusColumn]).toLowerCase() === "paid");
+    if (stillPaid) earnReferralCreditForOrder(sheet.getParent(), headers, row);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function reconcilePaidReferralOrders(spreadsheet, sheet) {
+  if (sheet.getLastRow() < 2) return;
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(normalizeHeader);
+  const paidColumn = headers.indexOf("paid");
+  const statusColumn = headers.indexOf("status");
+  values.slice(1).forEach((row) => {
+    const paid = paidColumn >= 0 && (row[paidColumn] === true || String(row[paidColumn]).toLowerCase() === "true");
+    const legacyPaid = statusColumn >= 0 && String(row[statusColumn]).toLowerCase() === "paid";
+    if (paid || legacyPaid) earnReferralCreditForOrder(spreadsheet, headers, row);
+  });
+}
+
+function earnReferralCreditForOrder(spreadsheet, headers, row) {
+  if (String(valueFromRow(headers, row, "referral_program_version")) !== REFERRAL_PROGRAM_VERSION) return;
+  const sourceOrder = String(valueFromRow(headers, row, "order_no") || valueFromRow(headers, row, "order_number") || "");
+  if (!sourceOrder) return;
+  ensureReferralSheets(spreadsheet);
+  const ledger = spreadsheet.getSheetByName(REFERRAL_LEDGER_SHEET_NAME).getDataRange().getValues().slice(1);
+  const referralEvent = ledger.find((entry) => entry[2] === "FRIEND_DISCOUNT" && String(entry[6]) === sourceOrder);
+  const referrerKey = referralEvent ? String(referralEvent[10] || "") : String(valueFromRow(headers, row, "referred_by_customer_key") || "");
+  if (!referrerKey) return;
+  if (ledger.some((entry) => entry[2] === "CREDIT_EARNED" && String(entry[6]) === sourceOrder)) return;
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const earnedThisMonth = ledger.filter((entry) => entry[2] === "CREDIT_EARNED" && String(entry[3]) === referrerKey && new Date(entry[1]) >= monthStart).length;
+  if (earnedThisMonth >= REFERRAL_MONTHLY_EARN_CAP) return;
+  const expiry = new Date(); expiry.setDate(expiry.getDate() + REFERRAL_EXPIRY_DAYS);
+  const referrer = findReferralCustomerByKey(spreadsheet, referrerKey);
+  appendReferralLedger(spreadsheet, "CREDIT_EARNED", referrerKey, referrer && referrer.code || "", REFERRAL_CREDIT_SGD,
+    sourceOrder, "", "", "Paid order", expiry, referrer && referrer.phone || "");
 }
 
 function readMenuPayload(forceRefresh, batchKey, useTestAvailability) {
