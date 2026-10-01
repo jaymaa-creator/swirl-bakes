@@ -123,4 +123,29 @@ For any change to order persistence, checkbox/dropdown handling or Sheet schema:
 - Consider a durable order recovery queue separately. This hotfix does not add
   one and does not change payment functionality.
 
-Deployment and final verification evidence is recorded below as it completes.
+## Deployment and verification evidence
+
+- Fix source commit: `597241ef2a5adfffab9cd4c15aceb34166ada771`,
+  [PR #14](https://github.com/jaymaa-creator/swirl-bakes/pull/14).
+- Production Apps Script: existing web-app deployment updated from **32 to 33**;
+  deployment listing confirmed version 33. The immutable version's Code source
+  SHA-256 matched the Git source:
+  `f2488cb306d388df9ef5094660e17912c925d958302f9a45bae040863ccade03`.
+- Isolated test Apps Script updated to **10**. Successful Worker checkout and
+  identical replay both returned HTTP 200, the same order reference and correct
+  S$20 amount; replay returned `duplicate:true`.
+- Test request: `6f2c4bee-f74e-4619-a639-a91c5c7cc400`.
+  Test order: `TEST-539eb48a-2276-402d-bb8f-84ff0c6f6f92`.
+  Exactly one matching row was found in test Orders (row 40). Chrome verified
+  the Status dropdown and unchecked Paid checkbox (`N40=FALSE`). Only this
+  synthetic row was set to Cancelled via its dropdown; it is retained for audit.
+- 23:12:25 SGT: production read-only health check returned
+  `{"ok":true,"failures":[]}` after comparison with fresh Sheets data.
+- Production smoke: homepage 200, eight menu products, invalid-order 400. This
+  remains boundary coverage, not a real production checkout.
+- 112 local tests, lint, build and diff checks passed. GitHub CI also passed:
+  [run 36882259001](https://github.com/jaymaa-creator/swirl-bakes/actions/runs/36882259001).
+- Worker and storefront were not redeployed. No real customer order, payment
+  flag or referral record was altered by the repair. No full customer checkout
+  was submitted in production; the actual production writer was verified on a
+  same-spreadsheet disposable Table copy instead.
