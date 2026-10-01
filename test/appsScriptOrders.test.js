@@ -35,6 +35,7 @@ function baseContext({ events = [], sheet = {} } = {}) {
     console: { log() {}, error() {} },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => "test-secret" }) },
     SpreadsheetApp: {
+      DataValidationCriteria: { CHECKBOX: "CHECKBOX" },
       CopyPasteType: { PASTE_FORMAT: "PASTE_FORMAT", PASTE_DATA_VALIDATION: "PASTE_DATA_VALIDATION" },
       openById: () => ({ getSheetByName: () => sheet }),
       flush: () => events.push("flush"),
@@ -297,7 +298,11 @@ class FakeSheet {
         valuesRow.forEach((value, columnOffset) => { this.rows[row - 1 + rowOffset][column - 1 + columnOffset] = value; });
       }),
       copyTo: (_target, type) => sheet.copyOperations.push(type),
-      insertCheckboxes: () => sheet.checkboxCells.push([row, column]),
+      getDataValidation: () => sheet.paidValidation || null,
+      insertCheckboxes: () => {
+        if (sheet.checkboxError) throw sheet.checkboxError;
+        sheet.checkboxCells.push([row, column]);
+      },
     };
   }
 }
@@ -333,6 +338,46 @@ test("new order rows preserve an explicit false Paid checkbox", () => {
   assert.deepEqual(sheet.checkboxCells, [[2, 2]]);
 });
 
+test("native typed Paid columns cannot block saving a complete unpaid order", () => {
+  const context = baseContext();
+  const sheet = new FakeSheet([["Order no", "Paid?", "Status", "Request ID"], ["SG-0055", true, "Closed", "earlier"]]);
+  sheet.checkboxError = new Error("This operation is not allowed on cells in typed columns.");
+  context.appendOrderRow(sheet, { orderNumber: "SG-0057", paid: false, status: "New", requestId: REQUEST_ID });
+  assert.deepEqual(sheet.rows[2], ["SG-0057", false, "New", REQUEST_ID]);
+  assert.deepEqual(sheet.rows[1], ["SG-0055", true, "Closed", "earlier"]);
+  assert.deepEqual(sheet.copyOperations, ["PASTE_FORMAT", "PASTE_DATA_VALIDATION"]);
+});
+
+test("existing checkbox validation is preserved without reinserting it", () => {
+  const context = baseContext();
+  const sheet = new FakeSheet([["Order no", "Paid?"]]);
+  sheet.paidValidation = { getCriteriaType: () => "CHECKBOX" };
+  sheet.checkboxError = new Error("must not be called");
+  context.appendOrderRow(sheet, { orderNumber: "SG-0057", paid: false });
+  assert.equal(sheet.rows[1][1], false);
+});
+
+test("unrelated checkbox errors are not silently treated as successful saves", () => {
+  const context = baseContext();
+  const sheet = new FakeSheet([["Order no", "Paid?"]]);
+  sheet.checkboxError = new Error("Permission denied");
+  assert.throws(() => context.appendOrderRow(sheet, { orderNumber: "SG-0057", paid: false }), /Permission denied/);
+  assert.equal(sheet.rows.length, 1);
+});
+
+test("order allocation advances beyond manual references and never reuses a higher stored sequence", () => {
+  const context = baseContext();
+  let stored = "54";
+  context.PropertiesService.getScriptProperties = () => ({ getProperty: () => stored, setProperty: (_key, value) => { stored = value; } });
+  const sheet = new FakeSheet([["Order no"], ["SG-0055"], ["TEST-9999"], [""], ["SG-0052"]]);
+  assert.equal(context.getNextOrderNumber(sheet), "SG-0056");
+  assert.equal(context.getNextOrderNumber(sheet), "SG-0057");
+  stored = "100";
+  assert.equal(context.getNextOrderNumber(sheet), "SG-0101");
+  stored = "invalid";
+  assert.equal(context.getNextOrderNumber(sheet), "SG-0056");
+});
+
 test("new orders fill the first blank Order no row instead of skipping to unrelated data", () => {
   const context = baseContext();
   const sheet = new FakeSheet([
@@ -347,11 +392,12 @@ test("new orders fill the first blank Order no row instead of skipping to unrela
   assert.deepEqual(sheet.copyOperations, ["PASTE_FORMAT", "PASTE_DATA_VALIDATION"]);
 });
 
-test("two complete calls with the same request ID append exactly one Sheet row", () => {
+test("two complete calls with the same request ID append exactly one unpaid row with native typed columns", () => {
   const sheet = new FakeSheet([[
     "Order number", "Created at", "Status", "Name", "WhatsApp", "Saturday batch",
-    "Items", "Total", "Fulfilment", "Collection slot", "Delivery address", "Notes",
+    "Items", "Total", "Fulfilment", "Collection slot", "Delivery address", "Notes", "Paid?",
   ]]);
+  sheet.checkboxError = new Error("This operation is not allowed on cells in typed columns.");
   const context = baseContext({ sheet });
   let sequenceCalls = 0;
   Object.assign(context, {
@@ -379,6 +425,7 @@ test("two complete calls with the same request ID append exactly one Sheet row",
   assert.equal(replay.duplicate, true);
   assert.equal(sequenceCalls, 1);
   assert.equal(sheet.getLastRow(), 2);
+  assert.equal(sheet.rows[1][12], false);
 });
 
 function referralContext() {

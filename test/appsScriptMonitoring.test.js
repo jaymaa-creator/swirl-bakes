@@ -100,3 +100,23 @@ test("setup installs one 15-minute trigger and sends a confirmation email", () =
   assert.equal(emails.length, 1);
   assert.match(emails[0].subject, /monitoring enabled/i);
 });
+
+test("cutoff rollover checks the live selected batch, not the snapshot publication anchor", () => {
+  const { context } = monitoringContext();
+  const calendar = [{ date: "2026-10-10", open: true }];
+  let liveBatch = "2026-10-10";
+  Object.assign(context, {
+    readBakeCalendar: () => calendar,
+    getMenuBatchDate: () => new Date("2026-10-10T00:00:00+08:00"),
+    formatBatchKey: () => "2026-10-10",
+    readMenuSettings: () => [],
+  });
+  context.UrlFetchApp.fetch = (url) => {
+    if (url.endsWith("/api/menu")) return response(200, JSON.stringify({ ok: true, batchKey: liveBatch, products: [], calendar }));
+    if (url.endsWith("/api/monitor")) return response(200, JSON.stringify({ ok: true, currentBatch: "2026-10-03", events: {} }));
+    return response(200, "ok");
+  };
+  assert.equal(context.collectProductionHealthStatus().failures.length, 0);
+  liveBatch = "2026-10-03";
+  assert.match(context.collectProductionHealthStatus().failures[0], /Live batch 2026-10-03 does not match Sheets batch 2026-10-10/);
+});
