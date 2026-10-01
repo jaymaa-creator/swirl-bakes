@@ -36,6 +36,8 @@ const miniGameEnabled = window.location.hostname.startsWith("test-") || ["swirlg
 
 export default function App() {
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  const receiptPreviewEnabled = window.location.hostname.startsWith("test-") || ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  if (path === "/receipt-preview" && receiptPreviewEnabled) return <ReceiptPreview />;
   if (path === "/minigame" && miniGameEnabled) {
     return <React.Suspense fallback={<p className="p-8">Loading Bun Bounce...</p>}><SwirlGame /></React.Suspense>;
   }
@@ -44,6 +46,23 @@ export default function App() {
   }
 
   return <BakesLandingPage />;
+}
+
+function ReceiptPreview() {
+  const [whatsappOpened, setWhatsappOpened] = useState(false);
+  return <>
+    <p className="bg-brandBrown p-4 text-center text-sm text-white" role="status">Demo only — no order is created. The WhatsApp button simulates a click without opening WhatsApp.</p>
+    <OrderReceipt
+      brand={BRAND}
+      miniGameEnabled
+      receipt={{ status: "saved", orderNumber: "DEMO-ONLY", whatsappOpened,
+        name: "Demo customer", bakeLabel: "Demo bake date", items: "Example bakes",
+        delivery: "Self-collection", pickupTime: "Demo collection slot",
+        itemsTotal: "S$35.00", deliveryFee: "S$0.00", estimatedTotal: "S$35.00", message: "Demo only" }}
+      onOpenWhatsApp={(event) => { event.preventDefault(); setWhatsappOpened(true); }}
+      onBrowse={() => { window.location.href = "/"; }}
+    />
+  </>;
 }
 
 function BakesLandingPage() {
@@ -105,6 +124,7 @@ function BakesLandingPage() {
     pickupTime: BRAND.pickupWindows[0],
     bananaChocolateChips: false,
     notes: "",
+    referralCode: "",
     items: Object.fromEntries(MENU.map((item) => [item.id, 0])),
   });
 
@@ -219,7 +239,7 @@ function BakesLandingPage() {
     window.scrollTo(0, 0);
     setForm((current) => ({
       ...current, items: {}, bananaChocolateChips: false,
-      notes: "", address: "", delivery: BRAND.deliveryOptions[1],
+      notes: "", address: "", referralCode: "", delivery: BRAND.deliveryOptions[1],
     }));
     // The request runs once. Timeouts never retry a possibly saved order.
     watchOrderRequest(submitOrderRequest(id, order, turnstileToken), (update) => {
@@ -228,11 +248,15 @@ function BakesLandingPage() {
   };
 
   if (showReceipt && receipt) {
-    return <OrderReceipt receipt={receipt} brand={BRAND}
+    return <OrderReceipt receipt={receipt} brand={BRAND} miniGameEnabled={miniGameEnabled} testMode={window.location.hostname.startsWith("test-")}
       onOpenWhatsApp={() => setReceipt((current) => ({ ...current, whatsappOpened: true }))}
       onBrowse={() => {
         setShowReceipt(false);
         window.history.pushState(null, "", "#menu");
+        if (receipt.status === "rejected") {
+          window.location.reload();
+          return;
+        }
         requestAnimationFrame(() => document.getElementById("menu")?.scrollIntoView());
       }}
     />;

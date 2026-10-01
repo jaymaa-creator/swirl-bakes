@@ -1,8 +1,11 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "test-swirl-girl",
-  "main": "./src/worker.js",
+  "main": "./src/testWorker.js",
   "compatibility_date": "2026-07-26",
+  "vars": {
+    "TEST_APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbzD0EMRRgCqPPRMyVMeZ6RS_5q8iw8TBKe5njr8HDDK4f7Qq1DhdztW9VdVqUQ_Xng8/exec"
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

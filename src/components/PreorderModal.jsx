@@ -409,6 +409,20 @@ export default function PreorderModal({
             />
           </Field>
 
+          <Field label="Referral code" hint="Optional — pickup orders of S$35 or more">
+            <Input
+              name="referral-code"
+              autoComplete="off"
+              maxLength={12}
+              value={form.referralCode || ""}
+              onChange={(e) => setForm((f) => ({ ...f, referralCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") }))}
+              placeholder="e.g. SWIRL7K2"
+            />
+          </Field>
+          <p className="text-xs leading-5 text-inkMuted">
+            Give S$5, get S$5. Valid on a first self-collection order with at least S$35 of bakes. We confirm eligibility when your order is recorded.
+          </p>
+
           <p className="text-xs leading-6 text-inkMuted">
             We use these details to manage your order. Do not include card details, NRIC details, or unnecessary sensitive information. Read our{" "}
             <a href="#privacy" onClick={onClose} className="font-medium text-brandBrown underline underline-offset-2">

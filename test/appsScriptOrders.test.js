@@ -35,6 +35,7 @@ function baseContext({ events = [], sheet = {} } = {}) {
     console: { log() {}, error() {} },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => "test-secret" }) },
     SpreadsheetApp: {
+      CopyPasteType: { PASTE_FORMAT: "PASTE_FORMAT", PASTE_DATA_VALIDATION: "PASTE_DATA_VALIDATION" },
       openById: () => ({ getSheetByName: () => sheet }),
       flush: () => events.push("flush"),
     },
@@ -64,7 +65,13 @@ function harness(options = {}) {
         address: "", notes: "No nuts",
       } };
     },
+    reconcilePaidReferralOrders: () => events.push("reconcile"),
+    reconcileReferralLedgerForSavedOrders: () => events.push("audit"),
     getNextOrderNumber: () => { events.push("sequence"); return "SG-0123"; },
+    applyReferralToOrder: () => { events.push("referral"); return {
+      customerKey: "customer-key", referralCode: "SGABC123", referredByCustomerKey: "",
+      referralDiscountSgd: 0, creditRedeemedSgd: 0, amountDueSgd: 35,
+    }; },
     appendOrderRow: (_sheet, row) => { events.push("save"); events.savedRow = row; },
     parseCalendarDate: () => new Date("2026-09-26T00:00:00+08:00"),
     whatsAppLink: () => "test",
@@ -82,9 +89,10 @@ test("Apps Script validates and saves under one lock before queuing refresh", ()
   const { context, events } = harness();
   const result = post(context);
   assert.equal(result.orderNumber, "SG-0123");
-  assert.deepEqual([...events], ["lock", "ensure", "lookup", "validate", "sequence", "save", "flush", "unlock", "queue"]);
+  assert.deepEqual([...events], ["lock", "ensure", "lookup", "validate", "audit", "reconcile", "sequence", "referral", "save", "flush", "audit", "flush", "unlock", "queue"]);
   assert.equal(events.savedRow.requestId, REQUEST_ID);
   assert.equal(events.savedRow.requestFingerprint, FINGERPRINT);
+  assert.equal(events.savedRow.paid, false);
 });
 
 test("an exact replay returns the original order without validating or writing again", () => {
@@ -96,7 +104,7 @@ test("an exact replay returns the original order without validating or writing a
   assert.equal(result.ok, true);
   assert.equal(result.orderNumber, "SG-0007");
   assert.equal(result.duplicate, true);
-  assert.deepEqual([...events], ["lock", "ensure", "lookup", "unlock"]);
+  assert.deepEqual([...events], ["lock", "ensure", "lookup", "audit", "unlock"]);
 });
 
 test("reusing a request ID with changed details fails closed", () => {
@@ -124,6 +132,32 @@ test("backup scheduling failure does not reject an already saved order", () => {
   const { context } = harness();
   context.queueMenuSnapshotSync = () => { throw new Error("quota"); };
   assert.equal(post(context).ok, true);
+});
+
+test("a failed audit append still returns the saved order and an exact replay repairs it", () => {
+  const { context, events } = harness();
+  let saved = null;
+  let failNextAudit = false;
+  context.findOrderRequest = () => saved;
+  context.appendOrderRow = (_sheet, row) => {
+    events.push("save");
+    saved = { requestFingerprint: FINGERPRINT, orderNumber: row.orderNumber,
+      referral: { referralCode: row.customerReferralCode, amountDueSgd: row.amountDue } };
+    failNextAudit = true;
+  };
+  context.reconcileReferralLedgerForSavedOrders = () => {
+    events.push("audit");
+    if (failNextAudit) { failNextAudit = false; throw new Error("temporary Sheet failure"); }
+  };
+  context.reportReferralLedgerSyncFailure = () => events.push("alert");
+  const first = post(context);
+  assert.equal(first.ok, true);
+  assert.equal(first.ledgerSyncDeferred, true);
+  const replay = post(context);
+  assert.equal(replay.duplicate, true);
+  assert.equal(replay.ledgerSyncDeferred, false);
+  assert.equal(events.filter((event) => event === "save").length, 1);
+  assert.equal(events.filter((event) => event === "alert").length, 1);
 });
 
 test("authenticated refresh action does not create another order", () => {
@@ -237,13 +271,22 @@ test("locked validation prices the Banana Cake add-on and accepts cent prices", 
 });
 
 class FakeSheet {
-  constructor(rows) { this.rows = rows.map((row) => [...row]); }
+  constructor(rows, name = "Sheet") { this.rows = rows.map((row) => [...row]); this.name = name; this.parent = null; this.copyOperations = []; this.checkboxCells = []; }
   getLastColumn() { return Math.max(0, ...this.rows.map((row) => row.length)); }
   getLastRow() { return this.rows.length; }
+  getName() { return this.name; }
+  getParent() { return this.parent; }
+  getDataRange() { return this.getRange(1, 1, this.getLastRow(), this.getLastColumn()); }
+  appendRow(row) { this.rows.push([...row]); }
+  setFrozenRows() {}
   getRange(row, column, rowCount = 1, columnCount = 1) {
+    const sheet = this;
     return {
       getValues: () => Array.from({ length: rowCount }, (_, rowOffset) =>
         Array.from({ length: columnCount }, (_, columnOffset) => this.rows[row - 1 + rowOffset]?.[column - 1 + columnOffset] ?? "")
+      ),
+      getDisplayValues: () => Array.from({ length: rowCount }, (_, rowOffset) =>
+        Array.from({ length: columnCount }, (_, columnOffset) => String(this.rows[row - 1 + rowOffset]?.[column - 1 + columnOffset] ?? ""))
       ),
       setValue: (value) => {
         while (this.rows.length < row) this.rows.push([]);
@@ -253,8 +296,18 @@ class FakeSheet {
         while (this.rows.length < row + rowOffset) this.rows.push([]);
         valuesRow.forEach((value, columnOffset) => { this.rows[row - 1 + rowOffset][column - 1 + columnOffset] = value; });
       }),
+      copyTo: (_target, type) => sheet.copyOperations.push(type),
+      insertCheckboxes: () => sheet.checkboxCells.push([row, column]),
     };
   }
+}
+
+class FakeSpreadsheet {
+  constructor(sheets) {
+    this.sheets = Object.fromEntries(sheets.map((sheet) => { sheet.parent = this; return [sheet.name, sheet]; }));
+  }
+  getSheetByName(name) { return this.sheets[name] || null; }
+  insertSheet(name) { const sheet = new FakeSheet([], name); sheet.parent = this; this.sheets[name] = sheet; return sheet; }
 }
 
 test("request identity is stored in Sheet columns and can be found after a restart", () => {
@@ -272,6 +325,28 @@ test("request identity is stored in Sheet columns and can be found after a resta
   assert.equal(found.orderNumber, "SG-0042");
 });
 
+test("new order rows preserve an explicit false Paid checkbox", () => {
+  const context = baseContext();
+  const sheet = new FakeSheet([["Order number", "Paid?"]]);
+  context.appendOrderRow(sheet, { orderNumber: "SG-PAID-GUARD", paid: false });
+  assert.equal(sheet.rows[1][1], false);
+  assert.deepEqual(sheet.checkboxCells, [[2, 2]]);
+});
+
+test("new orders fill the first blank Order no row instead of skipping to unrelated data", () => {
+  const context = baseContext();
+  const sheet = new FakeSheet([
+    ["Order no", "Name", "Referral metadata"],
+    ["SG-1", "First", ""],
+    ["", "", "hidden value keeps worksheet row used"],
+    ["SG-LATER", "Existing later row", ""],
+  ]);
+  context.appendOrderRow(sheet, { orderNumber: "SG-2", name: "Second", paid: false });
+  assert.equal(sheet.rows[2][0], "SG-2");
+  assert.equal(sheet.rows[3][0], "SG-LATER");
+  assert.deepEqual(sheet.copyOperations, ["PASTE_FORMAT", "PASTE_DATA_VALIDATION"]);
+});
+
 test("two complete calls with the same request ID append exactly one Sheet row", () => {
   const sheet = new FakeSheet([[
     "Order number", "Created at", "Status", "Name", "WhatsApp", "Saturday batch",
@@ -287,7 +362,11 @@ test("two complete calls with the same request ID append exactly one Sheet row",
       delivery: "Self-collection - agreed pickup point", pickupTime: "1pm-2pm",
       address: "", notes: "",
     } }),
+    reconcilePaidReferralOrders: () => {},
+    reconcileReferralLedgerForSavedOrders: () => {},
     getNextOrderNumber: () => { sequenceCalls += 1; return "SG-0100"; },
+    applyReferralToOrder: () => ({ customerKey: "customer-key", referralCode: "SGABC123",
+      referredByCustomerKey: "", referralDiscountSgd: 0, creditRedeemedSgd: 0, amountDueSgd: 35 }),
     parseCalendarDate: () => new Date("2026-09-26T00:00:00+08:00"),
     whatsAppLink: () => "test",
     queueMenuSnapshotSync: () => {},
@@ -300,4 +379,145 @@ test("two complete calls with the same request ID append exactly one Sheet row",
   assert.equal(replay.duplicate, true);
   assert.equal(sequenceCalls, 1);
   assert.equal(sheet.getLastRow(), 2);
+});
+
+function referralContext() {
+  const context = baseContext();
+  let uuid = 0;
+  context.Utilities = {
+    DigestAlgorithm: { SHA_256: "SHA_256" },
+    computeDigest: (_algorithm, value) => Array.from({ length: 32 }, (_, index) => (value.charCodeAt(index % value.length) + index) % 256),
+    getUuid: () => `00000000-0000-4000-8000-${String(++uuid).padStart(12, "0")}`,
+  };
+  return context;
+}
+
+test("qualifying first pickup order records S$5 friend discount and customer code", () => {
+  const context = referralContext();
+  const orders = new FakeSheet([["Order number", "WhatsApp", "Customer Key"]], "Orders");
+  const customers = new FakeSheet([
+    ["Customer Key", "Referral Code", "Created At", "Source Order"],
+    ["referrer-key", "SGFRIEND", new Date("2026-09-01"), "SG-1"],
+  ], "Referral Customers");
+  const ledger = new FakeSheet([["Event ID", "Timestamp", "Event Type", "Customer Key", "Referral Code", "Amount SGD", "Source Order", "Redemption Order", "Expires At", "Related Event ID", "Detail"]], "Referral Ledger");
+  const spreadsheet = new FakeSpreadsheet([orders, customers, ledger]);
+  const result = context.applyReferralToOrder(spreadsheet, orders, {
+    phone: "+65 9000 0001", delivery: "Self-collection - agreed pickup point",
+    itemsTotalSgd: 35, totalSgd: 35, referralCode: "sgfriend",
+  }, "SG-2");
+  assert.equal(result.referralDiscountSgd, 5);
+  assert.equal(result.amountDueSgd, 30);
+  assert.equal(result.referredByCustomerKey, "referrer-key");
+  assert.match(result.referralCode, /^SG[A-F0-9]{6}$/);
+  assert.equal(ledger.rows.length, 1);
+  orders.appendRow(["SG-2", "", result.customerKey, "REFERRAL_MVP_V1", result.referredByCustomerKey,
+    result.referralDiscountSgd, "SGFRIEND"]);
+  orders.rows[0] = ["Order number", "WhatsApp", "Customer Key", "Referral Program Version",
+    "Referred By Customer Key", "Referral Discount", "Entered Referral Code"];
+  context.reconcileReferralLedgerForSavedOrders(spreadsheet, orders);
+  assert.equal(ledger.rows[1][2], "FRIEND_DISCOUNT");
+  assert.equal(ledger.rows[1].at(-1), "'+6590000001");
+  context.reconcileReferralLedgerForSavedOrders(spreadsheet, orders);
+  assert.equal(ledger.rows.length, 2);
+});
+
+test("saved friend order repairs a failed ledger append exactly once", () => {
+  const context = referralContext();
+  const key = context.referralCustomerKey("+65 9000 0003");
+  const orders = new FakeSheet([
+    ["Order no", "Customer Key", "Referral Program Version", "Referred By Customer Key", "Referral Discount", "Entered Referral Code"],
+    ["SG-RECOVER", key, "REFERRAL_MVP_V1", "referrer-key", 5, "SGFRIEND"],
+  ], "Orders");
+  const customers = new FakeSheet([
+    ["Customer Key", "Referral Code", "Created At", "Source Order", "Phone"],
+    [key, "SGNEW001", new Date(), "SG-RECOVER", "'+6590000003"],
+  ], "Referral Customers");
+  const ledger = new FakeSheet([["Event ID", "Timestamp", "Event Type", "Customer Key", "Referral Code", "Amount SGD",
+    "Source Order", "Redemption Order", "Expires At", "Related Event ID", "Detail", "Phone"]], "Referral Ledger");
+  const spreadsheet = new FakeSpreadsheet([orders, customers, ledger]);
+  const append = ledger.appendRow.bind(ledger);
+  ledger.appendRow = () => { throw new Error("temporary Sheet failure"); };
+  assert.throws(() => context.reconcileReferralLedgerForSavedOrders(spreadsheet, orders), /temporary Sheet failure/);
+  assert.equal(ledger.rows.length, 1);
+  ledger.appendRow = append;
+  context.reconcileReferralLedgerForSavedOrders(spreadsheet, orders);
+  context.reconcileReferralLedgerForSavedOrders(spreadsheet, orders);
+  assert.equal(ledger.rows.length, 2);
+  assert.equal(ledger.rows[1][6], "SG-RECOVER");
+});
+
+test("oldest unexpired credit is redeemed once using FIFO", () => {
+  const context = referralContext();
+  const key = context.referralCustomerKey("+65 9000 0002");
+  const orders = new FakeSheet([["Order number", "WhatsApp", "Customer Key"]], "Orders");
+  const customers = new FakeSheet([["Customer Key", "Referral Code", "Created At", "Source Order"], [key, "SGRETURN", new Date(), "SG-1"]], "Referral Customers");
+  const future = new Date(Date.now() + 86400000);
+  const ledger = new FakeSheet([
+    ["Event ID", "Timestamp", "Event Type", "Customer Key", "Referral Code", "Amount SGD", "Source Order", "Redemption Order", "Expires At", "Related Event ID", "Detail"],
+    ["credit-old", new Date("2026-08-01"), "CREDIT_EARNED", key, "", 5, "SG-A", "", future, "", ""],
+    ["credit-new", new Date("2026-09-01"), "CREDIT_EARNED", key, "", 5, "SG-B", "", future, "", ""],
+  ], "Referral Ledger");
+  const spreadsheet = new FakeSpreadsheet([orders, customers, ledger]);
+  const result = context.applyReferralToOrder(spreadsheet, orders, {
+    phone: "+65 9000 0002", delivery: "Self-collection - agreed pickup point",
+    itemsTotalSgd: 40, totalSgd: 40, referralCode: "",
+  }, "SG-C");
+  assert.equal(result.creditRedeemedSgd, 5);
+  assert.equal(result.amountDueSgd, 35);
+  assert.equal(result.creditSourceEventId, "credit-old");
+  assert.equal(ledger.rows.length, 3);
+  orders.rows[0] = ["Order number", "WhatsApp", "Customer Key", "Referral Program Version",
+    "Credit Redeemed", "Credit Source Event ID"];
+  orders.appendRow(["SG-C", "", key, "REFERRAL_MVP_V1", 5, result.creditSourceEventId]);
+  context.reconcileReferralLedgerForSavedOrders(spreadsheet, orders);
+  assert.equal(ledger.rows.at(-1)[9], "credit-old");
+  assert.equal(ledger.rows.at(-1).at(-1), "'+6590000002");
+});
+
+test("saved order reserves a credit even when its ledger append is pending", () => {
+  const context = referralContext();
+  const key = context.referralCustomerKey("+65 9000 0002");
+  const orders = new FakeSheet([
+    ["Order number", "Credit Source Event ID"],
+    ["SG-FIRST", "credit-old"],
+  ], "Orders");
+  const future = new Date(Date.now() + 86400000);
+  const ledger = new FakeSheet([
+    ["Event ID", "Timestamp", "Event Type", "Customer Key", "Referral Code", "Amount SGD", "Source Order", "Redemption Order", "Expires At", "Related Event ID", "Detail"],
+    ["credit-old", new Date("2026-08-01"), "CREDIT_EARNED", key, "", 5, "SG-A", "", future, "", ""],
+    ["credit-new", new Date("2026-09-01"), "CREDIT_EARNED", key, "", 5, "SG-B", "", future, "", ""],
+  ], "Referral Ledger");
+  const spreadsheet = new FakeSpreadsheet([orders, ledger]);
+  assert.equal(context.findOldestReferralCredit(spreadsheet, orders, key, new Date()).eventId, "credit-new");
+});
+
+test("paid edit locks the ledger decision and ignores a subsequently unchecked box", () => {
+  const events = [];
+  const sheet = new FakeSheet([
+    ["Order no", "Paid?", "Referral Program Version"],
+    ["SG-1", true, "REFERRAL_MVP_V1"],
+  ], "Orders");
+  new FakeSpreadsheet([sheet]);
+  const context = baseContext({ events });
+  context.earnReferralCreditForOrder = () => events.push("earn");
+  const event = { value: "TRUE", range: {
+    getRow: () => 2, getColumn: () => 2, getNumRows: () => 1,
+    getNumColumns: () => 1, getSheet: () => sheet,
+  } };
+  context.processPaidReferralEdit(event);
+  assert.deepEqual(events, ["lock", "earn", "unlock"]);
+
+  sheet.rows[1][1] = false;
+  context.processPaidReferralEdit(event);
+  assert.deepEqual(events, ["lock", "earn", "unlock", "lock", "unlock"]);
+});
+
+test("copied historical orders cannot mint referral credits", () => {
+  const context = referralContext();
+  const orders = new FakeSheet([["Order no", "Referred By Customer Key"], ["SG-OLD", "referrer-key"]], "Orders");
+  const ledger = new FakeSheet([["Event ID", "Timestamp", "Event Type", "Customer Key", "Referral Code", "Amount SGD",
+    "Source Order", "Redemption Order", "Expires At", "Related Event ID", "Detail", "Phone"]], "Referral Ledger");
+  const spreadsheet = new FakeSpreadsheet([orders, ledger]);
+  context.earnReferralCreditForOrder(spreadsheet, ["order_no", "referred_by_customer_key"], orders.rows[1]);
+  assert.equal(ledger.rows.length, 1);
 });

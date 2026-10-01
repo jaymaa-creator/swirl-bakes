@@ -80,13 +80,16 @@ function normalizeOrderRequest(payload) {
   const pickupTime = normalizedText(order.pickupTime ?? "", { max: 40 });
   const address = normalizedText(order.address ?? "", { max: 300 });
   const notes = normalizedText(order.notes ?? "", { max: 500 });
+  const referralCodeText = normalizedText(order.referralCode ?? "", { max: 16 });
+  const referralCode = referralCodeText?.toUpperCase() || "";
   const phoneDigits = phone?.replace(/\D/g, "") || "";
   const quotedTotalSgd = Number(order.quotedTotalSgd);
 
   if (
     !name || !phone || phoneDigits.length < 8 || phoneDigits.length > 15 ||
     !bakeWindow || !/^\d{4}-\d{2}-\d{2}$/.test(bakeWindow) ||
-    !delivery || pickupTime === null || address === null || notes === null ||
+    !delivery || pickupTime === null || address === null || notes === null || referralCodeText === null ||
+    (referralCode && !/^[A-Z0-9]{6,12}$/.test(referralCode)) ||
     !Number.isFinite(quotedTotalSgd) || quotedTotalSgd < 0 || quotedTotalSgd > 10_000 ||
     !hasAtMostTwoDecimalPlaces(quotedTotalSgd) ||
     !Array.isArray(order.lineItems) || order.lineItems.length < 1 || order.lineItems.length > 20
@@ -135,6 +138,7 @@ function normalizeOrderRequest(payload) {
       pickupTime,
       address,
       notes,
+      referralCode,
       lineItems: lineItems.sort((a, b) => a.productId.localeCompare(b.productId)),
       bananaChocolateChips,
       quotedTotalSgd,
@@ -450,6 +454,7 @@ async function getMenuSettings(request, env, ctx) {
   // only reaches the publishing location, not every customer location or host.
   const snapshot = await getMenuSnapshot(env, batchKey);
   if (snapshot) return snapshot;
+  if (env.ISOLATED_TEST_BACKEND) throw new Error("Isolated test snapshot has not been published");
 
   // Keep the site responsive until the KV binding has been seeded or during recovery.
   const fallbackCacheKey = menuCacheKey(request.url, batchKey, "/fallback");
@@ -631,7 +636,7 @@ export default {
     }
 
     // Preview deployments may share the production bindings, so never let them create real orders.
-    if (url.hostname !== "swirlgirl.sg") {
+    if (url.hostname !== "swirlgirl.sg" && !(env.ISOLATED_TEST_BACKEND === true && url.hostname === "test-swirl-girl.jaemcd95.workers.dev")) {
       return jsonResponse({ ok: false, error: "Orders are disabled on this preview site" }, { status: 403 });
     }
 
@@ -704,6 +709,7 @@ export default {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           secret: env.ORDER_WEBHOOK_SECRET,
+          ...(env.ISOLATED_TEST_BACKEND ? { environment: "test" } : {}),
           requestId: normalized.requestId,
           requestFingerprint,
           // Apps Script repeats the menu checks under its write lock. Sending
@@ -720,7 +726,7 @@ export default {
         }
         if (["INVALID_ORDER", "ORDER_UNAVAILABLE", "PRICE_CHANGED"].includes(sheetResult?.errorCode)) {
           return jsonResponse(
-            { ok: false, error: sheetResult.error || "The order is no longer available" },
+            { ok: false, errorCode: sheetResult.errorCode, error: sheetResult.error || "The order is no longer available" },
             { status: sheetResult.errorCode === "INVALID_ORDER" ? 400 : 409 }
           );
         }
@@ -736,7 +742,7 @@ export default {
       fetch(env.ORDER_SHEET_WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret: env.ORDER_WEBHOOK_SECRET, action: "refreshMenuAfterOrder" }),
+        body: JSON.stringify({ secret: env.ORDER_WEBHOOK_SECRET, action: "refreshMenuAfterOrder", ...(env.ISOLATED_TEST_BACKEND ? { environment: "test" } : {}) }),
       }).then(async (response) => {
         const result = await response.json();
         if (!response.ok || result?.ok !== true) throw new Error("Menu refresh failed");
@@ -750,6 +756,10 @@ export default {
       ok: true,
       orderNumber: sheetResult?.orderNumber || "",
       duplicate: sheetResult?.duplicate === true,
+      ...(sheetResult?.referralCode ? { referralCode: sheetResult.referralCode } : {}),
+      ...(sheetResult?.referralDiscountSgd ? { referralDiscountSgd: Number(sheetResult.referralDiscountSgd) } : {}),
+      ...(sheetResult?.creditRedeemedSgd ? { creditRedeemedSgd: Number(sheetResult.creditRedeemedSgd) } : {}),
+      amountDueSgd: Number.isFinite(Number(sheetResult?.amountDueSgd)) ? Number(sheetResult.amountDueSgd) : undefined,
     });
   },
 };

@@ -150,6 +150,7 @@ test("current availability and price failures are returned from locked backend v
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), {
     ok: false,
+    errorCode: "PRICE_CHANGED",
     error: "The menu price changed; refresh and review the order",
   });
 });

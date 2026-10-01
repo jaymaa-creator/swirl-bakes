@@ -37,6 +37,7 @@ export function buildOrderRecord({ form, menu, estimatedTotal, moneyFormatter })
     pickupTime: form.delivery.toLowerCase().includes("delivery") ? "" : form.pickupTime,
     address: form.delivery.toLowerCase().includes("delivery") ? form.address : "",
     notes: form.notes,
+    referralCode: form.referralCode || "",
     lineItems,
     bananaChocolateChips: form.bananaChocolateChips === true,
     quotedTotalSgd: estimatedTotal,
@@ -53,7 +54,9 @@ export async function submitOrderRequest(requestId, order, turnstileToken = "") 
 
   const result = await response.json().catch(() => null);
   if (!response.ok || result?.ok !== true) {
-    throw new Error(result?.error || "Unable to save order");
+    const error = new Error(result?.error || "Unable to save order");
+    error.code = result?.errorCode || "";
+    throw error;
   }
 
   return result;
