@@ -1,11 +1,21 @@
 # Referral production readiness (2026-09-30)
 
-This is a preparation record, not a production enablement instruction. REF-001
-requires an accepted test flow before production deployment. The shared
-`apps-script/Code.gs` is the production source, but its referral changes are
-currently only deployed through the generated, guarded test script. The
-production Apps Script deployment and Worker must remain on their existing
-versions until the gates below pass.
+## Release outcome (2026-10-01)
+
+PR #12 merged as `03754c9c12600a4de7abea4eb947130fe45bc82f`. Production
+Apps Script web app version 32 and Worker version
+`908e0562-648b-46d4-a25a-0135e90a4603` are live. Guarded release run
+`36822776417` passed preparation, test deployment and smoke, production
+approval, and production smoke. The live homepage, eight-product menu and
+invalid-order boundary pass; Chrome shows the referral field. No production
+order or paid edit was made solely for verification. Check the first real new
+Orders row and its `Paid?` checkbox, then verify the first paid referral order
+creates one matching ledger credit. The Orders Google Table itself does not
+auto-expand when Apps Script writes the next row.
+
+The remainder of this document records the pre-release assessment and its
+original gates. It is retained for audit rather than as current deployment
+instructions.
 
 ## What changed
 
