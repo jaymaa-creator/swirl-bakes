@@ -6,6 +6,17 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Pickup referral MVP released to production (2026-10-01). PR #12 merged as
+  `03754c9c12600a4de7abea4eb947130fe45bc82f`. Production Apps Script web
+  app version 32 and Worker version `908e0562-648b-46d4-a25a-0135e90a4603`
+  are live. Release run `36822776417` passed prepare, isolated test deployment,
+  test smoke, production approval and production smoke. A fresh production
+  smoke check returned homepage 200, eight menu products and invalid order
+  400. The visible referral field was checked in Chrome without placing an
+  order. The production Sheet was exported before deployment, and Apps Script
+  version 31 and Worker version `0b292ba2-b986-4da3-8f91-b45f9aaefdff` are
+  the recorded rollback versions.
+
 - Google Search Console onboarding and Product structured-data repair completed
   (2026-09-23). The `swirlgirl.sg` domain property is verified by Cloudflare
   DNS, `https://swirlgirl.sg/sitemap.xml` is submitted, and Google live tests
@@ -56,34 +67,12 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
-- Referral production rollout preparation (2026-10-01): the user accepted a
-  visible launch. A fresh isolated test order earned one S$5 credit only after
-  its `Paid?` edit; toggling paid off/on did not duplicate it. Production's
-  `Paid?` checkbox column and single on-edit trigger were checked read-only.
-  The WhatsApp draft no longer repeats an outdated estimated total when a
-  confirmed discounted amount is present. All 107 tests, lint, build, and
-  production/test smoke checks pass. The updated test Worker is
-  `6460ee0f-6d30-4aca-829f-2c2a61fbc354`. Production is unchanged pending
-  the guarded Git release and matching Apps Script version. Production's Orders
-  Table ends at row 40; the next order will be outside it, so the writer now
-  explicitly inserts an unchecked `Paid?` checkbox before setting row values.
-
-- Referral production readiness review (2026-09-30): isolated live test
-  confirmed a S$41 friend order discounted to S$36, a credit earned after its
-  `Paid?` checkbox was checked, and S$5 FIFO redemption on a later S$40
-  referrer order. The production read-only smoke baseline passed (homepage
-  200, eight menu products, invalid order 400). A paid-edit lock and explicit
-  referral-program-version guard were added locally; they are not deployed.
-  Ledger writes now follow a saved order row, with a reserved credit event ID,
-  idempotent event repair, and a monitoring alert for deferred audit writes.
-  Known stock/price rejection copy now directs the customer back to a refreshed
-  menu without a WhatsApp handoff. 107 tests, lint, build and generated test
-  script checks pass. Isolated test Apps Script version 8 and test Worker
-  e6053895-60c2-49cb-91cf-045968c4b972 are active; the test smoke check
-  passed after allowing more time for its authenticated backend identity check.
-  Production Table/dropdown behavior and a fresh live paid-edit rehearsal remain
-  rollout gates. See `docs/referral-production-readiness.md`. Production is
-  unchanged.
+- Referral post-launch checks: no real production referral order or paid edit
+  was made for release verification. Inspect the first new Orders row for its
+  `Paid?` checkbox, dropdowns and position outside the current Google Table;
+  then compare the first qualifying paid order with its single ledger credit.
+  Script writes create the checkbox, but do not expand Google Table membership.
+  See `docs/referral-production-readiness.md`.
 
 - Pickup-only referral MVP deployed to TEST only (2026-09-28): REF-001 fixes
   the test-first rules at Give S$5/get S$5, S$35 bakes minimum, automatic FIFO
