@@ -28,12 +28,28 @@ pushes to `main` if the repository plan supports it.
 5. Download the deployment-evidence artifact from the run. It records the
    previous and resulting Worker deployments for audit and rollback.
 
-If the chosen commit changes `apps-script/`, a test-only release stops because
-the Apps Script service and Sheet are shared with production. Every production
+The isolated test environment has its own Apps Script project and spreadsheet;
+build it with `npm run apps:build:test` and use `.clasp.test.json`. Do not point a
+test deployment at the production Script or Sheet. Every production
 release requires the currently deployed numeric Apps Script version; deploy a
 new web-app version first when that code changed. This is an operator
 attestation because Google does not expose the current web-app version to this
 GitHub workflow.
+
+### Order-persistence changes: mandatory additional evidence
+
+HTTP-400 smoke tests do not exercise saving. Before updating production Apps
+Script, run a successful isolated checkout plus exact-request replay, and run
+`diagnoseOrderWrite()` from the candidate production source. This manual probe
+uses and removes a disposable copy of the actual production Orders Table; it
+must log `ORDER_WRITE_PROBE_PASSED` and `ORDER_WRITE_PROBE_COPY_REMOVED`.
+Record the Git SHA, deployed Apps Script version, and these results. Preserve
+native Table column types and check dropdown/checkbox UX. See the
+[order-save incident review](incidents/2026-10-01-order-save.md) for the reason.
+
+An Apps-Script-only emergency repair does not require redeploying an unchanged
+Worker. Keep the repair in Git, run the checks above, explicitly update the
+existing web-app deployment, and record live verification and rollback limits.
 
 ## Rollback
 

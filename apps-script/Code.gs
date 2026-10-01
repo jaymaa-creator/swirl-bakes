@@ -113,7 +113,7 @@ function doPost(event) {
 
       reconcileReferralLedgerForSavedOrders(spreadsheet, sheet);
       reconcilePaidReferralOrders(spreadsheet, sheet);
-      orderNumber = getNextOrderNumber();
+      orderNumber = getNextOrderNumber(sheet);
       referralResult = applyReferralToOrder(spreadsheet, sheet, validation.order, orderNumber);
       appendOrderRow(sheet, {
         requestId,
@@ -523,9 +523,9 @@ function collectProductionHealthStatus() {
       failures.push(`Worker monitoring endpoint is unavailable (HTTP ${monitorResponse.getResponseCode()}).`);
     } else {
       events = monitorPayload.events && typeof monitorPayload.events === "object" ? monitorPayload.events : {};
-      if (monitorPayload.currentBatch && monitorPayload.currentBatch !== expectedBatch) {
-        failures.push(`Worker snapshot batch ${monitorPayload.currentBatch} does not match Sheets batch ${expectedBatch}.`);
-      }
+      // currentBatch here is the bundle's publication anchor, not the batch
+      // selected at request time after a cutoff. The live menu comparison above
+      // checks the actual customer-facing batch, products and calendar.
     }
   }
 
@@ -817,8 +817,22 @@ function appendOrderRow(sheet, orderRow) {
     templateRange.copyTo(targetRange, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
   }
   const paidColumn = headers.indexOf("paid");
-  if (paidColumn >= 0) sheet.getRange(targetRow, paidColumn + 1).insertCheckboxes();
+  if (paidColumn >= 0) ensureOrderPaidCheckbox(sheet.getRange(targetRow, paidColumn + 1));
   targetRange.setValues([row]);
+}
+
+function ensureOrderPaidCheckbox(cell) {
+  const validation = cell.getDataValidation();
+  if (validation && validation.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.CHECKBOX) return;
+  try {
+    cell.insertCheckboxes();
+  } catch (error) {
+    // Native Google Table checkbox columns own their type and return null from
+    // getDataValidation(). They reject insertCheckboxes(), but accept boolean
+    // values. Leave their UI intact; appendOrderRow still writes paid=false.
+    if (!String(error.message || error).includes("This operation is not allowed on cells in typed columns")) throw error;
+    console.log("Paid checkbox is managed by the Google Table column.");
+  }
 }
 
 function findNextOrderRow(sheet, headers) {
@@ -1651,10 +1665,22 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function getNextOrderNumber() {
+function getNextOrderNumber(sheet) {
   const properties = PropertiesService.getScriptProperties();
-  const current = Number(properties.getProperty(ORDER_SEQUENCE_PROPERTY) || 0);
+  const stored = Number(properties.getProperty(ORDER_SEQUENCE_PROPERTY) || 0);
+  let current = Number.isSafeInteger(stored) && stored >= 0 ? stored : 0;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(normalizeHeader);
+  const column = Math.max(headers.indexOf("order_no"), headers.indexOf("order_number"));
+  if (column < 0) throw new Error("Orders is missing its order number column");
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, column + 1, sheet.getLastRow() - 1, 1).getValues().forEach(([value]) => {
+      const match = /^SG-(\d+)$/.exec(String(value || "").trim());
+      const sequence = match ? Number(match[1]) : 0;
+      if (Number.isSafeInteger(sequence)) current = Math.max(current, sequence);
+    });
+  }
   const next = current + 1;
+  if (!Number.isSafeInteger(next)) throw new Error("Order sequence exceeds safe range");
   properties.setProperty(ORDER_SEQUENCE_PROPERTY, String(next));
   return `SG-${String(next).padStart(4, "0")}`;
 }

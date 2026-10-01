@@ -67,6 +67,17 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Production order-save incident (2026-10-01): reproduced `insertCheckboxes()`
+  rejection on the native typed Paid column before the Orders write. Patched
+  writer passed a disposable copy of the real production table (reference,
+  New status and boolean false verified; copy removed). 112 tests, lint and build
+  pass. Includes sequence collision guard and cutoff-monitor correction.
+  Production Apps Script v33 is live (source hash verified); isolated test v10
+  saved/replayed one order without duplication. Production health returned no
+  failures and boundary smoke passed. PR #14 contains the repair/post-mortem.
+  Customer recovery still requires the original WhatsApp details; see
+  docs/incidents/2026-10-01-order-save.md. No real production order was created.
+
 - Referral post-launch checks: no real production referral order or paid edit
   was made for release verification. Inspect the first new Orders row for its
   `Paid?` checkbox, dropdowns and position outside the current Google Table;
