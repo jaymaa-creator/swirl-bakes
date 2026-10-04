@@ -7,6 +7,17 @@ const baseMenu = [
   { id: "banana-bread", name: "Banana Cake" },
 ];
 
+test("Tiramisu uses the supplied WebP while preserving operator image overrides", () => {
+  const product = { id: "tiramisu-swirl", productName: "Tiramisu Swirl", priceSgd: 16,
+    available: true, special: true, batchLimit: 6, remainingQuantity: 6, maxQuantity: 3 };
+  const [item] = mergeMenuSettings([], { products: [product] });
+  assert.equal(item.image, "/tiramisu-swirl.webp");
+  assert.equal(item.imageAlt, "Tiramisu Swirl");
+  assert.equal(item.special, true);
+  assert.equal(item.priceSgd, 16);
+  assert.equal(mergeMenuSettings([], { products: [{ ...product, imageUrl: "/replacement.webp" }] })[0].image, "/replacement.webp");
+});
+
 test("mergeMenuSettings overlays price, availability, and max quantity", () => {
   const menu = mergeMenuSettings(baseMenu, {
     products: [

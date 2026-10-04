@@ -67,6 +67,13 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
+  1200x1600 WebP with metadata removed; original retained. Added the image fallback
+  for the existing `tiramisu-swirl` product without changing prices or stock.
+  User confirmed iPhone checkout works with popup blocking enabled and requested
+  combined production release. Retaining guarded test/production workflow;
+  legacy `test` Git branch is not the current deployed test release.
+
 - Checkout guidance (2026-10-02), branch `fix/checkout-guidance`: replaced the
   second allergen overlay/countdown with an inline acknowledgement. Checkout
   explains its first missing step beside the button and focuses it when tapped;
@@ -76,8 +83,11 @@ Architecture baseline and payment discovery.
   repeat-click single submission and fresh consent on reopening. `window.open`
   was blocked in the disposable harness; no order API or Sheet writes occurred.
   Seven new unit/render tests pass (119 total). Physical iPhone Safari/Chrome,
-  live Turnstile and deployed integration checks remain release gates. No test or
-  production deployment, Apps Script, Worker backend or Sheet changes.
+  live Turnstile and deployed integration checks remain release gates.
+  Test-only release completed 2026-10-04: PR #15, commit
+  `0bc3c62bf926fdec5f60b3141160e441b4e5f783`, workflow run `37196292770`.
+  Prepare, test deployment and smoke checks passed; production was skipped.
+  No production deployment, Apps Script, Worker backend source or Sheet changes.
 
 - Production order-save incident (2026-10-01): reproduced `insertCheckboxes()`
   rejection on the native typed Paid column before the Orders write. Patched

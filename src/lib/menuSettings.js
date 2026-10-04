@@ -2,6 +2,7 @@ const DEFAULT_MAX_QUANTITY = 3;
 const DEFAULT_PRODUCT_IMAGES = {
   "chocolate-chip-cookies": "/chocolate-chip-cookies.webp",
   "milo-swirl": "/milo-swirl.webp",
+  "tiramisu-swirl": "/tiramisu-swirl.webp",
   "pandan-swirl": "/pandan-swirl.webp",
   sourdough: "/sourdough.webp",
 };
