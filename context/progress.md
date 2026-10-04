@@ -67,6 +67,18 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Checkout guidance (2026-10-02), branch `fix/checkout-guidance`: replaced the
+  second allergen overlay/countdown with an inline acknowledgement. Checkout
+  explains its first missing step beside the button and focuses it when tapped;
+  contact, menu, fulfilment, consent and security gates remain enforced.
+  Local Chrome mock-only checks passed at desktop and 390x700 sizes: missing
+  name/phone and invalid-phone guidance, allergen focus, acknowledged submission,
+  repeat-click single submission and fresh consent on reopening. `window.open`
+  was blocked in the disposable harness; no order API or Sheet writes occurred.
+  Seven new unit/render tests pass (119 total). Physical iPhone Safari/Chrome,
+  live Turnstile and deployed integration checks remain release gates. No test or
+  production deployment, Apps Script, Worker backend or Sheet changes.
+
 - Production order-save incident (2026-10-01): reproduced `insertCheckboxes()`
   rejection on the native typed Paid column before the Orders write. Patched
   writer passed a disposable copy of the real production table (reference,

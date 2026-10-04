@@ -10,8 +10,8 @@ import Field from "./ui/Field";
 import Input from "./ui/Input";
 import Modal from "./ui/Modal";
 import Textarea from "./ui/Textarea";
-import CinnamonLoader from "./ui/CinnamonLoader";
 import TurnstileWidget from "./TurnstileWidget";
+import { getCheckoutIssues } from "../lib/checkoutGuidance";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
@@ -28,7 +28,7 @@ export default function PreorderModal({
   waMessage,
   bakeWindowLabel,
   hasSelectedItems,
-  hasRequiredContactDetails,
+  hasCurrentPrices,
   canSubmitOrder,
   isBakeWindowOpen,
   menuStatus,
@@ -37,15 +37,13 @@ export default function PreorderModal({
   allergenDisclaimer,
   money,
   brand,
-  hasRequiredFulfilmentDetails,
+  onRetryMenu,
   onOrderIntent,
 }) {
-  const [showAllergenPopup, setShowAllergenPopup] = useState(false);
   const [allergenAcknowledged, setAllergenAcknowledged] = useState(false);
-  const [allergenCountdown, setAllergenCountdown] = useState(0);
+  const [attemptedCheckout, setAttemptedCheckout] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState("");
-  const countdownRef = useRef(null);
   const orderRequestSubmittedRef = useRef(false);
   const isDelivery = form.delivery.toLowerCase().includes("delivery") && isDeliveryEligible;
   const cutoffLabel = form.bakeWindow
@@ -77,24 +75,6 @@ export default function PreorderModal({
   }
 
   useEffect(() => {
-    if (showAllergenPopup && allergenCountdown > 0) {
-      countdownRef.current = setInterval(() => {
-        setAllergenCountdown((n) => {
-          if (n <= 1) {
-            clearInterval(countdownRef.current);
-            return 0;
-          }
-          return n - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(countdownRef.current);
-    }
-
-    return () => clearInterval(countdownRef.current);
-  }, [showAllergenPopup, allergenCountdown]);
-
-  useEffect(() => {
     if (open) {
       orderRequestSubmittedRef.current = false;
     }
@@ -107,56 +87,54 @@ export default function PreorderModal({
     "",
     ...rest,
   ].join("\n");
-  function handleWaClick(e) {
-    if (!canSubmitOrder) {
-      e.preventDefault();
-      return;
-    }
+  const issues = getCheckoutIssues({ form, menuStatus, hasSelectedItems, hasCurrentPrices,
+    isBakeWindowOpen, isDeliveryEligible, deliveryMinimumSgd: brand.deliveryMinimumSgd,
+    allergenAcknowledged, securityRequired: Boolean(TURNSTILE_SITE_KEY), turnstileToken,
+    turnstileError, canSubmitOrder });
+  const firstIssue = issues[0];
+  const fieldInvalid = (id) => attemptedCheckout && firstIssue?.target === id;
 
-    if (!allergenAcknowledged) {
-      e.preventDefault();
-      setAllergenCountdown(5);
-      setShowAllergenPopup(true);
-      return;
-    }
-
-    e.preventDefault();
-    completeOrder();
+  function closeCheckout() {
+    setAllergenAcknowledged(false);
+    setAttemptedCheckout(false);
+    setTurnstileToken("");
+    setTurnstileError("");
+    onClose();
   }
 
-  function handleAllergenConfirm() {
-    setAllergenAcknowledged(true);
-    setAllergenCountdown(0);
-    setShowAllergenPopup(false);
-    completeOrder();
-  }
-
-  function handleDismissAllergenPopup() {
-    setAllergenCountdown(0);
-    setShowAllergenPopup(false);
-  }
-
-  function completeOrder() {
-    if (!canSubmitOrder || orderRequestSubmittedRef.current) return;
-    if (TURNSTILE_SITE_KEY && !turnstileToken) {
-      setTurnstileError("Please complete the security check before continuing.");
+  function handleWaClick() {
+    if (orderRequestSubmittedRef.current) return;
+    setAttemptedCheckout(true);
+    if (firstIssue) {
+      const field = document.getElementById(firstIssue.target);
+      field?.focus({ preventScroll: true });
+      field?.scrollIntoView({ block: "center", behavior: "auto" });
       return;
     }
     orderRequestSubmittedRef.current = true;
     onOrderIntent?.(waMessageWithAck, turnstileToken);
+    setAllergenAcknowledged(false);
+    setAttemptedCheckout(false);
+    setTurnstileToken("");
   }
 
   return (
     <>
       <Modal
         open={open}
-        onClose={onClose}
+        onClose={closeCheckout}
         fullScreen
         title="Your order"
         footer={
           <div className="grid gap-2">
             <div className="flex items-center justify-between text-sm font-semibold"><span>Order total</span><span>{money(estimatedTotal)}</span></div>
-            <button type="button" onClick={handleWaClick} disabled={!canSubmitOrder} className="w-full rounded-button bg-brandBrown px-5 py-3 text-sm font-medium text-white disabled:opacity-50">
+            <p id="checkout-guidance" role="status" aria-live="polite" aria-atomic="true" className="text-sm leading-5 text-brandBrown">
+              {firstIssue ? `To continue: ${firstIssue.message}` : "Ready to review your order."}
+            </p>
+            {(menuStatus === "error" || (menuStatus === "ready" && !hasCurrentPrices)) && onRetryMenu ? (
+              <button type="button" onClick={onRetryMenu} className="text-left text-sm font-medium text-brandBrown underline">Retry menu</button>
+            ) : null}
+            <button type="button" onClick={handleWaClick} aria-describedby="checkout-guidance" className="w-full rounded-button bg-brandBrown px-5 py-3 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-brandCinnamon">
               Review order receipt
             </button>
           </div>
@@ -171,6 +149,9 @@ export default function PreorderModal({
                   id="order-name"
                   name="name"
                   required
+                  maxLength={80}
+                  aria-invalid={fieldInvalid("order-name")}
+                  aria-describedby={fieldInvalid("order-name") ? "checkout-guidance" : undefined}
                   autoComplete="name"
                   enterKeyHint="next"
                   value={form.name}
@@ -183,6 +164,9 @@ export default function PreorderModal({
                   id="order-phone"
                   name="tel"
                   required
+                  maxLength={40}
+                  aria-invalid={fieldInvalid("order-phone")}
+                  aria-describedby={fieldInvalid("order-phone") ? "checkout-guidance" : undefined}
                   type="tel"
                   autoComplete="tel"
                   inputMode="tel"
@@ -201,7 +185,7 @@ export default function PreorderModal({
           </section>
 
           <Card>
-            <div className="p-3 sm:p-4">
+            <div id="order-items" tabIndex={-1} className="p-3 sm:p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-sm font-semibold">Items</div>
@@ -221,7 +205,7 @@ export default function PreorderModal({
 
               {menuStatus !== "ready" ? (
                 <div className="mt-3 rounded-2xl border border-line bg-cream px-4 py-3 text-sm text-inkMuted">
-                  Loading the current menu and prices...
+                  {menuStatus === "error" ? "The menu couldn't load. Use Retry menu below." : "Loading the current menu and prices..."}
                 </div>
               ) : (
                 <div className="mt-3 grid gap-3">
@@ -308,13 +292,10 @@ export default function PreorderModal({
                 </div>
               )}
 
-              {allergenDisclaimer ? (
-                <div className="mt-3 text-xs text-inkMuted">{allergenDisclaimer}</div>
-              ) : null}
             </div>
           </Card>
 
-          <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
+          <section id="order-delivery" tabIndex={-1} className="rounded-card border border-line bg-cream p-4 sm:p-5">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">2. Delivery method</div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
@@ -364,6 +345,9 @@ export default function PreorderModal({
                 <Field label="Your delivery address" hint="Include unit number" htmlFor="order-address">
                   <Input
                     id="order-address"
+                    required
+                    aria-invalid={fieldInvalid("order-address")}
+                    aria-describedby={fieldInvalid("order-address") ? "checkout-guidance" : undefined}
                     name="street-address"
                     autoComplete="street-address"
                     enterKeyHint="next"
@@ -373,7 +357,7 @@ export default function PreorderModal({
                   />
                 </Field>
               ) : (
-                <div>
+                <div id="order-pickup" tabIndex={-1}>
                   <div className="text-sm font-semibold text-ink">Choose a one-hour pickup window</div>
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {brand.pickupWindows.map((pickupWindow) => (
@@ -409,6 +393,18 @@ export default function PreorderModal({
             />
           </Field>
 
+          <section className="rounded-card border border-line bg-cream p-4 sm:p-5" aria-labelledby="allergen-heading">
+            <h3 id="allergen-heading" className="text-sm font-semibold text-ink">Allergen notice</h3>
+            <p id="allergen-notice" className="mt-2 text-xs leading-6 text-inkMuted">{allergenDisclaimer}</p>
+            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface p-3 text-sm leading-6">
+              <input id="order-allergens" type="checkbox" required checked={allergenAcknowledged}
+                onChange={(event) => setAllergenAcknowledged(event.target.checked)}
+                aria-invalid={fieldInvalid("order-allergens")} aria-describedby="allergen-notice"
+                className="mt-1 h-5 w-5 shrink-0 accent-brandBrown" />
+              <span>I have read the allergen notice and understand that cross-contamination is possible.</span>
+            </label>
+          </section>
+
           <Field label="Referral code" hint="Optional — pickup orders of S$35 or more">
             <Input
               name="referral-code"
@@ -425,14 +421,14 @@ export default function PreorderModal({
 
           <p className="text-xs leading-6 text-inkMuted">
             We use these details to manage your order. Do not include card details, NRIC details, or unnecessary sensitive information. Read our{" "}
-            <a href="#privacy" onClick={onClose} className="font-medium text-brandBrown underline underline-offset-2">
+            <a href="#privacy" onClick={closeCheckout} className="font-medium text-brandBrown underline underline-offset-2">
               privacy notice
             </a>
             .
           </p>
 
             {TURNSTILE_SITE_KEY ? (
-              <div className="rounded-2xl border border-line bg-cream px-3 py-3">
+              <div id="order-security" tabIndex={-1} className="rounded-2xl border border-line bg-cream px-3 py-3">
                 <div className="mb-2 text-xs font-medium text-inkMuted">Quick security check</div>
                 <TurnstileWidget
                   siteKey={TURNSTILE_SITE_KEY}
@@ -448,68 +444,13 @@ export default function PreorderModal({
             <div className="rounded-2xl border border-line bg-cream px-4 py-3 text-xs leading-6 text-inkMuted">
               Reservations close {cutoffLabel}. You will receive confirmation, PayNow details, and pickup or dispatch timing before bake day.
             </div>
-            {!hasSelectedItems ? (
-              <div className="text-xs text-inkMuted">Select at least one item.</div>
-            ) : null}
-            {!hasRequiredContactDetails ? (
-              <div className="text-xs text-inkMuted">Enter your name and contact number to continue.</div>
-            ) : null}
-            {!hasRequiredFulfilmentDetails ? (
-              <div className="text-xs text-inkMuted">
-                {form.delivery.toLowerCase().includes("delivery")
-                  ? "Enter your delivery address to continue."
-                  : "Choose a pickup window to continue."}
-              </div>
-            ) : null}
-            {hasSelectedItems && !isBakeWindowOpen ? (
-              <div className="text-xs text-inkMuted">
-                Reservations for this batch are currently closed.
-              </div>
-            ) : null}
-            {menuStatus !== "ready" ? (
-              <div className="text-xs text-inkMuted">Prices are loading from the current menu.</div>
-            ) : null}
 
           <div className="hidden sm:block rounded-2xl border border-line bg-cream p-4 text-xs text-inkMuted whitespace-pre-wrap">
-            {waMessageWithAck}
+            {allergenAcknowledged ? waMessageWithAck : waMessage}
           </div>
         </div>
       </Modal>
 
-      {showAllergenPopup ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-brandBrown/50" onClick={handleDismissAllergenPopup} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-line bg-surface p-6 shadow-[0_20px_40px_rgba(90,56,37,0.2)]">
-            <div className="text-base font-semibold text-ink">Allergen notice</div>
-            <p className="mt-3 text-sm leading-relaxed text-inkMuted">
-              Baked in a home kitchen with shared ingredients and tools. Please review the allergen notice carefully before continuing. We cannot guarantee any item is free from cross-contamination.
-            </p>
-            <div className="mt-4 rounded-2xl border border-line bg-cream p-3 text-xs leading-6 text-inkMuted">
-              {allergenDisclaimer}
-            </div>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <button
-                onClick={handleAllergenConfirm}
-                disabled={allergenCountdown > 0}
-                className="relative inline-flex touch-manipulation items-center justify-center rounded-button bg-brandBrown px-5 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:-translate-y-[1px] hover:shadow-float disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {allergenCountdown > 0 ? (
-                  <span className="flex items-center gap-2">
-                    <CinnamonLoader size={16} className="text-white" />
-                    Please read… ({allergenCountdown}s)
-                  </span>
-                ) : "I understand, continue"}
-              </button>
-              <button
-                onClick={handleDismissAllergenPopup}
-                className="inline-flex justify-center rounded-button border border-line bg-surface px-5 py-2.5 text-sm font-medium text-inkMuted hover:bg-cream"
-              >
-                Go back
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }

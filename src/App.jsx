@@ -439,8 +439,8 @@ function BakesLandingPage() {
           hasCurrentPrices &&
           (!form.delivery.toLowerCase().includes("delivery") || isDeliveryEligible)
         }
-        hasRequiredContactDetails={hasRequiredContactDetails}
-        hasRequiredFulfilmentDetails={hasRequiredFulfilmentDetails}
+        hasCurrentPrices={hasCurrentPrices}
+        onRetryMenu={retryMenu}
         isBakeWindowOpen={isSelectedBakeOpen}
         menuStatus={menuStatus}
         menu={menu}
