@@ -1,4 +1,5 @@
 import { resolveMenuBatchKey } from "./lib/batchSelection.js";
+import { handleLeaderboard } from "./lib/leaderboard.js";
 import {
   BANANA_CHOCOLATE_CHIPS_PRICE_SGD,
   COLLECTION_OPTION,
@@ -510,6 +511,14 @@ async function verifyTurnstile(token, secret, remoteIp, idempotencyKey) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (["/api/game/start", "/api/game/scores"].includes(url.pathname)) {
+      try { return await handleLeaderboard(request, env, url); }
+      catch (error) {
+        console.error("Unable to use Bun Bounce scoreboard", error);
+        return jsonResponse({ ok: false, error: "Scoreboard is temporarily unavailable" }, { status: 503 });
+      }
+    }
 
     if (url.pathname === MENU_ENDPOINT) {
       if (request.method !== "GET") {

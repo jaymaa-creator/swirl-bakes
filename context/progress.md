@@ -67,6 +67,13 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Bun Bounce shared top-10 (2026-10-05): adding anonymous three-character
+  arcade entries backed by Cloudflare KV, with separate test key prefix. Personal
+  best remains browser-local. Worker issues a short-lived run ID and validates
+  score plausibility, input length and characters, origin, body size and posting
+  rate. Focused Worker and isolation tests plus lint/build passed. A live run
+  and deployed test verification remain outstanding.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.

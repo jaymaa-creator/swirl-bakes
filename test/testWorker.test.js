@@ -39,6 +39,17 @@ test('test menu never falls back to the copied production snapshot or live Sheet
   assert.ok(keys.every((key) => key.startsWith('isolated-test:')));
 });
 
+test('test leaderboard reads only isolated score keys', async () => {
+  const seen = [];
+  const response = await worker.fetch(new Request(host + '/api/game/scores'), { ...env, MENU_SNAPSHOT: {
+    get: async () => null,
+    put: async () => {},
+    list: async ({ prefix }) => { seen.push(prefix); return { keys: [] }; },
+  } }, {});
+  assert.equal(response.status, 200);
+  assert.deepEqual(seen, ['isolated-test:bun-score-v1:']);
+});
+
 test('verified isolated backend receives validated test orders with only the new secret', async (t) => {
   const calls = [];
   t.mock.method(globalThis, 'fetch', async (url, options) => {
