@@ -23,10 +23,12 @@ export default function SwirlGame() {
     try { return Math.max(0, Number(localStorage.getItem("swirl-flight-best")) || 0); }
     catch { return 0; }
   });
+  const bestBeforeRun = useRef(best);
   const play = async () => {
     const current = state.current;
     if (current.status === "over" || startingRef.current) return;
     if (current.status === "ready") {
+      bestBeforeRun.current = Math.max(bestBeforeRun.current, best);
       startingRef.current = true;
       setStarting(true);
       try {
@@ -54,7 +56,7 @@ export default function SwirlGame() {
   }, []);
   async function submitScore(event) {
     event.preventDefault();
-    if (!runId.current || initials.length !== 3 || submitted) return;
+    if (!runId.current || game.score <= bestBeforeRun.current || initials.length !== 3 || submitted) return;
     setSubmitted(true);
     try {
       const response = await fetch("/api/game/scores", {
@@ -127,6 +129,7 @@ export default function SwirlGame() {
   function activate() {
     setBest(record);
     if (state.current.status === "over") {
+      bestBeforeRun.current = record;
       state.current = newGame();
       setGame(state.current);
       setSubmitted(false);
@@ -175,8 +178,8 @@ export default function SwirlGame() {
         {game.status !== "playing" && <div className="flight-overlay"><div>
           <p className="flight-kicker">{game.status === "over" ? "FRESHLY GROUNDED" : game.status === "paused" ? "TAKE A BREATHER" : "READY, STEADY, BAKE"}</p>
           <h2>{game.status === "over" ? scoreMessage(game.score) : game.status === "paused" ? "Flight paused" : "Down Joo Chiat Road."}</h2>
-          {game.status === "over" ? <p><strong>{game.score} points</strong><br />{game.score > 0 ? "Enter three arcade characters to post your score." : "Try again for your first point."}</p> : <p>Tap, click or press Space to flap.<br />Bounce past the shophouses. Avoid the boxes.</p>}
-          {game.status === "over" && game.score > 0 && runId.current && !submitted ? (
+          {game.status === "over" ? <p><strong>{game.score} points</strong><br />{game.score > bestBeforeRun.current ? "New personal best! Enter three arcade characters to post it." : "Beat your personal best to post a score."}</p> : <p>Tap, click or press Space to flap.<br />Bounce past the shophouses. Avoid the boxes.</p>}
+          {game.status === "over" && game.score > bestBeforeRun.current && runId.current && !submitted ? (
             <form className="flight-score-entry" onSubmit={submitScore}>
               <label htmlFor="flight-initials">Arcade initials</label>
               <input id="flight-initials" value={initials} maxLength={3} autoComplete="off" required pattern="[A-Z0-9!?*+-]{3}"
