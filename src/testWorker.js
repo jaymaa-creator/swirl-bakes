@@ -47,6 +47,10 @@ export default {
       MENU_SNAPSHOT: kv && {
         get: (key, ...args) => kv.get('isolated-test:' + key, ...args),
         put: (key, ...args) => kv.put('isolated-test:' + key, ...args),
+        list: async (options) => {
+          const result = await kv.list({ ...options, prefix: 'isolated-test:' + options.prefix });
+          return { ...result, keys: result.keys.map((key) => ({ ...key, name: key.name.slice('isolated-test:'.length) })) };
+        },
       },
     };
     if (['/api/menu', '/api/stock', '/api/orders'].includes(url.pathname)) {

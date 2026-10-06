@@ -12,17 +12,67 @@ export default function SwirlGame() {
     try { return readCollection(localStorage); } catch { return []; }
   });
   const [storageUnavailable, setStorageUnavailable] = useState(false);
+  const [leaders, setLeaders] = useState([]);
+  const [scoreboardMessage, setScoreboardMessage] = useState("");
+  const [initials, setInitials] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
+  const runId = useRef("");
   const [best, setBest] = useState(() => {
     try { return Math.max(0, Number(localStorage.getItem("swirl-flight-best")) || 0); }
     catch { return 0; }
   });
-  const play = () => {
+  const bestBeforeRun = useRef(best);
+  const play = async () => {
     const current = state.current;
-    if (current.status === "over") return;
+    if (current.status === "over" || startingRef.current) return;
+    if (current.status === "ready") {
+      bestBeforeRun.current = Math.max(bestBeforeRun.current, best);
+      startingRef.current = true;
+      setStarting(true);
+      try {
+        const response = await fetch("/api/game/start", { method: "POST" });
+        if (!response.ok) throw new Error("Scoreboard unavailable");
+        const result = await response.json();
+        runId.current = result.runId;
+        setScoreboardMessage("");
+      } catch {
+        runId.current = "";
+        setScoreboardMessage("You can still play; scores cannot be shared right now.");
+      } finally {
+        startingRef.current = false;
+        setStarting(false);
+      }
+    }
     setBest((previous) => Math.max(previous, current.score));
     state.current = flap(current);
     setGame(state.current);
   };
+  useEffect(() => {
+    fetch("/api/game/scores").then((response) => response.json()).then((result) => {
+      if (result.ok) setLeaders(result.scores);
+    }).catch(() => setScoreboardMessage("Scoreboard is temporarily unavailable."));
+  }, []);
+  async function submitScore(event) {
+    event.preventDefault();
+    if (!runId.current || game.score <= bestBeforeRun.current || initials.length !== 3 || submitted) return;
+    setSubmitted(true);
+    try {
+      const response = await fetch("/api/game/scores", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runId: runId.current, initials, score: game.score }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not post score");
+      setLeaders(result.scores);
+      setScoreboardMessage("Score posted!");
+      runId.current = "";
+    } catch (error) {
+      setSubmitted(false);
+      setScoreboardMessage(error.message || "Could not post score. Try again.");
+    }
+  }
   useEffect(() => {
     let frame;
     let previous;
@@ -78,7 +128,14 @@ export default function SwirlGame() {
   const record = Math.max(best, game.score);
   function activate() {
     setBest(record);
-    if (state.current.status === "over") state.current = newGame();
+    if (state.current.status === "over") {
+      bestBeforeRun.current = record;
+      state.current = newGame();
+      setGame(state.current);
+      setSubmitted(false);
+      setInitials("");
+      runId.current = "";
+    }
     play();
   }
   function openAlbum(event) {
@@ -96,7 +153,7 @@ export default function SwirlGame() {
       <div className="flight-title"><p>A LITTLE BREAK BETWEEN BAKES</p><h1>Bun Bounce</h1><p>A little bun's big adventure down Joo Chiat Road.</p></div>
       <div className="flight-scores"><span>SCORE <strong>{game.score}</strong></span><span>PERSONAL BEST <strong>{record}</strong></span></div>
       <div className="flight-board" role="group" aria-label="Bun Bounce game. Tap or press Space to flap." onPointerDown={(event) => {
-        if (event.target.closest("button")) return;
+        if (event.target.closest("button, input, form")) return;
         event.preventDefault(); play();
       }}>
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} aria-hidden="true" className="flight-scene">
@@ -121,12 +178,28 @@ export default function SwirlGame() {
         {game.status !== "playing" && <div className="flight-overlay"><div>
           <p className="flight-kicker">{game.status === "over" ? "FRESHLY GROUNDED" : game.status === "paused" ? "TAKE A BREATHER" : "READY, STEADY, BAKE"}</p>
           <h2>{game.status === "over" ? scoreMessage(game.score) : game.status === "paused" ? "Flight paused" : "Down Joo Chiat Road."}</h2>
-          {game.status === "over" ? <p><strong>{game.score} points</strong><br />Click Try again for another go.</p> : <p>Tap, click or press Space to flap.<br />Bounce past the shophouses. Avoid the boxes.</p>}
-          <button onClick={activate}>{game.status === "over" ? "Try again" : game.status === "paused" ? "Resume flight" : "Start flying"}</button>
+          {game.status === "over" ? <p><strong>{game.score} points</strong><br />{game.score > bestBeforeRun.current ? "New personal best! Enter three arcade characters to post it." : "Beat your personal best to post a score."}</p> : <p>Tap, click or press Space to flap.<br />Bounce past the shophouses. Avoid the boxes.</p>}
+          {game.status === "over" && game.score > bestBeforeRun.current && runId.current && !submitted ? (
+            <form className="flight-score-entry" onSubmit={submitScore}>
+              <label htmlFor="flight-initials">Arcade initials</label>
+              <input id="flight-initials" value={initials} maxLength={3} autoComplete="off" required pattern="[A-Z0-9!?*+-]{3}"
+                onChange={(event) => setInitials(event.target.value.toUpperCase().replace(/[^A-Z0-9!?*+-]/g, "").slice(0, 3))}
+                aria-describedby="flight-initials-help" />
+              <small id="flight-initials-help">Three letters, numbers or ! ? * + -</small>
+              <button type="submit" disabled={initials.length !== 3}>Post score</button>
+            </form>
+          ) : null}
+          <button onClick={activate} disabled={starting}>{starting ? "Starting…" : game.status === "over" ? "Try again" : game.status === "paused" ? "Resume flight" : "Start flying"}</button>
         </div></div>}
       </div>
       <p role="status" className="sr-only">{game.status === "over" ? `Game over. Score ${game.score}.` : game.status === "paused" ? "Game paused." : ""}</p>
       <p className="flight-hint">TAP / SPACE / UP ARROW <span>Best score stays on this device. No orders, no stakes.</span></p>
+      <section className="flight-leaderboard" aria-labelledby="flight-leaderboard-title">
+        <h2 id="flight-leaderboard-title">Arcade top 10</h2>
+        {leaders.length ? <ol>{leaders.map((entry, index) => <li key={`${index}-${entry.initials}-${entry.score}`}><span>{entry.initials}</span><strong>{entry.score}</strong></li>)}</ol>
+          : <p>No shared scores yet. Be the first!</p>}
+        {scoreboardMessage ? <p role="status">{scoreboardMessage}</p> : null}
+      </section>
       <details className="bun-album" onToggle={openAlbum}>
         <summary><span>Joo Chiat collection</span><strong>{collection.length} / {COLLECTIBLES.length}</strong></summary>
         <p>Collect a special building as soon as it is fully on screen. First stop at 30 points, then every 10. Higher scores unlock rarer stops.</p>
