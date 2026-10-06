@@ -6,6 +6,17 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Bun Bounce shared top-10 released (2026-10-06). PR #17 merged as
+  `63447fa3651afed80d55f16759e692888cd85f8d`. Anonymous three-character
+  scores are stored in Cloudflare KV; only a run above that browser's previous
+  personal best exposes the posting form. Test and production use separate KV
+  key spaces. Guarded release `37422185343` passed build, 124 tests, test
+  deployment, production approval and both smoke checks after retrying a
+  transient test-backend 503. Independent production checks returned homepage
+  200, nine menu products, invalid order 400 and an empty but healthy
+  `/api/game/scores` response. No production score was posted for verification.
+  Apps Script remained at deployed version 33.
+
 - Pickup referral MVP released to production (2026-10-01). PR #12 merged as
   `03754c9c12600a4de7abea4eb947130fe45bc82f`. Production Apps Script web
   app version 32 and Worker version `908e0562-648b-46d4-a25a-0135e90a4603`
@@ -66,16 +77,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Bun Bounce shared top-10 (2026-10-05): anonymous three-character arcade
-  entries backed by Cloudflare KV, with separate test key prefix. Personal best
-  remains browser-local; the entry form and submit handler only permit a score
-  strictly above the best before that run. Worker issues a short-lived run ID
-  and validates score plausibility, input length and characters, origin, body
-  size and posting rate. Focused Worker and isolation tests plus lint/build
-  passed. Test Worker and browser posting verified. The exact-commit test-only
-  release `37258597836` passed, and Chrome showed the personal-best message
-  without an entry form after a below-best run. Production remains unchanged.
 
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
