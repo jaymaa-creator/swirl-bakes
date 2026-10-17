@@ -74,3 +74,24 @@ publication-anchor monitoring fix; these were preserved in local shared source
 before generating the new test variant. Previous test backend version 10 remains
 available for rollback. The editor-source backup is in the temporary directory
 `/private/tmp/swirl-merch-test-backup/`.
+
+## Production launch: 2026-10-17
+
+Production launch completed through PR #19 and guarded release `38991804225`.
+Apps Script v34 and Worker `eb062e85-fa66-4e4f-a211-0604b39cd248` are live.
+`setupMerchSettings` created the production tab; `syncMenuSnapshot` published
+10 S$10 totes. The storefront uses `/tote-bag.webp` and
+`/kimchi-cheese-swirl.webp` as default photos, preserving Sheet image overrides.
+Both approved crops are 1200x900; the existing kimchi ID is `kimche-cheese-swirl`.
+
+137 tests pass. Lint has no errors and one existing SwirlGame hook warning;
+build, test/production smoke and asset-byte checks pass. Isolated test v12
+saved a S$25.50 bake/tote order, replayed it without duplication and published
+9 remaining totes. The labelled DO NOT FULFIL test record remains for audit.
+Production browser checks confirmed both photos, bake-first controls, the
+S$28 kimchi/tote basket total, and tote removal with the final bake.
+No successful production order was submitted for verification.
+
+Previous production Worker: `6603c004-6306-48fe-b266-5e4a3860634f`.
+Previous production Apps Script: v33. Follow the merch withdrawal order above
+before rolling back either server's merch validation.
