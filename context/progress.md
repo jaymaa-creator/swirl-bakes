@@ -6,6 +6,25 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Merch and product photos deployed to production (2026-10-17). PR #19 merged
+  as `4a4ea5014d5b711fc55d5ea4118d9b271d79a43a`; guarded release
+  `38991804225` passed prepare, test and production. Production Worker
+  `eb062e85-fa66-4e4f-a211-0604b39cd248` and Apps Script v34 are active.
+  Production Merch tab contains 10 S$10 totes, only alongside bakes, with
+  shared cross-date stock. Approved 1200x900 WebP photos are live for the
+  tote and existing `kimche-cheese-swirl` product. Operator image overrides
+  remain supported. 137 tests, build and diff checks pass; lint has no errors
+  and one pre-existing SwirlGame hook warning. Isolated test Apps Script v12
+  saved one labelled S$25.50 mixed order; replay returned the same reference
+  with duplicate=true and published tote stock fell from 10 to 9. The test
+  record remains labelled DO NOT FULFIL. Production smoke passed (homepage
+  200, 11 products, invalid order 400). Live browser checks verified both
+  images, bake-first tote controls, S$28 kimchi+tote total and clearing totes
+  when the last bake is removed. Production tote stock remains 10; no real
+  production order or WhatsApp message was created. Rollback baseline:
+  Worker `6603c004-6306-48fe-b266-5e4a3860634f`, Apps Script v33; hide and
+  republish merch before reverting server rules.
+
 - Bun Bounce shared top-10 released (2026-10-06). PR #17 merged as
   `63447fa3651afed80d55f16759e692888cd85f8d`. Anonymous three-character
   scores are stored in Cloudflare KV; only a run above that browser's previous
@@ -77,11 +96,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Merch and product photos production release (2026-10-17): porting the
-  test-verified merch feature onto current main, preserving live checkout and
-  leaderboard fixes. Added approved 1200x900 tote and kimchi WebP photos.
-  Mixed-order test rehearsal and guarded production deployment in progress.
 
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
