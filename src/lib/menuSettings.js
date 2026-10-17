@@ -1,5 +1,7 @@
 const DEFAULT_MAX_QUANTITY = 3;
 const DEFAULT_PRODUCT_IMAGES = {
+  "tote-bag": "/tote-bag.webp",
+  "kimche-cheese-swirl": "/kimchi-cheese-swirl.webp",
   "chocolate-chip-cookies": "/chocolate-chip-cookies.webp",
   "milo-swirl": "/milo-swirl.webp",
   "tiramisu-swirl": "/tiramisu-swirl.webp",
@@ -105,12 +107,13 @@ function fallbackProduct(productId, productSettings) {
   return {
     id: productId,
     name,
-    category: isSourdough ? "Staples" : "Weekly bakes",
+    kind: productSettings.kind,
+    category: productSettings.kind === "merch" ? "Merch" : isSourdough ? "Staples" : "Weekly bakes",
     unitLabel: unitMeta.unitLabel,
     quantityLabel: unitMeta.quantityLabel,
     quantityLabelPlural: unitMeta.quantityLabelPlural,
     orderDescription: unitMeta.orderDescription,
-    note: productSettings.description || "Freshly baked for your selected batch.",
+    note: productSettings.description || (productSettings.kind === "merch" ? "Add to your bake order." : "Freshly baked for your selected batch."),
     allergens: productSettings.allergens,
     image: productSettings.imageUrl || DEFAULT_PRODUCT_IMAGES[productId.toLowerCase()] || "",
     imageAlt: name,
@@ -126,6 +129,7 @@ export function normalizeMenuSettings(settings = {}) {
       .map((product) => [
         product.id.trim(),
         {
+          kind: product.kind === "merch" ? "merch" : "bake",
           available: toBoolean(product.available, true),
           special: toBoolean(product.special, false),
           batchLimit: toPositiveNumber(product.batchLimit),
@@ -161,6 +165,7 @@ export function mergeMenuSettings(baseMenu, settings) {
 
     return {
       ...item,
+      kind: productSettings?.kind || "bake",
       name: productSettings?.productName || item.name,
       unitLabel: productSettings?.per ? unitMeta.unitLabel : item.unitLabel,
       quantityLabel: productSettings?.per ? unitMeta.quantityLabel : item.quantityLabel,
@@ -187,7 +192,7 @@ export function mergeMenuSettings(baseMenu, settings) {
     // with their sold-out treatment instead of making them appear to vanish.
     const isConfiguredForMenu =
       productSettings.priceSgd !== null &&
-      productSettings.batchLimit !== null &&
+      (productSettings.batchLimit !== null || productSettings.kind === "merch") &&
       productSettings.remainingQuantity !== null;
 
     // Sheet-only products stay private until their stock configuration is complete

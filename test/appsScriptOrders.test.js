@@ -568,3 +568,47 @@ test("copied historical orders cannot mint referral credits", () => {
   context.earnReferralCreditForOrder(spreadsheet, ["order_no", "referred_by_customer_key"], orders.rows[1]);
   assert.equal(ledger.rows.length, 1);
 });
+
+test("locked merch validation requires bakes, enforces stock and excludes totes from delivery minimum", () => {
+  const context = validationHarness({ priceSgd: 25 });
+  const bake = context.readMenuSettings()[0];
+  const tote = { id: "tote-bag", productName: "Tote bag", kind: "merch", priceSgd: 10,
+    available: true, maxQuantity: 3, remainingQuantity: 2 };
+  context.readMenuSettings = () => [bake, tote];
+  const lines = [{ productId: "cinnamon-rolls", quantity: 1 }, { productId: "tote-bag", quantity: 2 }];
+  for (const overrides of [
+    { lineItems: [lines[1]], quotedTotalSgd: 20, totalSgd: 20 },
+    { lineItems: lines, delivery: "Delivery - flat S$15 fee", pickupTime: "", address: "10 Test Road", quotedTotalSgd: 60, totalSgd: 60 },
+    { lineItems: [lines[0], { productId: "tote-bag", quantity: 3 }], quotedTotalSgd: 55, totalSgd: 55 },
+  ]) assert.equal(context.validateOrderForWrite(requestPayload(overrides).order, {}).errorCode, "ORDER_UNAVAILABLE");
+  const result = context.validateOrderForWrite(requestPayload({ lineItems: lines, quotedTotalSgd: 45, totalSgd: 45 }).order, {});
+  assert.equal(result.ok, true);
+  assert.equal(result.order.bakesTotalSgd, 25);
+  assert.equal(result.order.itemsTotalSgd, 45);
+  assert.match(result.order.items, /Tote bag x2/);
+});
+
+test("tote spend cannot qualify an order for referral discounts or redemption", () => {
+  const context = referralContext();
+  context.ensureReferralSheets = () => {};
+  context.referralCustomerKey = () => "buyer";
+  context.getOrCreateReferralCustomer = () => ({ code: "SGBUYER" });
+  context.findReferralCustomerByCode = () => assert.fail("Unqualified order must not apply a friend discount");
+  context.findOldestReferralCredit = () => assert.fail("Unqualified order must not redeem credit");
+  const result = context.applyReferralToOrder({}, {}, {
+    phone: "+6581234567", delivery: "Self-collection - agreed pickup point",
+    bakesTotalSgd: 25, itemsTotalSgd: 45, totalSgd: 45, referralCode: "SGFRIEND",
+  }, "SG-MERCH");
+  assert.equal(result.referralDiscountSgd, 0);
+  assert.equal(result.creditRedeemedSgd, 0);
+  assert.equal(result.amountDueSgd, 45);
+});
+
+test("native typed Paid columns retain the existing order-save hotfix", () => {
+  const context = baseContext();
+  context.ensureOrderPaidCheckbox({ getDataValidation: () => null, insertCheckboxes() {
+    throw new Error("This operation is not allowed on cells in typed columns");
+  } });
+  assert.throws(() => context.ensureOrderPaidCheckbox({ getDataValidation: () => null,
+    insertCheckboxes() { throw new Error("Unrelated Sheet failure"); } }), /Unrelated Sheet failure/);
+});

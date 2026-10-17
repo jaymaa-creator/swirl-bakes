@@ -18,6 +18,7 @@ function inventoryHarness() {
     ["banana-bread", "Banana Cake", 4, true, 2],
   ];
   const spreadsheet = { getSheetByName: (name) => {
+    if (name !== "Orders" && name !== "Products") return null;
     const rows = name === "Orders" ? orders : products;
     return { getLastRow: () => rows.length, getDataRange: () => ({ getValues: () => rows.map((row) => [...row]) }) };
   } };

@@ -4,6 +4,8 @@ import { money } from "../lib/pricing";
 
 export default function MenuSection({
   menu,
+  merch = false,
+  hasSelectedBakes = false,
   quantityOptions,
   form,
   setForm,
@@ -29,7 +31,7 @@ export default function MenuSection({
 
     return (
       <section
-        id="menu"
+        id={merch ? "merch" : "menu"}
         className="mx-auto max-w-6xl rounded-[28px] bg-[#F3ECE4] px-4 py-12 sm:py-16"
         style={{
           background:
@@ -38,7 +40,7 @@ export default function MenuSection({
       >
         <div className="max-w-5xl">
           <div className="max-w-3xl" data-reveal="left">
-            <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">{merch ? "Merch" : "Menu"}</div>
             <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
               Next available bake
             </h2>
@@ -69,7 +71,7 @@ export default function MenuSection({
 
   return (
     <section
-      id="menu"
+      id={merch ? "merch" : "menu"}
       className="mx-auto max-w-6xl rounded-[28px] bg-[#F3ECE4] px-4 py-12 sm:py-16"
       style={{
         background:
@@ -78,12 +80,12 @@ export default function MenuSection({
     >
       <div className="max-w-5xl">
         <div className="max-w-3xl">
-          <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">Menu</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">{merch ? "Merch" : "Menu"}</div>
           <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
-            {batchLabel ? `Bakes for ${batchLabel}` : "Next available bake"}
+            {merch ? "Take a little Swirl Girl home" : batchLabel ? `Bakes for ${batchLabel}` : "Next available bake"}
           </h2>
           <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
-            Choose your bakes, then reserve the {batchLabel || "next Saturday"} batch.
+            {merch ? "Add a tote to your bake order. Collected or delivered together." : `Choose your bakes, then reserve the ${batchLabel || "next Saturday"} batch.`}
           </p>
         </div>
 
@@ -134,12 +136,12 @@ export default function MenuSection({
                         <div className="pointer-events-none absolute right-3 top-3 w-1/4 min-w-20 max-w-32">
                           <img
                             src="/sold-out-sticker.png"
-                            alt="Swirl Girl says sold out for this bake"
+                            alt={merch ? "Swirl Girl says sold out" : "Swirl Girl says sold out for this bake"}
                             className="w-full rounded-full border-4 border-[#FFF7EB] shadow-[0_8px_20px_rgba(66,35,18,0.24)]"
                           />
                           <div className="relative -mt-2 ml-[-22%] rounded-2xl border border-[#E7C5A3] bg-[#FFF1DF] px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-brandBrown shadow-[0_3px_8px_rgba(90,56,37,0.12)] sm:text-xs">
                             <span className="absolute -top-1 right-[22%] h-2.5 w-2.5 rotate-45 border-l border-t border-[#E7C5A3] bg-[#FFF1DF]" />
-                            <span className="relative">Sold out for this bake</span>
+                            <span className="relative">{merch ? "Sold out" : "Sold out for this bake"}</span>
                           </div>
                         </div>
                       </>
@@ -179,8 +181,9 @@ export default function MenuSection({
                         <button
                           key={`${m.id}-${qty}`}
                           type="button"
-                          disabled={!isAvailable}
+                          disabled={!isAvailable || (merch && !hasSelectedBakes)}
                           onClick={() => {
+                            if (merch && !hasSelectedBakes) return;
                             const nextQuantity = Number(form.items[m.id] || 0) === qty ? 0 : qty;
                             setForm((f) => ({
                               ...f,
@@ -202,6 +205,11 @@ export default function MenuSection({
                       );
                     }) : null}
                   </div>
+                  {merch ? (
+                    <p className="mt-4 text-xs text-inkMuted">
+                      {!isAvailable ? "Sold out" : !hasSelectedBakes ? "Choose your bakes first to add a tote." : `${m.remainingQuantity} available`}
+                    </p>
+                  ) : null}
                   {!isAvailable && canOrderFollowingBatch ? (
                     <button
                       type="button"

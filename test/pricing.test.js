@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateAddOnTotalSgd, calculateLineTotalSgd, money } from "../src/lib/pricing.js";
+import { calculateAddOnTotalSgd, calculateBakesTotalSgd, calculateLineTotalSgd, clearMerchWithoutBakes, hasSelectedBakes, money } from "../src/lib/pricing.js";
 
 test("money preserves cents, including free totals and unknown prices", () => {
   assert.equal(money(0), "S$0.00");
@@ -35,4 +35,20 @@ test("calculateLineTotalSgd supports per pack floor/ceil/prorate", () => {
 test("calculateAddOnTotalSgd charges S$2 per selected Banana Cake", () => {
   assert.equal(calculateAddOnTotalSgd({ bananaChocolateChips: true, items: { "banana-bread": 2 } }), 4);
   assert.equal(calculateAddOnTotalSgd({ bananaChocolateChips: false, items: { "banana-bread": 2 } }), 0);
+});
+
+const mixedMenu = [
+  { id: "banana-bread", priceSgd: 25 },
+  { id: "tote-bag", kind: "merch", priceSgd: 10 },
+];
+test("totes do not count towards bake spend and removing all bakes clears merch", () => {
+  const form = { items: { "banana-bread": 1, "tote-bag": 2 }, bananaChocolateChips: true };
+  assert.equal(calculateBakesTotalSgd(form, mixedMenu), 27);
+  assert.equal(hasSelectedBakes(mixedMenu, form.items), true);
+  assert.equal(clearMerchWithoutBakes(form, mixedMenu), form);
+  const toteOnly = { items: { "banana-bread": 0, "tote-bag": 2 } };
+  assert.equal(hasSelectedBakes(mixedMenu, toteOnly.items), false);
+  assert.equal(clearMerchWithoutBakes(toteOnly, mixedMenu).items["tote-bag"], 0);
+  assert.equal(toteOnly.items["tote-bag"], 2);
+  assert.equal(clearMerchWithoutBakes(form, mixedMenu.map((item) => ({ ...item, available: false }))).items["tote-bag"], 0);
 });

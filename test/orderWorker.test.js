@@ -186,3 +186,39 @@ test("duplicate result keeps the original reference and skips menu refresh", asy
   assert.deepEqual(await response.json(), { ok: true, orderNumber: "SG-ORIGINAL", duplicate: true });
   assert.equal(calls, 1);
 });
+
+test("merch must accompany bakes and cannot satisfy the delivery minimum", async (t) => {
+  const snapshot = menuSnapshot({ priceSgd: 25 });
+  snapshot.snapshots[BATCH].products.push({
+    id: "tote-bag", productName: "Tote bag", kind: "merch", priceSgd: 10,
+    available: true, maxQuantity: 3, remainingQuantity: 2,
+  });
+  const env = environment({ MENU_SNAPSHOT: { get: async () => snapshot } });
+  let writes = 0;
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    writes += 1;
+    const saved = JSON.parse(options.body).order;
+    // Stale KV failures still reach the locked backend so exact replays can
+    // return their original reference. Only a valid snapshot gets canonical totals.
+    if (saved.totalSgd === undefined) return Response.json({
+      ok: false, errorCode: "ORDER_UNAVAILABLE", error: "The order is no longer available",
+    });
+    assert.equal(saved.totalSgd, 45);
+    assert.match(saved.items, /Tote bag x2/);
+    return Response.json({ ok: true, orderNumber: "SG-MERCH" });
+  });
+  const lines = [{ productId: "cinnamon-rolls", quantity: 1 }, { productId: "tote-bag", quantity: 2 }];
+  for (const overrides of [
+    { lineItems: [lines[1]], quotedTotalSgd: 20 },
+    { lineItems: lines, delivery: "Delivery - flat S$15 fee", pickupTime: "", address: "10 Test Road", quotedTotalSgd: 60 },
+    { lineItems: [lines[0], { productId: "tote-bag", quantity: 3 }], quotedTotalSgd: 55 },
+    { lineItems: lines, quotedTotalSgd: 35 },
+  ]) {
+    const response = await worker.fetch(orderRequest({ requestId: REQUEST_ID, order: order(overrides) }), env, { waitUntil() {} });
+    assert.equal(response.status, 409);
+  }
+  assert.equal(writes, 4);
+  const response = await worker.fetch(orderRequest({ requestId: REQUEST_ID, order: order({ lineItems: lines, quotedTotalSgd: 45 }) }), env, { waitUntil() {} });
+  assert.equal(response.status, 200);
+  assert.equal(writes, 5);
+});

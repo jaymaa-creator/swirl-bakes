@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { formatSgDate, fromSingaporeDateKey, getCutoffForSaturday } from "../lib/dates";
 import {
   BANANA_CHOCOLATE_CHIPS_PRICE_SGD,
-  calculateAddOnTotalSgd,
-  calculateLineTotalSgd,
+  calculateBakesTotalSgd,
+  hasSelectedBakes,
 } from "../lib/pricing";
 import Card from "./ui/Card";
 import Field from "./ui/Field";
@@ -51,6 +51,7 @@ export default function PreorderModal({
     : brand.orderCutoffLabel;
 
   function setItemQuantity(productId, quantity) {
+    if (menu.find((item) => item.id === productId)?.kind === "merch" && !hasSelectedBakes(menu, form.items)) return;
     setForm((current) => {
       const items = { ...current.items, [productId]: quantity };
       const bananaChocolateChips =
@@ -58,10 +59,7 @@ export default function PreorderModal({
           ? false
           : current.bananaChocolateChips;
       const nextForm = { ...current, items, bananaChocolateChips };
-      const nextItemsTotal = menu.reduce(
-        (sum, item) => sum + calculateLineTotalSgd(item, Number(items[item.id] || 0)),
-        0
-      ) + calculateAddOnTotalSgd(nextForm);
+      const nextItemsTotal = calculateBakesTotalSgd(nextForm, menu);
       const mustUseCollection = nextItemsTotal < brand.deliveryMinimumSgd;
 
       return {
@@ -111,6 +109,7 @@ export default function PreorderModal({
       field?.scrollIntoView({ block: "center", behavior: "auto" });
       return;
     }
+    if (!hasSelectedBakes(menu, form.items)) return;
     orderRequestSubmittedRef.current = true;
     onOrderIntent?.(waMessageWithAck, turnstileToken);
     setAllergenAcknowledged(false);
@@ -222,8 +221,9 @@ export default function PreorderModal({
                     >
                       <div>
                         <div className="text-sm font-medium text-ink">{m.name}</div>
+                        {m.kind === "merch" ? <div className="text-xs text-inkMuted">Only with bakes · collected or delivered together</div> : null}
                         <div className="text-xs text-inkMuted">
-                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : "Sold out for this bake"}
+                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : (m.kind === "merch" ? "Sold out" : "Sold out for this bake")}
                         </div>
                         {m.id === "banana-bread" && isAvailable ? (
                           <button
@@ -235,11 +235,7 @@ export default function PreorderModal({
                                   ...current,
                                   bananaChocolateChips: !current.bananaChocolateChips,
                                 };
-                                const nextItemsTotal = menu.reduce(
-                                  (sum, item) =>
-                                    sum + calculateLineTotalSgd(item, Number(current.items[item.id] || 0)),
-                                  0
-                                ) + calculateAddOnTotalSgd(nextForm);
+                                const nextItemsTotal = calculateBakesTotalSgd(nextForm, menu);
                                 const mustUseCollection = nextItemsTotal < brand.deliveryMinimumSgd;
 
                                 return {
@@ -267,7 +263,7 @@ export default function PreorderModal({
                             <button
                               key={qty}
                               type="button"
-                              disabled={!isAvailable}
+                              disabled={!isAvailable || (m.kind === "merch" && !hasSelectedBakes(menu, form.items))}
                               onClick={() =>
                                 setItemQuantity(
                                   m.id,
