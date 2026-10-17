@@ -78,6 +78,11 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Merch and product photos production release (2026-10-17): porting the
+  test-verified merch feature onto current main, preserving live checkout and
+  leaderboard fixes. Added approved 1200x900 tote and kimchi WebP photos.
+  Mixed-order test rehearsal and guarded production deployment in progress.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.

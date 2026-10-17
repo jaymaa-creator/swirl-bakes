@@ -46,3 +46,20 @@ export function calculateLineTotalSgd(item, qty) {
 
   return 0;
 }
+
+export function hasSelectedBakes(menu, items) {
+  return menu.some((item) => item.kind !== "merch" && item.available !== false && Number(items?.[item.id] || 0) > 0);
+}
+
+export function clearMerchWithoutBakes(form, menu) {
+  if (hasSelectedBakes(menu, form.items)) return form;
+  const items = { ...form.items };
+  menu.filter((item) => item.kind === "merch").forEach((item) => { items[item.id] = 0; });
+  return { ...form, items };
+}
+
+export function calculateBakesTotalSgd(form, menu) {
+  return menu.filter((item) => item.kind !== "merch").reduce(
+    (sum, item) => sum + calculateLineTotalSgd(item, form.items?.[item.id]), 0
+  ) + calculateAddOnTotalSgd(form);
+}

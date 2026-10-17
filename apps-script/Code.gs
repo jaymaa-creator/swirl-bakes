@@ -1,6 +1,7 @@
 const SPREADSHEET_ID = "12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A";
 const ORDERS_SHEET_NAME = "Orders";
 const MENU_SETTINGS_SHEET_NAME = "Products";
+const MERCH_SHEET_NAME = "Merch";
 const BAKE_CALENDAR_SHEET_NAME = "Calendar";
 const RECIPE_SHEET_NAME = "Recipe";
 const COSTS_SHEET_NAME = "Costs";
@@ -203,6 +204,18 @@ function setupMenuSettings() {
   return { ok: true };
 }
 
+// Creates the initial inventory once; existing operator data is never overwritten.
+function setupMerchSettings() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  if (spreadsheet.getSheetByName(MERCH_SHEET_NAME)) return { ok: true, created: false };
+  const sheet = spreadsheet.insertSheet(MERCH_SHEET_NAME);
+  sheet.appendRow(["product_id", "product_name", "price_sgd", "available", "test-available", "max_quantity", "stock_limit", "description", "per", "image_url"]);
+  sheet.appendRow(["tote-bag", "Tote bag", 10, true, "", 3, 10, "Add a Swirl Girl tote to your bake order.", "bag", ""]);
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, 10);
+  return { ok: true, created: true };
+}
+
 function setupBakeCalendar() {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = spreadsheet.getSheetByName(BAKE_CALENDAR_SHEET_NAME);
@@ -283,6 +296,7 @@ function onMenuSheetEdit(event) {
   if (sheetName === ORDERS_SHEET_NAME) processPaidReferralEdit(event);
   if (
     sheetName !== MENU_SETTINGS_SHEET_NAME &&
+    sheetName !== MERCH_SHEET_NAME &&
     sheetName !== ORDERS_SHEET_NAME &&
     sheetName !== BAKE_CALENDAR_SHEET_NAME &&
     sheetName !== RECIPE_SHEET_NAME &&
@@ -307,7 +321,7 @@ function recordPendingMenuDelta(event, sheetName) {
   const columnCount = range.getNumColumns();
   const isSingleCell = rowCount === 1 && columnCount === 1;
   const header = row > 1 ? String(sheet.getRange(1, column).getDisplayValue() || "").trim() : "header";
-  const productId = sheetName === MENU_SETTINGS_SHEET_NAME && row > 1
+  const productId = (sheetName === MENU_SETTINGS_SHEET_NAME || sheetName === MERCH_SHEET_NAME) && row > 1
     ? String(sheet.getRange(row, 1).getDisplayValue() || "").trim()
     : "";
   const location = `${sheetName}!${range.getA1Notation()}`;
@@ -540,6 +554,7 @@ function monitoringMenuSignature(products) {
         productName: String(product.productName || "").trim(),
         available: product.available === true,
         special: product.special === true,
+        kind: product.kind === "merch" ? "merch" : "bake",
         priceSgd: finiteMonitoringNumber(product.priceSgd),
         maxQuantity: finiteMonitoringNumber(product.maxQuantity),
         batchLimit: finiteMonitoringNumber(product.batchLimit),
@@ -951,6 +966,8 @@ function validateOrderForWrite(order, spreadsheet) {
   const productsById = Object.fromEntries(products.map((product) => [product.id, product]));
   const itemParts = [];
   let itemsTotalCents = 0;
+  let bakesTotalCents = 0;
+  let hasBake = false;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -966,18 +983,25 @@ function validateOrderForWrite(order, spreadsheet) {
       return { ok: false, errorCode: "ORDER_UNAVAILABLE", error: "A selected product or quantity is no longer available" };
     }
     itemsTotalCents += priceCents * line.quantity;
+    if (product.kind !== "merch") {
+      hasBake = true;
+      bakesTotalCents += priceCents * line.quantity;
+    }
     const per = String(product.per || "").trim().replace(/^per\s+/i, "");
     itemParts.push(`${product.productName || productNameFromId(product.id)}${per ? ` (${per})` : ""} x${line.quantity}`);
   }
 
+  if (!hasBake) return { ok: false, errorCode: "ORDER_UNAVAILABLE", error: "Merch is only available with bakes" };
+
   if (bananaChocolateChips) {
     const bananaQuantity = lines.find((line) => line.productId === "banana-bread").quantity;
     itemsTotalCents += BANANA_CHOCOLATE_CHIPS_PRICE_SGD * 100 * bananaQuantity;
+    bakesTotalCents += BANANA_CHOCOLATE_CHIPS_PRICE_SGD * 100 * bananaQuantity;
     itemParts.push(`Chocolate chips for Banana Cake x${bananaQuantity} (+S$${(BANANA_CHOCOLATE_CHIPS_PRICE_SGD * bananaQuantity).toFixed(2)})`);
   }
   let deliveryFeeCents = 0;
   if (delivery === DELIVERY_OPTION) {
-    if (itemsTotalCents < DELIVERY_MINIMUM_SGD * 100) {
+    if (bakesTotalCents < DELIVERY_MINIMUM_SGD * 100) {
       return { ok: false, errorCode: "ORDER_UNAVAILABLE", error: `Delivery requires at least S$${DELIVERY_MINIMUM_SGD.toFixed(2)} of bakes` };
     }
     deliveryFeeCents = DELIVERY_FEE_SGD * 100;
@@ -992,6 +1016,7 @@ function validateOrderForWrite(order, spreadsheet) {
     items: itemParts.join(", "),
     estimatedTotal: `S$${(totalCents / 100).toFixed(2)}`,
     itemsTotalSgd: itemsTotalCents / 100,
+    bakesTotalSgd: bakesTotalCents / 100,
     totalSgd: totalCents / 100,
   } };
 }
@@ -1002,7 +1027,7 @@ function applyReferralToOrder(spreadsheet, ordersSheet, order, orderNumber) {
   const customer = getOrCreateReferralCustomer(spreadsheet, customerKey, orderNumber, order.phone);
   const result = { customerKey, referralCode: customer.code, referredByCustomerKey: "", creditSourceEventId: "",
     referralDiscountSgd: 0, creditRedeemedSgd: 0, amountDueSgd: order.totalSgd };
-  const qualifying = order.delivery === COLLECTION_OPTION && order.itemsTotalSgd >= REFERRAL_MINIMUM_SGD;
+  const qualifying = order.delivery === COLLECTION_OPTION && (order.bakesTotalSgd ?? order.itemsTotalSgd) >= REFERRAL_MINIMUM_SGD;
   if (!qualifying) return result;
 
   const entered = String(order.referralCode || "").toUpperCase();
@@ -1247,7 +1272,7 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTest
   const sheet = activeSpreadsheet.getSheetByName(MENU_SETTINGS_SHEET_NAME);
 
   if (!sheet) {
-    return [];
+    return readMerchSettings(activeSpreadsheet, useTestAvailability);
   }
 
   const values = sheet.getDataRange().getValues();
@@ -1300,8 +1325,46 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTest
     })
     .filter(Boolean);
 
+  const merch = readMerchSettings(activeSpreadsheet, useTestAvailability);
+  const ids = new Set(products.map((product) => product.id));
+  merch.forEach((product) => {
+    if (ids.has(product.id)) throw new Error("Duplicate product ID in Products and Merch");
+    ids.add(product.id);
+    products.push(product);
+  });
   cache.put(cacheKey, JSON.stringify(products), MENU_CACHE_SECONDS);
   return products;
+}
+
+function readMerchSettings(spreadsheet, useTestAvailability) {
+  const sheet = spreadsheet.getSheetByName(MERCH_SHEET_NAME);
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues();
+  const headers = (values.shift() || []).map(normalizeHeader);
+  const column = Object.fromEntries(headers.map((header, index) => [header, index]));
+  const products = values.filter((row) => String(row[column.product_id] || "").trim()).map((row) => {
+    const id = String(row[column.product_id]).trim();
+    const rawStock = row[column.stock_limit];
+    const stock = Number(rawStock);
+    const validStock = rawStock !== "" && rawStock != null && Number.isInteger(stock) && stock >= 0;
+    const testAvailability = parseAvailabilityOverride(row[column.test_available]);
+    return {
+      id, productName: String(row[column.product_name] || productNameFromId(id)).trim(),
+      kind: "merch", priceSgd: row[column.price_sgd],
+      available: validStock && (useTestAvailability && testAvailability !== null
+        ? testAvailability : parseBoolean(row[column.available])),
+      maxQuantity: row[column.max_quantity], batchLimit: validStock ? stock : 0,
+      description: row[column.description], per: row[column.per], imageUrl: row[column.image_url],
+    };
+  });
+  const ids = new Set();
+  products.forEach((product) => {
+    if (ids.has(product.id)) throw new Error("Duplicate product ID in Merch");
+    ids.add(product.id);
+  });
+  const sold = getSoldQuantitiesForBatch(spreadsheet, products, null);
+  return products.map((product) => ({ ...product, soldQuantity: sold[product.id] || 0,
+    remainingQuantity: Math.max(0, product.batchLimit - (sold[product.id] || 0)) }));
 }
 
 function isTestEnvironment(value) {
@@ -1323,7 +1386,7 @@ function getSoldQuantitiesForBatch(spreadsheet, products, batchDate) {
   const column = Object.fromEntries(headers.map((header, index) => [header, index]));
   const soldByProductId = {};
   values.forEach((row) => {
-    if (!isSameBatch(row[column.saturday_batch], batchDate)) return;
+    if (batchDate && !isSameBatch(row[column.saturday_batch], batchDate)) return;
     if (isCancelledStatus(row[column.status])) return;
 
     const items = String(row[column.items] || "");
@@ -1347,6 +1410,7 @@ function emptyShoppingSnapshot(batchKey) {
 }
 
 function buildShoppingSnapshot(batchKey, spreadsheet, products) {
+  products = products.filter((product) => product.kind !== "merch");
   const recipeSheet = spreadsheet.getSheetByName(RECIPE_SHEET_NAME);
   if (!recipeSheet || recipeSheet.getLastRow() < 2) {
     return {

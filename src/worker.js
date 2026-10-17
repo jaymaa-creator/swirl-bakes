@@ -175,6 +175,8 @@ function validateOrderAgainstMenu(order, menu) {
   const products = new Map(menu.products.map((product) => [product.id, product]));
   const itemParts = [];
   let itemsTotalCents = 0;
+  let bakesTotalCents = 0;
+  let hasBake = false;
   for (const line of order.lineItems) {
     const product = products.get(line.productId);
     const priceCents = Math.round(Number(product?.priceSgd) * 100);
@@ -192,12 +194,19 @@ function validateOrderAgainstMenu(order, menu) {
       return { error: "A selected quantity is no longer available", status: 409 };
     }
     itemsTotalCents += priceCents * line.quantity;
+    if (product.kind !== "merch") {
+      hasBake = true;
+      bakesTotalCents += priceCents * line.quantity;
+    }
     itemParts.push(`${productLabel(product)} x${line.quantity}`);
   }
+
+  if (!hasBake) return { error: "Merch is only available with bakes", status: 409 };
 
   if (order.bananaChocolateChips) {
     const bananaQuantity = order.lineItems.find((line) => line.productId === "banana-bread")?.quantity || 0;
     itemsTotalCents += BANANA_CHOCOLATE_CHIPS_PRICE_SGD * 100 * bananaQuantity;
+    bakesTotalCents += BANANA_CHOCOLATE_CHIPS_PRICE_SGD * 100 * bananaQuantity;
     itemParts.push(`Chocolate chips for Banana Cake x${bananaQuantity} (+S$${(
       BANANA_CHOCOLATE_CHIPS_PRICE_SGD * bananaQuantity
     ).toFixed(2)})`);
@@ -205,7 +214,7 @@ function validateOrderAgainstMenu(order, menu) {
 
   let deliveryFeeCents = 0;
   if (order.delivery === DELIVERY_OPTION) {
-    if (itemsTotalCents < DELIVERY_MINIMUM_SGD * 100) {
+    if (bakesTotalCents < DELIVERY_MINIMUM_SGD * 100) {
       return { error: `Delivery requires at least S$${DELIVERY_MINIMUM_SGD.toFixed(2)} of bakes`, status: 409 };
     }
     deliveryFeeCents = DELIVERY_FEE_SGD * 100;
@@ -243,6 +252,7 @@ function normalizeMenuProduct(product) {
     priceSgd: finiteNumber(product.priceSgd),
     available: product.available,
     special: product.special === true,
+    kind: product.kind === "merch" ? "merch" : "bake",
     batchLimit: finiteNumber(product.batchLimit),
     maxQuantity: finiteNumber(product.maxQuantity),
     description: typeof product.description === "string" ? product.description.trim() : undefined,

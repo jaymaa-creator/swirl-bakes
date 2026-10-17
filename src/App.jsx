@@ -4,6 +4,7 @@ import FaqSection from "./components/FaqSection";
 import Seo from "./components/Seo";
 import StorySection from "./components/StorySection";
 import LandingSection from "./components/LandingSection";
+import { clearMerchWithoutBakes } from "./lib/pricing";
 import MenuSection from "./components/MenuSection";
 import PreorderModal from "./components/PreorderModal";
 import ProcessSection from "./components/ProcessSection";
@@ -155,13 +156,19 @@ function BakesLandingPage() {
       }
     });
 
-    return { ...form, items };
+    return clearMerchWithoutBakes({ ...form, items }, menu);
   }, [form, menu]);
+
+  const updateBasketForm = (update) => setForm((current) =>
+    clearMerchWithoutBakes(typeof update === "function" ? update(current) : update, menu)
+  );
+  const bakeMenu = menu.filter((item) => item.kind !== "merch");
+  const merchMenu = menu.filter((item) => item.kind === "merch");
 
   const selectedBatchKey = menuStatus === "ready" && resolvedBatchKey ? resolvedBatchKey : "";
   const selectedBakeDate = selectedBatchKey ? fromSingaporeDateKey(selectedBatchKey) : null;
   const isCurrentBatchSoldOut =
-    menuStatus === "ready" && menu.length > 0 && menu.every((item) => item.available === false);
+    menuStatus === "ready" && bakeMenu.length > 0 && bakeMenu.every((item) => item.available === false);
   const hasCalendar = calendar.length > 0;
   const followingBatchKey = selectedBatchKey
     ? calendar.find((entry) => entry.open && entry.date > selectedBatchKey)?.date ||
@@ -177,6 +184,7 @@ function BakesLandingPage() {
     estimatedTotal,
     isDeliveryEligible,
     hasSelectedItems,
+    hasSelectedBakes,
     waMessage,
     money,
   } = useOrderSummary({
@@ -221,6 +229,7 @@ function BakesLandingPage() {
   const closePreorderModal = () => setModalOpen(false);
 
   const handleOrderIntent = (message, turnstileToken) => {
+    if (!hasSelectedBakes) return;
     const order = buildOrderRecord({
       form: { ...orderForm, bakeWindow: selectedBatchKey },
       menu: orderableMenu,
@@ -367,10 +376,10 @@ function BakesLandingPage() {
         <LandingSection brand={BRAND} batchDate={selectedBakeDate} batchLabel={displayBakeWindow} />
 
         <MenuSection
-          menu={menu}
+          menu={bakeMenu}
           quantityOptions={QUANTITY_OPTIONS}
           form={orderForm}
-          setForm={setForm}
+          setForm={updateBasketForm}
           menuStatus={menuStatus}
           allergenDisclaimer={ALLERGEN_DISCLAIMER}
           onRetry={retryMenu}
@@ -380,6 +389,18 @@ function BakesLandingPage() {
           onShowFollowingBatch={showFollowingBatch}
           canOrderFollowingBatch={Boolean(followingBatchKey)}
         />
+
+        {menuStatus === "ready" && merchMenu.length > 0 ? (
+          <MenuSection
+            merch
+            menu={merchMenu}
+            quantityOptions={QUANTITY_OPTIONS}
+            form={orderForm}
+            setForm={updateBasketForm}
+            menuStatus={menuStatus}
+            hasSelectedBakes={hasSelectedBakes}
+          />
+        ) : null}
 
         <InstagramReelSection brand={BRAND} />
 
@@ -421,7 +442,7 @@ function BakesLandingPage() {
         open={modalOpen}
         onClose={closePreorderModal}
         form={{ ...orderForm, bakeWindow: selectedBatchKey }}
-        setForm={setForm}
+        setForm={updateBasketForm}
         estimatedTotal={estimatedTotal}
         itemsTotal={itemsTotal}
         addOnTotal={addOnTotal}
@@ -432,6 +453,7 @@ function BakesLandingPage() {
         hasSelectedItems={hasSelectedItems}
         canSubmitOrder={
           hasSelectedItems &&
+          hasSelectedBakes &&
           isSelectedBakeOpen &&
           hasRequiredContactDetails &&
           hasRequiredFulfilmentDetails &&

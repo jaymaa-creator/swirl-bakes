@@ -192,3 +192,27 @@ test("mergeMenuSettings only features available weekly specials", () => {
   assert.equal(bananaBread.available, true);
   assert.equal(bananaBread.special, true);
 });
+
+test("Merch products keep their type, unit, price and zero-stock sold-out listing", () => {
+  for (const remainingQuantity of [10, 0]) {
+    const [tote] = mergeMenuSettings([], { products: [{
+      id: "tote-bag", productName: "Tote bag", kind: "merch", priceSgd: 10,
+      available: true, maxQuantity: 3, batchLimit: remainingQuantity, remainingQuantity,
+      per: "bag",
+    }] });
+    assert.equal(tote.kind, "merch");
+    assert.equal(tote.category, "Merch");
+    assert.equal(tote.priceSgd, 10);
+    assert.equal(tote.quantityLabelPlural, "bags");
+    assert.equal(tote.available, remainingQuantity > 0);
+    assert.doesNotMatch(tote.note, /Freshly baked/);
+  }
+});
+
+ test("launch photos match the existing tote and kimchi IDs and allow Sheet overrides", () => {
+  for (const [id, image, kind] of [["tote-bag", "/tote-bag.webp", "merch"], ["kimche-cheese-swirl", "/kimchi-cheese-swirl.webp", "bake"]]) {
+    const product = { id, kind, priceSgd: 10, available: true, batchLimit: 10, remainingQuantity: 10 };
+    assert.equal(mergeMenuSettings([], { products: [product] })[0].image, image);
+    assert.equal(mergeMenuSettings([], { products: [{ ...product, imageUrl: "/custom.webp" }] })[0].image, "/custom.webp");
+  }
+});
