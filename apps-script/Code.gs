@@ -62,6 +62,12 @@ function doPost(event) {
       return jsonResponse({ ok: false, error: "Unauthorized" });
     }
 
+    if (payload.action === "adminSalesReport") {
+      return jsonResponse(readAdminSalesReport(payload));
+    }
+    if (payload.action === "adminProductPhoto") {
+      return jsonResponse(updateAdminProductPhoto(payload));
+    }
     if (payload.action === "menuSettings") {
       return jsonResponse(readMenuPayload(false, payload.batch, isTestEnvironment(payload.environment)));
     }
@@ -1804,4 +1810,156 @@ function parseAvailabilityOverride(value) {
 function toPositiveNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? Math.floor(number) : null;
+}
+
+// Environment-bound photo bridge; Sheets remains authoritative.
+function updateAdminProductPhoto(payload) {
+  const scriptId = ScriptApp.getScriptId();
+  const isTest = scriptId === "1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9";
+  const isProduction = scriptId === "1YfNLgt5YZnDv8CwcR9zcGICM4v0jjfMCs9lzD_pWVh5M8O5Yc5xMVnhf";
+  if ((!isTest && !isProduction) || payload.environment !== (isTest ? "test" : "production")) return { ok: false };
+  const photoOrigin = isTest ? "https://test-swirl-girl.jaemcd95.workers.dev" : "https://swirlgirl.sg";
+  const id = payload.productId;
+  const url = payload.imageUrl;
+  if (typeof id !== "string" || !/^[a-z0-9][a-z0-9_-]{0,99}$/.test(id) ||
+      typeof url !== "string" || !url.startsWith(photoOrigin + "/api/media/products/" + id + "/") || !/^[a-f0-9]{64}\.webp$/.test(url.slice((photoOrigin + "/api/media/products/" + id + "/").length)) ||
+      typeof payload.previousImageUrl !== "string" || payload.previousImageUrl.length > 2048) return { ok: false };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  let saved = false;
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const matches = [];
+    [MENU_SETTINGS_SHEET_NAME, MERCH_SHEET_NAME].forEach(name => {
+      const sheet = spreadsheet.getSheetByName(name);
+      if (!sheet) return;
+      const rows = sheet.getDataRange().getValues();
+      const headers = (rows.shift() || []).map(normalizeHeader);
+      const idCol = headers.indexOf("product_id");
+      const imageCol = headers.indexOf("image_url");
+      if (idCol < 0 || imageCol < 0) return;
+      rows.forEach((row, index) => {
+        if (String(row[idCol]).trim() === id) matches.push({ sheet, row: index + 2, col: imageCol + 1, current: String(row[imageCol] || "").trim() });
+      });
+    });
+    if (matches.length !== 1) return { ok: false };
+    const match = matches[0];
+    if (match.current !== url && match.current !== payload.previousImageUrl) return { ok: false, errorCode: "PHOTO_CONFLICT" };
+    if (match.current !== url) match.sheet.getRange(match.row, match.col).setValue(url);
+    SpreadsheetApp.flush();
+    saved = true;
+    clearMenuCache();
+    // Programmatic cell writes do not fire onEdit. Explicitly publish before success.
+    const result = publishMenuSnapshot();
+    return { ok: result.ok === true, saved, imageUrl: url };
+  } catch (error) {
+    return { ok: false, saved };
+  } finally { lock.releaseLock(); }
+}
+
+function adminReportDate(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) return Utilities.formatDate(value, "Asia/Singapore", "yyyy-MM-dd");
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return "";
+  const date = new Date(text + "T00:00:00Z");
+  return !isNaN(date.getTime()) && date.toISOString().slice(0, 10) === text ? text : "";
+}
+
+function adminReportMoney(value) {
+  if (value === "" || value == null) return null;
+  const text = String(value).trim().replace(/^'/, "").replace(/^(S\$|SGD\s*|\$)/i, "");
+  if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(\.\d{1,2})?$/.test(text)) return null;
+  const cents = Math.round(Number(text.replace(/,/g, "")) * 100);
+  return Number.isSafeInteger(cents) && cents <= 100000000 ? cents : null;
+}
+
+function adminReportPhone(value) {
+  let text = String(value || "").trim().replace(/^'/, "");
+  const link = text.match(/wa\.me\/(\d+)/i);
+  if (link) text = link[1];
+  if (!/^\+?[\d\s()-]+$/.test(text)) return "";
+  let digits = text.replace(/\D/g, "");
+  if (digits.length === 8) digits = "65" + digits;
+  return /^\d{10,15}$/.test(digits) && !/^0+$/.test(digits) ? digits : "";
+}
+
+function buildAdminSalesReport(headers, values, from, to) {
+  const names = headers.map(normalizeHeader);
+  const column = aliases => aliases.map(name => names.indexOf(name)).filter(index => index >= 0);
+  const cols = {
+    id: column(["request_id", "order_no", "order_number"]),
+    date: column(["created_at", "timestamp", "order_date", "date"]),
+    amount: column(["amount_due", "total", "estimated_total"]),
+    paid: column(["paid"]), status: column(["status"]),
+    key: column(["customer_key"]), phone: column(["whatsapp", "phone", "contact_number"]),
+  };
+  if (!cols.date.length || !cols.amount.length || (!cols.paid.length && !cols.status.length)) throw new Error("REPORT_SCHEMA");
+  const first = (row, indexes) => indexes.map(i => row[i]).find(value => value !== "" && value != null);
+  const quality = { invalidDate: 0, invalidAmount: 0, duplicates: 0, missingIdentity: 0, missingReference: 0, excludedStatus: 0 };
+  const seen = new Set(); const orders = []; const parent = new Map();
+  const find = key => { if (!parent.has(key)) parent.set(key, key); if (parent.get(key) !== key) parent.set(key, find(parent.get(key))); return parent.get(key); };
+  const meaningful = [...cols.id, ...cols.date, ...cols.amount, ...cols.key, ...cols.phone, ...column(["name", "items"])];
+  values.forEach(row => {
+    // Preformatted empty rows can contain unchecked Paid checkboxes.
+    if (!meaningful.some(i => row[i] !== "" && row[i] != null)) return;
+    const date = adminReportDate(first(row, cols.date));
+    if (!date) { quality.invalidDate++; return; }
+    const inRange = (!from || date >= from) && (!to || date <= to);
+    const refs = cols.id.map(i => String(row[i] || "").trim()).filter(Boolean);
+    if (refs.some(ref => seen.has(ref))) { if (inRange) quality.duplicates++; return; }
+    refs.forEach(ref => seen.add(ref));
+    if (inRange && !refs.length) quality.missingReference++;
+    const status = String(first(row, cols.status) || "").trim().toLowerCase();
+    if (["cancelled", "canceled", "refunded"].includes(status)) { if (inRange) quality.excludedStatus++; return; }
+    const cents = adminReportMoney(first(row, cols.amount));
+    if (cents == null) { if (inRange) quality.invalidAmount++; return; }
+    const paid = String(first(row, cols.paid) || "").toLowerCase() === "true" || status === "paid";
+    const key = String(first(row, cols.key) || "").trim();
+    const phone = cols.phone.map(i => adminReportPhone(row[i])).find(Boolean);
+    const identity = key ? "key:" + key : phone ? "phone:" + phone : "";
+    if (identity) find(identity);
+    if (key && phone) parent.set(find("key:" + key), find("phone:" + phone));
+    orders.push({ date, cents, paid, identity, inRange });
+  });
+  let paidCents = 0, paidOrders = 0, unpaidCents = 0, unpaidOrders = 0, identifiedCents = 0, identifiedOrders = 0;
+  const customers = new Map(); const prior = new Set(); const months = new Map();
+  orders.forEach(order => {
+    const identity = order.identity ? find(order.identity) : "";
+    if (order.paid && identity && from && order.date < from) prior.add(identity);
+    if (!order.inRange) return;
+    const month = order.date.slice(0, 7);
+    if (!months.has(month)) months.set(month, { month, paidOrders: 0, paidCents: 0, unpaidOrders: 0, unpaidCents: 0 });
+    const trend = months.get(month);
+    if (!order.paid) { unpaidOrders++; unpaidCents += order.cents; trend.unpaidOrders++; trend.unpaidCents += order.cents; return; }
+    paidOrders++; paidCents += order.cents; trend.paidOrders++; trend.paidCents += order.cents;
+    if (!identity) { quality.missingIdentity++; return; }
+    identifiedCents += order.cents; identifiedOrders++;
+    customers.set(identity, (customers.get(identity) || 0) + 1);
+  });
+  const count = customers.size;
+  return {
+    ok: true, from, to, dateBasis: "created_at", currency: "SGD",
+    metrics: { paidCents, paidOrders, unpaidCents, unpaidOrders, uniqueCustomers: count,
+      averageOrderCents: paidOrders ? Math.round(paidCents / paidOrders) : null,
+      averageCustomerCents: count ? Math.round(identifiedCents / count) : null,
+      identifiedPaidOrders: identifiedOrders,
+      repeatCustomers: [...customers.values()].filter(n => n >= 2).length,
+      returningCustomers: from ? [...customers.keys()].filter(key => prior.has(key)).length : null },
+    months: [...months.values()].sort((a, b) => a.month.localeCompare(b.month)), quality,
+  };
+}
+
+function readAdminSalesReport(payload) {
+  if (ScriptApp.getScriptId() !== "1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9" || payload.environment !== "test") return { ok: false };
+  const from = payload.from || "", to = payload.to || "";
+  if ((from && (!adminReportDate(from) || typeof from !== "string")) || (to && (!adminReportDate(to) || typeof to !== "string")) || (from && to && from > to)) return { ok: false, errorCode: "REPORT_DATES" };
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(ORDERS_SHEET_NAME);
+  if (!sheet) return { ok: false, errorCode: "REPORT_SCHEMA" };
+  if (sheet.getLastRow() > 10001 || sheet.getLastColumn() > 100) return { ok: false, errorCode: "REPORT_LIMIT" };
+  try {
+    const rows = sheet.getDataRange().getValues();
+    const headers = rows.shift() || [];
+    const result = buildAdminSalesReport(headers, rows, from, to);
+    return { ...result, refreshedAt: new Date().toISOString(), source: "test-orders" };
+  } catch (error) { return { ok: false, errorCode: "REPORT_SCHEMA" }; }
 }

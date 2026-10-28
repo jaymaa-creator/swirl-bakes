@@ -1,3 +1,4 @@
+import AdminPage from "./admin/AdminPage";
 import React, { useEffect, useMemo, useState } from "react";
 import PrivacySection from "./components/PrivacySection";
 import FaqSection from "./components/FaqSection";
@@ -38,6 +39,7 @@ const miniGameEnabled = window.location.hostname.startsWith("test-") || ["swirlg
 export default function App() {
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   const receiptPreviewEnabled = window.location.hostname.startsWith("test-") || ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  if (path === "/admin" || path.startsWith("/admin/")) return <AdminPage />;
   if (path === "/receipt-preview" && receiptPreviewEnabled) return <ReceiptPreview />;
   if (path === "/minigame" && miniGameEnabled) {
     return <React.Suspense fallback={<p className="p-8">Loading Bun Bounce...</p>}><SwirlGame /></React.Suspense>;

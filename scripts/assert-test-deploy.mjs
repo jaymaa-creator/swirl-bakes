@@ -4,6 +4,7 @@ const config = await readFile(new URL("../wrangler.test.jsonc", import.meta.url)
 
 const requiredValues = [
   ["test-swirl-girl", "test Worker"],
+  ["swirl-girl-admin-test", "test photo bucket"],
   ["dd1d03c666db445299adbf64c0cc4630", "test KV namespace"],
   ["abf7bc8e-08dc-4eac-850d-2ce3af083931", "test D1 database"],
 ];

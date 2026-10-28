@@ -1,3 +1,5 @@
+import { servePhoto } from './admin/photos.js';
+import { handleAdmin, isAdminPath } from "./admin/access.js";
 import { resolveMenuBatchKey } from "./lib/batchSelection.js";
 import { handleLeaderboard } from "./lib/leaderboard.js";
 import {
@@ -521,6 +523,8 @@ async function verifyTurnstile(token, secret, remoteIp, idempotencyKey) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (isAdminPath(url.pathname)) return handleAdmin(request, env, () => getMenuSettings(request, env, ctx));
+    if (url.pathname.startsWith("/api/media/")) return servePhoto(request, env);
 
     if (["/api/game/start", "/api/game/scores"].includes(url.pathname)) {
       try { return await handleLeaderboard(request, env, url); }

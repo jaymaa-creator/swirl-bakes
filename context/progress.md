@@ -97,6 +97,13 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Production admin/photo alignment in progress (2026-10-28), authorized for
+  storefront, Google admin and photo tools. Clean current-main release copy:
+  `/private/tmp/swirl-align-20261028`. Production data stays separate; reporting
+  remains test-only. Environment-bound photo writes and separate production
+  image storage/access are being prepared. No production deployment yet.
+
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.

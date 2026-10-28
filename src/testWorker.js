@@ -1,3 +1,4 @@
+import { isAdminPath } from "./admin/access.js";
 import worker from './worker.js';
 
 const HOST = 'test-swirl-girl.jaemcd95.workers.dev';
@@ -9,6 +10,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.hostname !== HOST) return reply({ ok: false, error: 'Test host only' }, 403);
+    if (isAdminPath(url.pathname) && !['/api/admin/reports', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(url.pathname)) return worker.fetch(request, { ...env, ISOLATED_TEST_BACKEND: true }, ctx);
     // Retire the old production publisher without changing production's script or
     // causing its monitoring to report a failed publish. Nothing is persisted.
     if (url.pathname === '/api/menu/sync') {
