@@ -97,6 +97,12 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Favicon correction added to the alignment release (2026-10-28): rotate the
+  existing swirl upright, centre/enlarge it 65%, and use the dedicated versioned
+  favicon asset. Loader animation stays unchanged. SVG rendered and inspected;
+  build/diff checks pass. Earlier release stopped at production gate so this
+  fix can ship with the admin/photo rollout.
+
 - Production admin/photo alignment in progress (2026-10-28), authorized for
   storefront, Google admin and photo tools. Clean current-main release copy:
   `/private/tmp/swirl-align-20261028`. Production data stays separate; reporting
