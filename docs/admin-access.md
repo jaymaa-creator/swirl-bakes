@@ -30,3 +30,14 @@ Local Vite serves the UI only and does not provide authentication. Use Worker
 preview to test the security boundary. Do not add a development login bypass to
 production code. The automated tests generate temporary signing keys and exercise
 real signature verification; they do not prove the Cloudflare/Google setup works.
+
+## Production release verified 2026-10-28
+
+https://swirlgirl.sg/admin uses Access application
+`cea3f4ae-20d4-4508-9038-da5dbd8092d5`, Google only and the existing two-admin
+policy. Its audience is distinct from test; issuer, audience and exact allowed
+emails are Worker secrets. Owner session and production menu verified in Chrome.
+Reports remain hidden/denied in production. Unsigned canonical requests redirect
+to Access; unsigned www/Worker-alias session requests return 401. Partner login
+and actual production photo publication remain unverified. See context/progress.md
+for versions and the GitHub R2-permission limitation.

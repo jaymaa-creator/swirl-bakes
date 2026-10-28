@@ -6,6 +6,32 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Production/test admin-photo alignment released (2026-10-28). PRs #21/#22/#23
+  merged; source b8ccacae62d24fad7d03e2cc39dd2a391df068da. Production Worker
+  d17d71ef-f8d0-4d81-aba9-360dd1a2caed, test Worker
+  3a01831d-2263-488c-a07c-f56bb08587b3; Apps Script production v36/test v17.
+  Google-only Access uses the existing two-admin policy and separate audiences;
+  separate production/test R2 image buckets. Production dashboard shows Live
+  workspace, its five active products and photo tools; reports remain test-only.
+  Existing mixed-case Sourdough IDs are supported. Favicon is upright, centred,
+  65% larger and versioned; both sites serve the exact updated SVG.
+  156 tests pass; lint has one existing SwirlGame warning; build/diff checks pass.
+  Owner production Google session/menu verified in Chrome; test crop/WebP preview
+  verified and cancelled. Both smoke checks pass (homepage/menu, invalid order
+  400), public menu payloads unchanged, unsigned admin paths redirect to login,
+  direct production aliases reject unsigned admin sessions with 401. No photo,
+  order, stock or menu data was changed. Partner/iPhone and actual production
+  photo publication remain unverified.
+  Guarded run 40623848089 passed prepare/test and received production approval,
+  but GitHub's production token lacks access to the new R2 bucket. The same
+  checksum-verified static artifact was deployed from clean main using the
+  existing authorized Cloudflare OAuth login and the production guard. Artifact
+  file list and bytes were verified identical. Future GitHub production releases
+  require resolving that R2 permission; do not describe the Actions run as passed.
+  Release checkout: `/private/tmp/swirl-align-20261028`. Rollback evidence is in
+  `/private/tmp/swirl-align-*-deployments-before.json`; retain Access and image
+  storage on rollback. Apps Script v34 is the pre-alignment production baseline.
+
 - Merch and product photos deployed to production (2026-10-17). PR #19 merged
   as `4a4ea5014d5b711fc55d5ea4118d9b271d79a43a`; guarded release
   `38991804225` passed prepare, test and production. Production Worker
@@ -96,19 +122,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Favicon correction added to the alignment release (2026-10-28): rotate the
-  existing swirl upright, centre/enlarge it 65%, and use the dedicated versioned
-  favicon asset. Loader animation stays unchanged. SVG rendered and inspected;
-  build/diff checks pass. Earlier release stopped at production gate so this
-  fix can ship with the admin/photo rollout.
-
-- Production admin/photo alignment in progress (2026-10-28), authorized for
-  storefront, Google admin and photo tools. Clean current-main release copy:
-  `/private/tmp/swirl-align-20261028`. Production data stays separate; reporting
-  remains test-only. Environment-bound photo writes and separate production
-  image storage/access are being prepared. No production deployment yet.
-
 
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
