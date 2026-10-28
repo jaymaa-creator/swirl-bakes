@@ -1821,7 +1821,7 @@ function updateAdminProductPhoto(payload) {
   const photoOrigin = isTest ? "https://test-swirl-girl.jaemcd95.workers.dev" : "https://swirlgirl.sg";
   const id = payload.productId;
   const url = payload.imageUrl;
-  if (typeof id !== "string" || !/^[a-z0-9][a-z0-9_-]{0,99}$/.test(id) ||
+  if (typeof id !== "string" || !/^[a-z0-9][a-z0-9_-]{0,99}$/i.test(id) ||
       typeof url !== "string" || !url.startsWith(photoOrigin + "/api/media/products/" + id + "/") || !/^[a-f0-9]{64}\.webp$/.test(url.slice((photoOrigin + "/api/media/products/" + id + "/").length)) ||
       typeof payload.previousImageUrl !== "string" || payload.previousImageUrl.length > 2048) return { ok: false };
   const lock = LockService.getScriptLock();

@@ -136,3 +136,15 @@ test('production photo writes stay on production and reject test images and scri
   assert.deepEqual(h.counts(), { writes: 1, publishes: 1 });
   assert.equal(scriptHarness('unknown-project').context.updateAdminProductPhoto(payload).ok, false);
 });
+
+
+test('existing mixed-case Sourdough product IDs support upload, serving and Sheet publication', async () => {
+  const { env, request, writes } = harness();
+  const uploaded = await handlePhotos(request('/api/admin/photos/upload?productId=Sourdough'), env, async () => ({ products: [{ id: 'Sourdough' }] }), 'admin@example.com');
+  assert.equal(uploaded.status, 200);
+  assert.ok(writes[0][0].startsWith('products/Sourdough/'));
+  const imageUrl = (await uploaded.json()).imageUrl;
+  assert.equal((await servePhoto(new Request(imageUrl), env)).status, 200);
+  const h = scriptHarness(); h.rows[1][0] = 'Sourdough';
+  assert.equal(h.context.updateAdminProductPhoto({ productId: 'Sourdough', imageUrl, previousImageUrl: '', environment: 'test' }).ok, true);
+});
