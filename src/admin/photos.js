@@ -5,8 +5,8 @@ function photoEnvironment(url, env) {
   return null;
 }
 const LIMIT = 2 * 1024 * 1024;
-const ID = /^[a-z0-9][a-z0-9_-]{0,99}$/;
-const KEY = /^products\/[a-z0-9][a-z0-9_-]{0,99}\/[a-f0-9]{64}\.webp$/;
+const ID = /^[a-z0-9][a-z0-9_-]{0,99}$/i;
+const KEY = /^products\/[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}\/[a-f0-9]{64}\.webp$/;
 const reply = (body, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
 
 export async function readLimited(request, limit) {
