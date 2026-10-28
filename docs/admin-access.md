@@ -40,4 +40,6 @@ emails are Worker secrets. Owner session and production menu verified in Chrome.
 Reports remain hidden/denied in production. Unsigned canonical requests redirect
 to Access; unsigned www/Worker-alias session requests return 401. Partner login
 and actual production photo publication remain unverified. See context/progress.md
-for versions and the GitHub R2-permission limitation.
+for versions and release verification. The initial GitHub R2 permission failure
+was resolved on 2026-10-28 with bucket-scoped read-only permission; release
+40623848089 attempt 2 completed successfully.

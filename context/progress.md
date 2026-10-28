@@ -6,6 +6,16 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- GitHub production release permission repaired (2026-10-28). Added only
+  Workers R2 Storage Bucket Item Read for `swirl-girl-admin-production` to the
+  existing `swirl-girl-github-releases` token; existing Worker scopes, expiration
+  and token value retained. No account-wide R2 or photo-write permission added.
+  Reran failed release 40623848089 (attempt 2): overall success, production
+  deployment and smoke check passed. Production Worker `a695f1f5-dce2-4f1a-97b4-93b20f70668d`;
+  source remains b8ccacae62d24fad7d03e2cc39dd2a391df068da, Apps Script v36.
+  Independent homepage/menu checks return 200 and unsigned admin redirects to
+  login. The earlier GitHub R2-permission limitation is resolved.
+
 - Production/test admin-photo alignment released (2026-10-28). PRs #21/#22/#23
   merged; source b8ccacae62d24fad7d03e2cc39dd2a391df068da. Production Worker
   d17d71ef-f8d0-4d81-aba9-360dd1a2caed, test Worker
@@ -26,8 +36,8 @@ Architecture baseline and payment discovery.
   but GitHub's production token lacks access to the new R2 bucket. The same
   checksum-verified static artifact was deployed from clean main using the
   existing authorized Cloudflare OAuth login and the production guard. Artifact
-  file list and bytes were verified identical. Future GitHub production releases
-  require resolving that R2 permission; do not describe the Actions run as passed.
+  file list and bytes were verified identical. That initial attempt failed; the read-only bucket permission repair and
+  successful GitHub rerun are recorded above.
   Release checkout: `/private/tmp/swirl-align-20261028`. Rollback evidence is in
   `/private/tmp/swirl-align-*-deployments-before.json`; retain Access and image
   storage on rollback. Apps Script v34 is the pre-alignment production baseline.
