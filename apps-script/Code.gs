@@ -1950,7 +1950,10 @@ function buildAdminSalesReport(headers, values, from, to) {
 }
 
 function readAdminSalesReport(payload) {
-  if (ScriptApp.getScriptId() !== "1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9" || payload.environment !== "test") return { ok: false };
+  const scriptId = ScriptApp.getScriptId();
+  const environment = scriptId === "1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9" ? "test"
+    : scriptId === "1YfNLgt5YZnDv8CwcR9zcGICM4v0jjfMCs9lzD_pWVh5M8O5Yc5xMVnhf" ? "production" : null;
+  if (!environment || payload.environment !== environment) return { ok: false };
   const from = payload.from || "", to = payload.to || "";
   if ((from && (!adminReportDate(from) || typeof from !== "string")) || (to && (!adminReportDate(to) || typeof to !== "string")) || (from && to && from > to)) return { ok: false, errorCode: "REPORT_DATES" };
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(ORDERS_SHEET_NAME);
@@ -1960,6 +1963,6 @@ function readAdminSalesReport(payload) {
     const rows = sheet.getDataRange().getValues();
     const headers = rows.shift() || [];
     const result = buildAdminSalesReport(headers, rows, from, to);
-    return { ...result, refreshedAt: new Date().toISOString(), source: "test-orders" };
+    return { ...result, refreshedAt: new Date().toISOString(), source: environment + "-orders" };
   } catch (error) { return { ok: false, errorCode: "REPORT_SCHEMA" }; }
 }

@@ -73,3 +73,41 @@ test('reports API validates dates, uses test secret and strips unexpected backen
     assert.ok(!(await response.text()).includes('private')); assert.equal(calls, 1);
   } finally { globalThis.fetch = original; }
 });
+
+test('production reporting routes only production host and strips private fields', async () => {
+  const env = { ORDER_WEBHOOK_SECRET: 'prod-secret', ORDER_SHEET_WEBHOOK_URL: 'https://script.google.com/prod' };
+  const original = globalThis.fetch; let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    calls++; assert.equal(url, env.ORDER_SHEET_WEBHOOK_URL);
+    assert.equal(JSON.parse(options.body).environment, 'production');
+    assert.equal(JSON.parse(options.body).secret, 'prod-secret');
+    return Response.json({ ...run([]), refreshedAt: '2026-10-28T00:00:00Z', rows: ['private'] });
+  };
+  try {
+    for (const host of ['test-swirl-girl.jaemcd95.workers.dev', 'www.swirlgirl.sg', 'attacker.example']) {
+      assert.equal((await handleReports(new Request(`https://${host}/api/admin/reports`), env)).status, 503);
+    }
+    assert.equal((await handleReports(new Request('https://swirlgirl.sg/api/admin/reports'), { ...env, ISOLATED_TEST_BACKEND: true })).status, 503);
+    assert.equal(calls, 0);
+    const response = await handleReports(new Request('https://swirlgirl.sg/api/admin/reports'), env);
+    assert.equal(response.status, 200);
+    const data = await response.json(); assert.equal(data.source, 'production-orders'); assert.equal(data.rows, undefined);
+  } finally { globalThis.fetch = original; }
+});
+
+test('Apps Script reporting validates project/environment before reading and never writes', () => {
+  for (const [scriptId, environment] of [['1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9', 'test'], ['1YfNLgt5YZnDv8CwcR9zcGICM4v0jjfMCs9lzD_pWVh5M8O5Yc5xMVnhf', 'production'], ['unknown', null]]) {
+    let reads = 0;
+    const context = vm.createContext({ Date, console, ScriptApp: { getScriptId: () => scriptId }, SpreadsheetApp: { openById: id => {
+      reads++; assert.equal(id, '12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A');
+      return { getSheetByName: () => ({ getLastRow: () => 1, getLastColumn: () => headers.length, getDataRange: () => ({ getValues: () => [headers] }) }) };
+    } } });
+    vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), context);
+    assert.equal(context.readAdminSalesReport({ environment: environment === 'test' ? 'production' : 'test' }).ok, false);
+    assert.equal(reads, 0);
+    if (environment) {
+      const result = context.readAdminSalesReport({ environment });
+      assert.equal(result.ok, true); assert.equal(result.source, `${environment}-orders`); assert.equal(reads, 1);
+    }
+  }
+});

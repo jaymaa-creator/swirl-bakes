@@ -33,7 +33,7 @@ test('signed admin identities, expiry, audience, issuer and signature are enforc
       const response = await worker.fetch(request('/api/admin/session', await token(email)), env, {});
       assert.equal(response.status, 200);
       assert.equal(response.headers.get('Cache-Control'), 'no-store');
-      assert.deepEqual(await response.json(), { email, role: 'admin', environment: 'production', reportsEnabled: false });
+      assert.deepEqual(await response.json(), { email, role: 'admin', environment: 'production', reportsEnabled: true });
     }
     assert.equal((await worker.fetch(request('/admin', await token('stranger@example.com')), env, {})).status, 403);
     for (const claims of [{ exp: 1 }, { aud: 'another-app' }, { iss: 'https://other.cloudflareaccess.com' }]) {
@@ -52,7 +52,7 @@ test('signed admin identities, expiry, audience, issuer and signature are enforc
     const testSession = await testWorker.fetch(request('/api/admin/session', valid), env, {});
     assert.equal(testSession.status, 200);
     assert.equal((await testSession.json()).reportsEnabled, true);
-    assert.equal((await worker.fetch(request('/api/admin/reports', valid), env, {})).status, 404);
+    assert.equal((await worker.fetch(request('/api/admin/reports', valid), env, {})).status, 503);
     const keys = [];
     const batch = '2099-01-03';
     const photoEnv = { ...env, TEST_ORDER_WEBHOOK_SECRET: 'test-secret', TEST_APPS_SCRIPT_URL: 'https://script.google.com/macros/s/test/exec', ADMIN_IMAGES: {}, MENU_SNAPSHOT: {

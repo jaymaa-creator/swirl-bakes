@@ -7,13 +7,16 @@ export function validReportDate(text) {
 }
 export async function handleReports(request, env) {
   if (request.method !== 'GET') return reply({ error: 'Method not allowed' }, 405);
-  if (new URL(request.url).hostname !== 'test-swirl-girl.jaemcd95.workers.dev' || !env.ISOLATED_TEST_BACKEND || !env.ORDER_WEBHOOK_SECRET || !env.ORDER_SHEET_WEBHOOK_URL) return reply({ error: 'Reports are available on the configured test site only.' }, 503);
+  const host = new URL(request.url).hostname;
+  const environment = host === 'test-swirl-girl.jaemcd95.workers.dev' && env.ISOLATED_TEST_BACKEND === true ? 'test'
+    : host === 'swirlgirl.sg' && !env.ISOLATED_TEST_BACKEND ? 'production' : null;
+  if (!environment || !env.ORDER_WEBHOOK_SECRET || !env.ORDER_SHEET_WEBHOOK_URL) return reply({ error: 'Reports are not configured for this site.' }, 503);
   const params = new URL(request.url).searchParams;
   const from = params.get('from') || '', to = params.get('to') || '';
   if (!validReportDate(from) || !validReportDate(to) || (from && to && from > to)) return reply({ error: 'Choose a valid date range, with the start before the end.' }, 400);
   try {
     const response = await fetch(env.ORDER_SHEET_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({ action: 'adminSalesReport', environment: 'test', secret: env.ORDER_WEBHOOK_SECRET, from, to }) });
+      body: JSON.stringify({ action: 'adminSalesReport', environment, secret: env.ORDER_WEBHOOK_SECRET, from, to }) });
     const data = await response.json();
     if (!response.ok || data.ok !== true) {
       const errors = { REPORT_SCHEMA: 'The Orders sheet is missing a usable date, amount or payment-status column. Check its headers and refresh.', REPORT_LIMIT: 'This pilot supports up to 10,000 order rows. A larger reporting store is needed for this history.' };
@@ -40,6 +43,6 @@ export async function handleReports(request, env) {
       }
       return result;
     });
-    return reply({ from, to, metrics, quality, months, refreshedAt: new Date(data.refreshedAt).toISOString(), source: 'test-orders' });
+    return reply({ from, to, metrics, quality, months, refreshedAt: new Date(data.refreshedAt).toISOString(), source: `${environment}-orders` });
   } catch { return reply({ error: 'Unable to load sales reporting. Please try again.' }, 503); }
 }

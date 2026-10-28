@@ -133,6 +133,10 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Production Sales & customers promotion in progress (2026-10-28), explicitly
+  approved. Read-only live Orders aggregates, unchanged metrics, environment-bound
+  routing and source labels. Source/verification underway; not yet deployed.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.

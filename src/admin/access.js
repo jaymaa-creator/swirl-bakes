@@ -26,10 +26,10 @@ export async function handleAdmin(request, env, loadMenu) {
     return reply({ error: 'Your admin session could not be verified. Please sign in again.' }, 401);
   }
   if (typeof payload.email !== 'string' || !emails.includes(payload.email.toLowerCase())) return reply({ error: 'This Google account does not have admin access.' }, 403);
-  if (path === '/api/admin/reports') return env.ISOLATED_TEST_BACKEND === true ? handleReports(request, env) : reply({ error: 'Not found' }, 404);
+  if (path === '/api/admin/reports') return handleReports(request, env);
   if (['/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(path)) return handlePhotos(request, env, loadMenu, payload.email);
   if (request.method !== 'GET' && request.method !== 'HEAD') return reply({ error: 'Method not allowed' }, 405);
-  if (path === '/api/admin/session') return reply({ email: payload.email, role: 'admin', environment: env.ISOLATED_TEST_BACKEND === true ? 'test' : 'production', reportsEnabled: env.ISOLATED_TEST_BACKEND === true }, 200);
+  if (path === '/api/admin/session') return reply({ email: payload.email, role: 'admin', environment: env.ISOLATED_TEST_BACKEND === true ? 'test' : 'production', reportsEnabled: true }, 200);
   if (path.startsWith('/api/')) return reply({ error: 'Not found' }, 404);
   const asset = await env.ASSETS.fetch(request);
   const response = new Response(asset.body, asset);
