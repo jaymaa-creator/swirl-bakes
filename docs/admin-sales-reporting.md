@@ -68,3 +68,8 @@ Test continues to read its copied Sheet. Each backend validates its own project
 and environment; only aggregate results reach the browser. Calculations and
 quality exclusions above are unchanged. No Sheet rows or payment statuses are
 modified. See context/progress.md for deployment and live-verification status.
+
+Production release 40658940100 passed all jobs on 2026-10-28. Owner all-time and current-month
+reports verified against the live backend; one invalid-date row and one duplicate
+are explicitly excluded and should be reviewed in the source Sheet separately.
+Partner/mobile checks remain unverified. No source rows were edited.

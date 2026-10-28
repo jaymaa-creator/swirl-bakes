@@ -37,7 +37,8 @@ https://swirlgirl.sg/admin uses Access application
 `cea3f4ae-20d4-4508-9038-da5dbd8092d5`, Google only and the existing two-admin
 policy. Its audience is distinct from test; issuer, audience and exact allowed
 emails are Worker secrets. Owner session and production menu verified in Chrome.
-Reports remain hidden/denied in production. Unsigned canonical requests redirect
+Sales & customers was subsequently enabled by approved release 40658940100;
+see docs/admin-sales-reporting.md. Unsigned canonical requests redirect
 to Access; unsigned www/Worker-alias session requests return 401. Partner login
 and actual production photo publication remain unverified. See context/progress.md
 for versions and release verification. The initial GitHub R2 permission failure
