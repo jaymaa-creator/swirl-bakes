@@ -53,3 +53,16 @@ Confirm model/cost and data disclosure scope before turning it on.
 ## Rollback
 Prior Worker fcaca41a-1986-4edb-bbf4-d2c74556a507 and test Apps Script v13.
 No schema changes or data writes to undo. Production untouched.
+
+## Production rollout approved 2026-10-28
+
+The user approved production Sales & customers reporting. This supersedes the
+original test-only rollout limit. Keep calculations unchanged; canonical
+production host uses production secret/Apps Script/Orders, test remains isolated.
+Apps Script validates project identity and the explicit environment before any
+Sheet read. Return aggregates only, no order writes or public caching. Display
+Live workspace and live Orders sheet on production; keep test-history guidance
+only in test. Sales is the default admin tab. Validate production routing,
+cross-environment rejection, authenticated live all-time/month filters, and the
+existing storefront/photo paths. Rollback to Worker a695f1f5-dce2-4f1a-97b4-93b20f70668d
+and Apps Script v36; no data migration or Sheet changes.

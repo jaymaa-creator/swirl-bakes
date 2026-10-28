@@ -58,3 +58,13 @@ Owner Chrome verified all-time/month filters, aggregate result and desktop layou
 The copied history reports 15 rows with missing/unrecognised dates and one duplicate;
 excluded rows require source review, so totals are not claimed comprehensive.
 No Sheet rows were changed. Partner/mobile checks remain unverified.
+
+## Production rollout (2026-10-28)
+
+Approved for the existing two Google admins at https://swirlgirl.sg/admin.
+Sales & customers is the default tab; Menu & photos remains available. Production
+reads the live Orders sheet and is labelled Live workspace / live Orders sheet.
+Test continues to read its copied Sheet. Each backend validates its own project
+and environment; only aggregate results reach the browser. Calculations and
+quality exclusions above are unchanged. No Sheet rows or payment statuses are
+modified. See context/progress.md for deployment and live-verification status.

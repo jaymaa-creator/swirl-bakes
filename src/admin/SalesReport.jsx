@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 const money = cents => cents == null ? '—' : `S$${new Intl.NumberFormat('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100)}`;
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const warnings = { invalidDate: 'Rows excluded because their order date is missing or invalid (across all history)', invalidAmount: 'Rows excluded because their amount is invalid', duplicates: 'Duplicate order rows excluded', missingIdentity: 'Paid orders without a usable customer identity (included in sales, excluded from customer metrics)', missingReference: 'Orders without a reference; duplicates cannot be checked', excludedStatus: 'Cancelled or refunded orders excluded' };
-export default function SalesReport() {
+export default function SalesReport({ environment = 'test' }) {
+  const isProduction = environment === 'production';
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
   const [query, setQuery] = useState({ from: '', to: '', version: 0 });
   const [report, setReport] = useState(null); const [error, setError] = useState('');
@@ -21,7 +22,7 @@ export default function SalesReport() {
   }
   const m = report?.metrics;
   return <section className="mt-8" aria-labelledby="sales-title">
-    <p className="text-sm font-semibold text-brandBrown">Test workspace · Existing orders</p>
+    <p className="text-sm font-semibold text-brandBrown">{isProduction ? 'Live workspace' : 'Test workspace'} · Existing orders</p>
     <h2 id="sales-title" className="font-display text-3xl">Sales & customers</h2>
     <p className="mt-3 text-inkMuted">A clearer view of recorded orders. Google Sheets remains the master; this dashboard does not change any sales records.</p>
     <form className="mt-6 flex flex-wrap items-end gap-3" onSubmit={event => { event.preventDefault(); apply(from, to); }}>
@@ -34,7 +35,7 @@ export default function SalesReport() {
     {loading && <p className="mt-6" role="status">Reading your order history…</p>}
     {error && <p className="mt-6 rounded-xl border border-red-300 bg-white p-4" role="alert">{error}</p>}
     {report && <>
-      <p className="mt-4 text-sm text-inkMuted">Showing {report.from || 'earliest record'} to {report.to || 'latest record'} · Singapore order dates<br />Source: test Orders sheet · Refreshed {new Date(report.refreshedAt).toLocaleString('en-SG', { timeZone: 'Asia/Singapore' })} SGT</p>
+      <p className="mt-4 text-sm text-inkMuted">Showing {report.from || 'earliest record'} to {report.to || 'latest record'} · Singapore order dates<br />Source: {isProduction ? 'live' : 'test'} Orders sheet · Refreshed {new Date(report.refreshedAt).toLocaleString('en-SG', { timeZone: 'Asia/Singapore' })} SGT</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[
           ['Paid order value', money(m.paidCents), `${m.paidOrders} orders marked paid`],
@@ -49,7 +50,7 @@ export default function SalesReport() {
       <h3 className="mt-8 font-display text-2xl">Monthly trend</h3>
       {!report.months.length ? <p className="mt-3">No valid orders in this date range.</p> : <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b border-line"><th className="py-3 pr-3">Order month</th><th className="p-3">Paid value</th><th className="p-3">Paid orders</th><th className="p-3">Unpaid value</th></tr></thead><tbody>{report.months.map(row => <tr key={row.month} className="border-b border-line"><th className="py-3 pr-3 font-normal">{row.month}</th><td className="p-3"><span>{money(row.paidCents)}</span><div aria-hidden="true" className="mt-1 h-1 rounded bg-brandCinnamon" style={{ width: `${Math.max(0, row.paidCents / Math.max(1, ...report.months.map(x => x.paidCents)) * 100)}%` }} /></td><td className="p-3">{row.paidOrders}</td><td className="p-3">{money(row.unpaidCents)}</td></tr>)}</tbody></table></div>}
       {Object.values(report.quality).some(n => n > 0) && <aside className="mt-6 rounded-card border border-line bg-white p-5"><h3 className="font-display text-xl">Data to be aware of</h3><ul className="mt-3 list-disc space-y-2 pl-5 text-sm">{Object.entries(report.quality).filter(([, count]) => count > 0).map(([key, count]) => <li key={key}>{warnings[key]}: {count}</li>)}</ul></aside>}
-      <details className="mt-6 text-sm text-inkMuted"><summary className="cursor-pointer font-semibold">How these figures are calculated</summary><p className="mt-3">Paid means the Sheet is marked Paid or its status is Paid. Figures use the order date, not the date money arrived. Recorded discounts are already deducted; delivery is included. Cancelled and refunded orders are excluded. These are operational figures, not profit or a bank reconciliation.</p><p className="mt-3">Customer matching uses customer keys and normalised phone numbers, never names. Shared numbers count as one customer. Orders without an identity remain in order totals but are excluded from customer averages. Blank averages mean there are no qualifying records. Test history may contain copied and rehearsal orders; these are not live business results.</p></details>
+      <details className="mt-6 text-sm text-inkMuted"><summary className="cursor-pointer font-semibold">How these figures are calculated</summary><p className="mt-3">Paid means the Sheet is marked Paid or its status is Paid. Figures use the order date, not the date money arrived. Recorded discounts are already deducted; delivery is included. Cancelled and refunded orders are excluded. These are operational figures, not profit or a bank reconciliation.</p><p className="mt-3">Customer matching uses customer keys and normalised phone numbers, never names. Shared numbers count as one customer. Orders without an identity remain in order totals but are excluded from customer averages. Blank averages mean there are no qualifying records. {!isProduction && 'Test history may contain copied and rehearsal orders; these are not live business results.'}</p></details>
     </>}
   </section>;
 }

@@ -3,7 +3,7 @@ import MenuPhotos from './MenuPhotos.jsx';
 import { useEffect, useState } from 'react';
 
 export default function AdminPage() {
-  const [tab, setTab] = useState('menu');
+  const [tab, setTab] = useState('sales');
   const [session, setSession] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function AdminPage() {
             {session.reportsEnabled && <button className={`rounded-full px-5 py-2 ${tab === 'sales' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'sales'} onClick={() => setTab('sales')}>Sales & customers</button>}
             <button className={`rounded-full px-5 py-2 ${tab === 'menu' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'menu'} onClick={() => setTab('menu')}>Menu & photos</button>
           </nav>
-          {session.reportsEnabled && <div hidden={tab !== 'sales'}><SalesReport /></div>}
+          {session.reportsEnabled && <div hidden={tab !== 'sales'}><SalesReport environment={session.environment} /></div>}
           <div hidden={tab !== 'menu'}><MenuPhotos environment={session.environment} /></div>
         </>}
       </section>
