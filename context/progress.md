@@ -6,6 +6,20 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Production Sales & customers dashboard released (2026-10-28). PR #26,
+  source 610c381b3db763389f7af420df1420f56aacb9fe; guarded release 40658940100
+  passed prepare, test and production. Production Worker
+  0e89f827-a508-45bb-a287-e85f080f4d07; Apps Script production v37/test v18.
+  Sales is now the default admin tab; live/test source labels and separate
+  backend guards preserved. Same read-only aggregate calculations, no Sheet or
+  payment-status writes. 158 tests pass; lint has one existing SwirlGame warning;
+  build, generated test Apps Script and diff checks pass. Owner Google session
+  verified production all-time and current-month results (including returning
+  customers); public
+  reports redirect unsigned requests to Access. Live history flags one invalid
+  or missing-date row and one duplicate; source review remains separate work.
+  Partner/mobile checks remain unverified. Menu & photos retained.
+
 - GitHub production release permission repaired (2026-10-28). Added only
   Workers R2 Storage Bucket Item Read for `swirl-girl-admin-production` to the
   existing `swirl-girl-github-releases` token; existing Worker scopes, expiration
@@ -132,10 +146,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Production Sales & customers promotion in progress (2026-10-28), explicitly
-  approved. Read-only live Orders aggregates, unchanged metrics, environment-bound
-  routing and source labels. Source/verification underway; not yet deployed.
 
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
