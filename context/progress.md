@@ -164,6 +164,14 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Production QR promotion approved and in progress (2026-11-10), PAY-008.
+  Isolated current-main checkout preserves the www order fix. Promoting compact
+  links, item summaries and loader with separate signing/storage scopes;
+  Apps Script and manual payment confirmation remain unchanged. 178 tests, lint
+  (existing SwirlGame warning), build and guard pass. Browser fixtures verify
+  late save, first-line short link, item list, read-only retry, sharing and PNG
+  download with independent decode. Guarded deployment is next.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.

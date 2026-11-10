@@ -28,8 +28,9 @@ request in the operator's Google Sheet.
 
 If recording fails, the handoff explains that no reference was obtained and
 still offers a WhatsApp link. The current site
-copy refers to PayNow, but there is no verified automated payment checkout or
-payment confirmation implementation in this repository.
+checkout now supports automatic PayNow QR creation for saved orders (PAY-008),
+with a short link first in the WhatsApp draft and items on the payment page.
+Payment confirmation remains manual.
 
 ## Confirmed Operator Flow
 

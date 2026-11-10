@@ -260,3 +260,56 @@ test("production host repair still rejects previews, lookalike hosts and cross-o
     }
   }
 });
+
+test("production QR uses saved amount on both hosts, reuses menu and preserves saved orders on failure", async (t) => {
+  let saved = { ok: true, orderNumber: "SG-0123", amountDueSgd: 30, referralDiscountSgd: 5 };
+  let calls = 0;
+  let reads = 0;
+  let failStorage = false;
+  const records = new Map();
+  t.mock.method(globalThis, "fetch", async () => { calls++; return Response.json(saved); });
+  const env = environment({ MENU_SNAPSHOT: {
+    get: async key => { if (key === "menu-snapshots-v1") { reads++; return menuSnapshot(); } return records.get(key); },
+    put: async (key, value) => { if (failStorage) throw new Error("private failure"); records.set(key, value); },
+  } });
+  const submit = async (host = "swirlgirl.sg") => {
+    const req = orderRequest();
+    return worker.fetch(new Request(`https://${host}/api/orders`, { method: "POST", headers: { Origin: `https://${host}`, "Content-Type": "application/json" }, body: await req.text() }), env, { waitUntil() {} });
+  };
+  let first;
+  for (const host of ["swirlgirl.sg", "www.swirlgirl.sg"]) {
+    const result = await (await submit(host)).json();
+    assert.equal(result.paynow.amountDueSgd, 30);
+    assert.deepEqual(result.paynow.items, [{ name: "Cinnamon Rolls (box of 6)", quantity: 1 }]);
+    assert.match(result.paynow.url, /^https:\/\/swirlgirl.sg\/pay#s\.[A-Za-z0-9_-]{22}$/);
+    assert.ok(result.paynow.url.length < 60);
+    assert.match(result.paynow.reference, /^P[A-F0-9]{24}$/);
+    assert.equal(result.referralDiscountSgd, 5);
+    if (first) assert.equal(result.paynow.payload, first.paynow.payload);
+    first = result;
+    const token = new URL(result.paynow.url).hash.slice(1);
+    const resolved = await worker.fetch(new Request(`https://${host}/api/paynow/resolve`, { method: "POST", headers: { Origin: `https://${host}`, "Content-Type": "application/json" }, body: JSON.stringify({ token }) }), env, {});
+    assert.deepEqual((await resolved.json()).paynow, result.paynow);
+  }
+  assert.equal(calls, 2, "Only the two order writes call Apps Script; resolving links never does");
+  assert.equal(reads, 2, "QR enrichment adds no menu read");
+  saved = { ...saved, duplicate: true };
+  const replay = await (await submit()).json();
+  assert.equal(replay.duplicate, true);
+  assert.equal(replay.paynow.payload, first.paynow.payload);
+  failStorage = true;
+  const noLink = await (await submit()).json();
+  assert.equal(noLink.ok, true);
+  assert.equal(noLink.orderNumber, "SG-0123");
+  assert.equal(noLink.paynow, undefined);
+  failStorage = false;
+  for (const amountDueSgd of [0, -1, 1.001, null, undefined]) {
+    saved = { ...saved, amountDueSgd };
+    assert.equal((await (await submit()).json()).paynow, undefined);
+  }
+  saved = { ok: false, errorCode: "ORDER_UNAVAILABLE" };
+  const rejected = await submit();
+  assert.equal(rejected.status, 409);
+  assert.equal((await rejected.json()).paynow, undefined);
+  assert.equal(records.size, 3, "Only successful positive saved results write links");
+});

@@ -1,4 +1,5 @@
 import { isAdminPath } from "./admin/access.js";
+import { handleTestPayment, issueShortTestPayment, paymentItemsForOrder } from "./paynowTest.js";
 import worker from './worker.js';
 
 const HOST = 'test-swirl-girl.jaemcd95.workers.dev';
@@ -10,6 +11,15 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.hostname !== HOST) return reply({ ok: false, error: 'Test host only' }, 403);
+    if (url.pathname === '/api/paynow/resolve') return handleTestPayment(request, env);
+    if (url.pathname === '/pay' || url.pathname === '/pay/') {
+      const asset = await env.ASSETS.fetch(request);
+      const response = new Response(asset.body, asset);
+      response.headers.set('Cache-Control', 'no-store');
+      response.headers.set('Referrer-Policy', 'no-referrer');
+      response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      return response;
+    }
     if (isAdminPath(url.pathname) && !['/api/admin/reports', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(url.pathname)) return worker.fetch(request, { ...env, ISOLATED_TEST_BACKEND: true }, ctx);
     // Retire the old production publisher without changing production's script or
     // causing its monitoring to report a failed publish. Nothing is persisted.
@@ -24,6 +34,13 @@ export default {
       url.pathname = '/api/menu/sync';
       request = new Request(url, request);
     }
+    // One fresh snapshot per request. Start it alongside the identity check;
+    // reuse it for validation and item labels, never across customer requests.
+    const kv = env.MENU_SNAPSHOT;
+    const needsMenu = ['/api/menu', '/api/stock', '/api/orders'].includes(url.pathname);
+    const bundlePromise = needsMenu
+      ? Promise.resolve().then(() => kv?.get('isolated-test:menu-snapshots-v1', 'json')).catch(() => null)
+      : null;
     // Check the authenticated target identity before any order write. A wrong
     // deployment URL fails closed instead of relaying into a production Sheet.
     if (url.pathname === '/api/orders') {
@@ -39,7 +56,6 @@ export default {
       }
     }
     // Use a distinct key prefix so old published snapshots cannot leak into test.
-    const kv = env.MENU_SNAPSHOT;
     const isolated = {
       ...env,
       ISOLATED_TEST_BACKEND: true,
@@ -47,7 +63,8 @@ export default {
       ORDER_SHEET_WEBHOOK_URL: env.TEST_APPS_SCRIPT_URL,
       MENU_SETTINGS_URL: env.TEST_APPS_SCRIPT_URL,
       MENU_SNAPSHOT: kv && {
-        get: (key, ...args) => kv.get('isolated-test:' + key, ...args),
+        get: (key, ...args) => bundlePromise && key === 'menu-snapshots-v1' && args[0] === 'json'
+          ? bundlePromise : kv.get('isolated-test:' + key, ...args),
         put: (key, ...args) => kv.put('isolated-test:' + key, ...args),
         list: async (options) => {
           const result = await kv.list({ ...options, prefix: 'isolated-test:' + options.prefix });
@@ -55,10 +72,23 @@ export default {
         },
       },
     };
-    if (['/api/menu', '/api/stock', '/api/orders'].includes(url.pathname)) {
-      const bundle = kv && await kv.get('isolated-test:menu-snapshots-v1', 'json');
+    let bundle;
+    if (needsMenu) {
+      bundle = await bundlePromise;
       if (!bundle) return reply({ ok: false, error: 'Publish the isolated test menu before testing orders' }, 503);
     }
-    return worker.fetch(request, isolated, ctx);
+    const orderRequest = url.pathname === '/api/orders' ? request.clone() : null;
+    const response = await worker.fetch(request, isolated, ctx);
+    if (url.pathname !== '/api/orders' || !response.ok) return response;
+    // Enrich only the final validated backend result, including exact replays.
+    // QR failure must never disguise a successfully saved order as a failure.
+    try {
+      const result = await response.clone().json();
+      const { order } = await orderRequest.json();
+      const items = paymentItemsForOrder(order, bundle?.snapshots?.[order.bakeWindow.trim()]);
+      const paynow = await issueShortTestPayment(result, env, undefined, items || undefined);
+      if (paynow) return reply({ ...result, paynow });
+    } catch { /* Saved receipt and manual WhatsApp handoff remain available. */ }
+    return response;
   },
 };
