@@ -1,3 +1,4 @@
+import { PAYNOW_TEST_HOST, PAYNOW_PRODUCTION_HOST } from "./lib/paynow";
 import AdminPage from "./admin/AdminPage";
 import React, { useEffect, useMemo, useState } from "react";
 import PrivacySection from "./components/PrivacySection";
@@ -34,11 +35,13 @@ import useScrollReveal from "./hooks/useScrollReveal";
 import { buildOrderRecord, submitOrderRequest } from "./lib/orderSubmission";
 
 const SwirlGame = React.lazy(() => import("./components/SwirlGame"));
+const PaymentPage = React.lazy(() => import("./components/PaymentPage"));
 const miniGameEnabled = window.location.hostname.startsWith("test-") || ["swirlgirl.sg", "www.swirlgirl.sg", "localhost", "127.0.0.1"].includes(window.location.hostname);
 
 export default function App() {
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   const receiptPreviewEnabled = window.location.hostname.startsWith("test-") || ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  if (path === "/pay" && [PAYNOW_TEST_HOST, PAYNOW_PRODUCTION_HOST, `www.${PAYNOW_PRODUCTION_HOST}`].includes(window.location.hostname)) return <React.Suspense fallback={<p className="p-8">Loading payment details…</p>}><PaymentPage testMode={window.location.hostname === PAYNOW_TEST_HOST} /></React.Suspense>;
   if (path === "/admin" || path.startsWith("/admin/")) return <AdminPage />;
   if (path === "/receipt-preview" && receiptPreviewEnabled) return <ReceiptPreview />;
   if (path === "/minigame" && miniGameEnabled) {
@@ -88,6 +91,7 @@ function BakesLandingPage() {
       return { ...stored, status: stored.status === "pending" ? "delayed" : stored.status };
     } catch { return null; }
   });
+  const [activeOrderRequestId, setActiveOrderRequestId] = useState(null);
   const [showReceipt, setShowReceipt] = useState(window.location.hash === "#receipt");
   useEffect(() => {
     if (receipt) {
@@ -239,6 +243,7 @@ function BakesLandingPage() {
       moneyFormatter: money,
     });
     const id = crypto.randomUUID();
+    setActiveOrderRequestId(id);
     setReceipt({
       ...order, id, message, status: "pending", orderNumber: "",
       bakeLabel: displayBakeWindow, itemsTotal: money(itemsTotal),
@@ -255,11 +260,11 @@ function BakesLandingPage() {
     // The request runs once. Timeouts never retry a possibly saved order.
     watchOrderRequest(submitOrderRequest(id, order, turnstileToken), (update) => {
       setReceipt((current) => current?.id === id ? { ...current, ...update } : current);
-    });
+    }).finally(() => setActiveOrderRequestId(current => current === id ? null : current));
   };
 
   if (showReceipt && receipt) {
-    return <OrderReceipt receipt={receipt} brand={BRAND} miniGameEnabled={miniGameEnabled} testMode={window.location.hostname.startsWith("test-")}
+    return <OrderReceipt receipt={receipt} requestPending={activeOrderRequestId === receipt.id} brand={BRAND} miniGameEnabled={miniGameEnabled} testMode={window.location.hostname.startsWith("test-")}
       onOpenWhatsApp={() => setReceipt((current) => ({ ...current, whatsappOpened: true }))}
       onBrowse={() => {
         setShowReceipt(false);

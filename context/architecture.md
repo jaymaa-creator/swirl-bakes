@@ -15,7 +15,7 @@ Google Sheets
 
 Customer order form
   -> Cloudflare Turnstile when configured
-  -> POST /api/orders on swirlgirl.sg only
+  -> POST /api/orders on swirlgirl.sg or www.swirlgirl.sg
   -> Google Apps Script web app -> Orders sheet
   -> reference-bearing WhatsApp link opened by a separate customer click
 ```
@@ -33,7 +33,7 @@ WhatsApp handoff. It must not contain service secrets.
 `src/worker.js` serves built assets and owns `/api/*`. It reads and publishes
 menu snapshots, caches menu and stock responses, validates public order
 requests, optionally verifies Turnstile, and relays order writes to Apps
-Script. `/api/orders` accepts requests only on `swirlgirl.sg`; preview and test
+Script. `/api/orders` accepts requests only on `swirlgirl.sg` and `www.swirlgirl.sg`; preview and test
 hosts cannot create real orders. `/api/stock` is restricted to `test-*` hosts.
 
 As approved on 2026-09-08, submission immediately opens a receipt and clears the
@@ -90,3 +90,11 @@ The response flag avoids calling a new action on older web-app deployments.
 - The current Google Sheet columns and Apps Script deployment settings must be
   reviewed against the live operator setup before a schema-changing spec.
 - The repository has no established persistent payment-order state model.
+
+## Approved QR checkout (2026-11-10)
+
+PAY-008 promotes PAY-002 to production. Saved orders receive a short expiring
+link to `/pay`, backed by a signed amount/reference/item summary in the existing
+environment's KV. Production and test use separate hosts, keys and signing
+purposes. Link resolution never reads Sheets. Payment remains manually checked;
+QR creation, downloads and screenshot handoffs do not update Paid.

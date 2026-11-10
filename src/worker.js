@@ -1,3 +1,4 @@
+import { productionPayments, paymentItemsForOrder } from "./paynowPayments.js";
 import { servePhoto } from './admin/photos.js';
 import { handleAdmin, isAdminPath } from "./admin/access.js";
 import { resolveMenuBatchKey } from "./lib/batchSelection.js";
@@ -523,6 +524,18 @@ async function verifyTurnstile(token, secret, remoteIp, idempotencyKey) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/paynow/resolve") return productionPayments.handle(request, env);
+    if (url.pathname === "/pay" || url.pathname === "/pay/") {
+      if (!["https://swirlgirl.sg", "https://www.swirlgirl.sg"].includes(url.origin)) {
+        return jsonResponse({ error: "Payment host only" }, { status: 403 });
+      }
+      const asset = await env.ASSETS.fetch(request);
+      const response = new Response(asset.body, asset);
+      response.headers.set("Cache-Control", "no-store");
+      response.headers.set("Referrer-Policy", "no-referrer");
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+      return response;
+    }
     if (isAdminPath(url.pathname)) return handleAdmin(request, env, () => getMenuSettings(request, env, ctx));
     if (url.pathname.startsWith("/api/media/")) return servePhoto(request, env);
 
@@ -775,7 +788,7 @@ export default {
         return recordOperationalFailure(env, "postOrderRefresh", "Post-order menu refresh did not complete");
       })
     );
-    return jsonResponse({
+    const result = {
       ok: true,
       orderNumber: sheetResult?.orderNumber || "",
       duplicate: sheetResult?.duplicate === true,
@@ -783,6 +796,16 @@ export default {
       ...(sheetResult?.referralDiscountSgd ? { referralDiscountSgd: Number(sheetResult.referralDiscountSgd) } : {}),
       ...(sheetResult?.creditRedeemedSgd ? { creditRedeemedSgd: Number(sheetResult.creditRedeemedSgd) } : {}),
       amountDueSgd: Number.isFinite(Number(sheetResult?.amountDueSgd)) ? Number(sheetResult.amountDueSgd) : undefined,
-    });
+    };
+    // This is optional enrichment after a confirmed save. Reuse the validation
+    // snapshot and never turn a QR-storage error into a failed order response.
+    if (!env.ISOLATED_TEST_BACKEND) {
+      try {
+        const items = paymentItemsForOrder(normalized.order, menu);
+        const paynow = await productionPayments.issueShort(result, env, undefined, items || undefined);
+        if (paynow) result.paynow = paynow;
+      } catch { /* Preserve the recorded order and manual WhatsApp handoff. */ }
+    }
+    return jsonResponse(result);
   },
 };
