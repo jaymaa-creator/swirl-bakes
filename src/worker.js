@@ -658,8 +658,8 @@ export default {
       return jsonResponse({ ok: false, error: "Method not allowed" }, { status: 405 });
     }
 
-    // Preview deployments may share the production bindings, so never let them create real orders.
-    if (url.hostname !== "swirlgirl.sg" && !(env.ISOLATED_TEST_BACKEND === true && url.hostname === "test-swirl-girl.jaemcd95.workers.dev")) {
+    // Both public storefront hosts accept orders; preview aliases remain blocked.
+    if (!["swirlgirl.sg", "www.swirlgirl.sg"].includes(url.hostname) && !(env.ISOLATED_TEST_BACKEND === true && url.hostname === "test-swirl-girl.jaemcd95.workers.dev")) {
       return jsonResponse({ ok: false, error: "Orders are disabled on this preview site" }, { status: 403 });
     }
 

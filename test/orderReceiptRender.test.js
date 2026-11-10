@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 
 test("receipt offers Bun Bounce only after recording and WhatsApp handoff", async () => {
-  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom" });
+  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom", optimizeDeps: { noDiscovery: true } });
   try {
     const { default: OrderReceipt } = await server.ssrLoadModule("/src/components/OrderReceipt.jsx");
     const render = (changes = {}, enabled = true, testMode = false) => renderToStaticMarkup(React.createElement(OrderReceipt, {
@@ -27,6 +27,13 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
     assert.doesNotMatch(render({}, false), /href="\/minigame"/);
     assert.doesNotMatch(render({}, true, true), /https:\/\/wa.me/);
     assert.match(render({}, true, true), /Simulate WhatsApp handoff/);
+    for (const status of ["delayed", "unverified"]) {
+      const fallback = render({ status, orderNumber: "", whatsappOpened: false, id: "123e4567-e89b-42d3-a456-426614174000" });
+      assert.match(fallback, /Ask us to check this order/);
+      assert.doesNotMatch(fallback, /Send via WhatsApp/);
+      const href = fallback.match(/href="(https:\/\/wa.me[^"]+)"/)[1].replace(/&amp;/g, "&");
+      assert.match(new URL(href).searchParams.get("text"), /^Order save not confirmed\./);
+    }
     const rejected = render({ status: "rejected", orderNumber: "", whatsappOpened: false });
     assert.match(rejected, /This order was not recorded/);
     assert.doesNotMatch(rejected, /Send via WhatsApp|Simulate WhatsApp handoff/);

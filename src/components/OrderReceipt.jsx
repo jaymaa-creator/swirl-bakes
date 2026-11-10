@@ -50,7 +50,7 @@ export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp,
           <button type="button" onClick={onOpenWhatsApp} className="mt-6 block w-full rounded-button bg-brandBrown px-5 py-3 text-center font-semibold text-white">Simulate WhatsApp handoff</button>
         ) : (
           <a href={buildWhatsAppLink(brand.waNumberE164, receiptMessage(receipt))} target="_blank" rel="noopener noreferrer" onClick={onOpenWhatsApp} className="mt-6 block rounded-button bg-brandBrown px-5 py-3 text-center font-semibold text-white">
-            {receipt.whatsappOpened ? "Open WhatsApp again" : "Send via WhatsApp"}
+            {!saved ? "Ask us to check this order" : receipt.whatsappOpened ? "Open WhatsApp again" : "Send via WhatsApp"}
           </a>
         )}
         {receipt.whatsappOpened && !testMode ? <p className="mt-3 text-sm text-inkMuted">Tap Send in WhatsApp to finish. This page cannot check whether your message was delivered.</p> : null}

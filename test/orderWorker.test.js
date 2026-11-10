@@ -222,3 +222,41 @@ test("merch must accompany bakes and cannot satisfy the delivery minimum", async
   assert.equal(response.status, 200);
   assert.equal(writes, 5);
 });
+
+
+test("both production hosts accept the same validated basket and international contact", async (t) => {
+  const snapshot = menuSnapshot({ priceSgd: 15.5 });
+  snapshot.snapshots[BATCH].products.push({ id: "Sourdough", productName: "Sourdough", per: "loaf", priceSgd: 10, available: true, remainingQuantity: 3, maxQuantity: 3 });
+  const accepted = [];
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    const payload = JSON.parse(options.body);
+    accepted.push(payload);
+    assert.equal(payload.order.totalSgd, 25.5);
+    assert.equal(payload.order.phone, "+33 600 000 000");
+    assert.match(payload.order.items, /Sourdough/);
+    return Response.json({ ok: true, orderNumber: "SG-HOST-FIX", amountDueSgd: 25.5 });
+  });
+  const env = environment({ MENU_SNAPSHOT: { get: async () => snapshot } });
+  const payload = { requestId: REQUEST_ID, order: order({ phone: "+33 600 000 000", lineItems: [{ productId: "cinnamon-rolls", quantity: 1 }, { productId: "Sourdough", quantity: 1 }], quotedTotalSgd: 25.5 }) };
+  for (const hostname of ["swirlgirl.sg", "www.swirlgirl.sg"]) {
+    const origin = `https://${hostname}`;
+    const response = await worker.fetch(new Request(origin + "/api/orders", { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(payload) }), env, { waitUntil() {} });
+    assert.equal(response.status, 200, hostname);
+    assert.equal((await response.json()).orderNumber, "SG-HOST-FIX");
+  }
+  assert.equal(accepted.length, 2);
+  assert.equal(accepted[0].requestFingerprint, accepted[1].requestFingerprint);
+});
+
+test("production host repair still rejects previews, lookalike hosts and cross-origin orders", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => assert.fail("Rejected hosts must never reach the backend"));
+  for (const hostname of ["swirl-girl.jaemcd95.workers.dev", "preview.swirlgirl.sg", "swirlgirl.sg.example.com", "test-swirl-girl.jaemcd95.workers.dev"]) {
+    const origin = `https://${hostname}`;
+    assert.equal((await worker.fetch(new Request(origin + "/api/orders", { method: "POST", headers: { Origin: origin } }), environment(), {})).status, 403);
+  }
+  for (const hostname of ["swirlgirl.sg", "www.swirlgirl.sg"]) {
+    for (const origin of ["https://evil.example", hostname.startsWith("www.") ? "https://swirlgirl.sg" : "https://www.swirlgirl.sg"]) {
+      assert.equal((await worker.fetch(new Request(`https://${hostname}/api/orders`, { method: "POST", headers: { Origin: origin } }), environment(), {})).status, 403);
+    }
+  }
+});

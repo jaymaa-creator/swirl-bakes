@@ -147,6 +147,18 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Production missing-order investigation (2026-11-10): live www storefront
+  serves the shop but rejects `/api/orders` with preview-only HTTP 403. Apex
+  host rejects the same empty request with expected validation HTTP 400.
+  Reported customer's host is unknown; this is a confirmed defect, not proven
+  attribution. Prepare exact two-host allowance, explicit unconfirmed-save
+  WhatsApp handoff and both-host production smoke. Isolated checkout based on
+  main 938eb76. Repair implemented; 161 tests, lint (existing game warning),
+  build and diff checks pass. Native Chrome fixture verifies the reported
+  basket and explicit failed-save WhatsApp handoff; no external order writes.
+  Ready for guarded release approval. No production orders, Sheet edits or
+  deployment performed. See docs/incidents/2026-11-10-missing-order.md.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.
