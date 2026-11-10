@@ -53,3 +53,16 @@ Use the existing exact-commit release workflow and sealed static artifact.
 Production rollback: `e0b31abb-1bce-4299-bcd0-5821a217be43`.
 Test rollback: `8709e894-21f6-4bf7-9ecd-292959eb0d45`.
 Rollback disables production links; keep expiring records and order data.
+
+## Released 10 November 2026
+
+Source `302826a9e93db3d782ca9fe9fc253fdfcf5e7b8a`, PR #30.
+[Guarded release 42771662946](https://github.com/jaymaa-creator/swirl-bakes/actions/runs/42771662946)
+passed all stages. Production Worker `97a931eb-0117-402d-8f7c-6ddb17c1acc1`;
+test Worker `f1631498-785b-42e5-956c-432ce95826bb`; Apps Script remains v37.
+Both production hosts pass smoke and payment privacy/error/isolation checks;
+JS/CSS and payment-page chunk match the sealed release artifact byte for byte.
+The pre-existing test short link returns identical item, amount and QR data and
+renders correctly in Chrome. Production invalid-link UI verified live.
+Production saved-order QR issuance was fixture-tested; no real order was placed
+or replayed for this release. No messages, payments or paid-state writes.
