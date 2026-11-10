@@ -19,7 +19,11 @@ export function watchOrderRequest(request, onUpdate) {
 }
 
 export function receiptMessage(receipt) {
-  if (!receipt.orderNumber) return receipt.message;
+  if (!receipt.orderNumber) {
+    const requestId = typeof receipt.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipt.id)
+      ? [`Request ID: ${receipt.id}`] : [];
+    return ["Order save not confirmed. Please check whether this order is in the Sheet before confirming it.", ...requestId, "", receipt.message].join("\n");
+  }
   const [heading, ...lines] = receipt.message.split("\n");
   const confirmed = [];
   if (Number.isFinite(receipt.amountDueSgd)) confirmed.push(`Confirmed amount due: S$${receipt.amountDueSgd.toFixed(2)}`);

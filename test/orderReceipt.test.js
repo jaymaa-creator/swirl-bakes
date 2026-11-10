@@ -53,3 +53,20 @@ test("receipt uses authoritative referral result in WhatsApp text", async () => 
   assert.doesNotMatch(message, /Estimated total:/);
   assert.match(message, /Items subtotal: S\$35\.00/);
 });
+
+
+test("unconfirmed WhatsApp handoffs explicitly request a recording check and retain order details", () => {
+  const receipt = { id: "123e4567-e89b-42d3-a456-426614174000", message: "Swirl Girl\nItems: Cinnamon x1\nEstimated total: S$15.50", orderNumber: "" };
+  for (const status of ["delayed", "unverified"]) {
+    const message = receiptMessage({ ...receipt, status });
+    assert.match(message, /^Order save not confirmed\./);
+    assert.match(message, /Please check whether this order is in the Sheet before confirming it/);
+    assert.match(message, /Request ID: 123e4567-e89b-42d3-a456-426614174000/);
+    assert.ok(message.endsWith(receipt.message));
+    assert.doesNotMatch(message, /Order reference:/);
+  }
+  assert.doesNotMatch(receiptMessage({ ...receipt, id: undefined }), /undefined|Request ID:/);
+  const saved = receiptMessage({ ...receipt, status: "saved", orderNumber: "SG-123" });
+  assert.doesNotMatch(saved, /save not confirmed|Request ID:/);
+  assert.match(saved, /Order reference: SG-123/);
+});
