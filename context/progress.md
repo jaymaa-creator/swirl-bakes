@@ -183,6 +183,15 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- ADMIN-004 upcoming bake dashboard test-verified (2026-11-10). Includes date,
+  preparation quantities, order details, unpaid/completed filters and confirmed
+  paid/completed updates (Sheet completion value Closed). Revision checks reject
+  stale edits; paid writes reuse referral processing. 187 tests pass sequentially,
+  lint/build pass with existing hook warning. Mobile conflict/refresh flow and
+  live test-only paid/completed updates verified; storefront smoke passes.
+  Test Apps Script v19; production remains unchanged pending release approval.
+  Source: /private/tmp/swirl-upcoming-bake-20261110, feat/admin-upcoming-bake.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.
@@ -535,3 +544,5 @@ Architecture baseline and payment discovery.
   requests.
 - Existing reservation flow uses WhatsApp plus Google Sheets order recording.
 - Automated payment confirmation is not implemented or approved yet.
+
+Final test Worker: `de6b3baa-37e5-4a33-bed0-f6d3916c1a66` (Apps Script v19).

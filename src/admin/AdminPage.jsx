@@ -1,3 +1,4 @@
+import BakeOrders from './BakeOrders.jsx';
 import SalesReport from './SalesReport.jsx';
 import MenuPhotos from './MenuPhotos.jsx';
 import { useEffect, useState } from 'react';
@@ -33,10 +34,12 @@ export default function AdminPage() {
         {error && <div className="mt-6" role="alert"><p>{error}</p><a className="mt-4 inline-block underline" href="/admin">Sign in again</a></div>}
         {session && <>
           <p className="mt-4 break-words text-inkMuted">Signed in as {session.email}</p>
-          <nav aria-label="Admin tools" className="mt-6 flex gap-3">
+          <nav aria-label="Admin tools" className="mt-6 flex flex-wrap gap-3">
+            <button className={`rounded-full px-5 py-2 ${tab === 'bake' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'bake'} onClick={() => setTab('bake')}>This coming bake</button>
             {session.reportsEnabled && <button className={`rounded-full px-5 py-2 ${tab === 'sales' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'sales'} onClick={() => setTab('sales')}>Sales & customers</button>}
             <button className={`rounded-full px-5 py-2 ${tab === 'menu' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'menu'} onClick={() => setTab('menu')}>Menu & photos</button>
           </nav>
+          {tab === 'bake' && <BakeOrders />}
           {session.reportsEnabled && <div hidden={tab !== 'sales'}><SalesReport environment={session.environment} /></div>}
           <div hidden={tab !== 'menu'}><MenuPhotos environment={session.environment} /></div>
         </>}

@@ -1,3 +1,4 @@
+import { handleBakeOrders } from './bakeOrders.js';
 import { handleReports } from './reports.js';
 import { handlePhotos } from './photos.js';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
@@ -26,6 +27,7 @@ export async function handleAdmin(request, env, loadMenu) {
     return reply({ error: 'Your admin session could not be verified. Please sign in again.' }, 401);
   }
   if (typeof payload.email !== 'string' || !emails.includes(payload.email.toLowerCase())) return reply({ error: 'This Google account does not have admin access.' }, 403);
+  if (path === '/api/admin/bake-orders') return handleBakeOrders(request, env);
   if (path === '/api/admin/reports') return handleReports(request, env);
   if (['/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(path)) return handlePhotos(request, env, loadMenu, payload.email);
   if (request.method !== 'GET' && request.method !== 'HEAD') return reply({ error: 'Method not allowed' }, 405);
