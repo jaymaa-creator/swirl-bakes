@@ -6,6 +6,23 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Production order handoff repair released (2026-11-10), PR #28, source
+  `d7c27cfe0f8376b9340e15bb56f4d3b57282e6cd`. Guarded release
+  `42743790857` passed prepare, test and user-approved production. Production
+  Worker `e0b31abb-1bce-4299-bcd0-5821a217be43`; Apps Script remains v37.
+  Both apex and www now reach order validation; preview and cross-origin
+  requests remain blocked. Reference-less WhatsApp drafts explicitly request
+  a Sheet recording check and include the existing request ID. 161 tests,
+  lint (existing game warning), build and both-host live smoke pass. Both
+  hosts serve byte-identical JS from the sealed CI artifact; browser storefront
+  verified. No successful real order, customer edit, payment or WhatsApp send.
+  The release briefly verified test version `b7b48ecc-9277-4639-80ba-55ce7ab9abdb`,
+  then restored QR test version `8709e894-21f6-4bf7-9ecd-292959eb0d45`; existing
+  short-link items/amount/payload and payment-page headers match before/after.
+  The reported missing order remains unreconciled and its original hostname
+  unknown. Production rollback: `0e89f827-a508-45bb-a287-e85f080f4d07`.
+  See docs/incidents/2026-11-10-missing-order.md.
+
 - Production Sales & customers dashboard released (2026-10-28). PR #26,
   source 610c381b3db763389f7af420df1420f56aacb9fe; guarded release 40658940100
   passed prepare, test and production. Production Worker
@@ -146,18 +163,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Production missing-order investigation (2026-11-10): live www storefront
-  serves the shop but rejects `/api/orders` with preview-only HTTP 403. Apex
-  host rejects the same empty request with expected validation HTTP 400.
-  Reported customer's host is unknown; this is a confirmed defect, not proven
-  attribution. Prepare exact two-host allowance, explicit unconfirmed-save
-  WhatsApp handoff and both-host production smoke. Isolated checkout based on
-  main 938eb76. Repair implemented; 161 tests, lint (existing game warning),
-  build and diff checks pass. Native Chrome fixture verifies the reported
-  basket and explicit failed-save WhatsApp handoff; no external order writes.
-  Ready for guarded release approval. No production orders, Sheet edits or
-  deployment performed. See docs/incidents/2026-11-10-missing-order.md.
 
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
