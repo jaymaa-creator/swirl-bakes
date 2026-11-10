@@ -44,9 +44,9 @@ previously test-only scope. It does not approve automatic payment confirmation.
 - [x] WhatsApp link is first; items/quantity appear in a fresh payment-page session;
   production has no TEST warning; test retains warning; save/download works.
 - [x] Pending/delayed loader, late success, failures and reload do not resubmit.
-- [ ] Full tests, lint, build, isolated test deployment and both production-host
+- [x] Full tests, lint, build, isolated test deployment and both production-host
   smoke checks pass; verify live payment route and matching static artifacts.
-- [ ] No new real orders, messages, payments or paid-state writes for smoke tests.
+- [x] No new real orders, messages, payments or paid-state writes for smoke tests.
   Physical bank-app import/scan is reported separately if unverified.
 
 ## Release and rollback
@@ -57,3 +57,15 @@ by the user, production, read-only verification. Apps Script stays v37.
 Production rollback Worker e0b31abb-1bce-4299-bcd0-5821a217be43. Test rollback
 8709e894-21f6-4bf7-9ecd-292959eb0d45. Rollback disables production link resolution;
 existing QR images may still work. Records expire automatically; retain data.
+
+## Release evidence
+
+Released source 302826a9e93db3d782ca9fe9fc253fdfcf5e7b8a through guarded run
+42771662946. Production Worker 97a931eb-0117-402d-8f7c-6ddb17c1acc1; test
+f1631498-785b-42e5-956c-432ce95826bb. All 178 tests, lint/build, guarded test
+and both production-host smoke checks pass. Sealed frontend bytes match both
+hosts; payment privacy headers, malformed links, cross-origin requests and
+cross-environment short links checked live. Existing test link unchanged and
+rendered in Chrome. Browser fixtures verify production items/WhatsApp/loading,
+read-only retry and independently decoded PNG download. No real production
+order or payment created for smoke; physical bank-app import remains unverified.
