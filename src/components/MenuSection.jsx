@@ -84,9 +84,9 @@ export default function MenuSection({
           <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
             {merch ? "Swirl Girl Swag" : batchLabel ? `Bakes for ${batchLabel}` : "Next available bake"}
           </h2>
-          <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
-            {merch ? "Add a tote to your bake order. Collected or delivered together." : `Choose your bakes, then reserve the ${batchLabel || "next Saturday"} batch.`}
-          </p>
+          {!merch && <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
+            {`Choose your bakes, then reserve the ${batchLabel || "next Saturday"} batch.`}
+          </p>}
         </div>
 
         {showFollowingBatch ? (
