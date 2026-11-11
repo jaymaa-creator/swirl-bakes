@@ -6,6 +6,14 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Merch copy updated in production (11 Nov 2026): heading is Swirl Girl Swag;
+  removed the Add a tote to your bake order subtitle completely. PRs #34/#35;
+  final source 1ee094cbdf49ef94aed5a5b3d1424b171ffcb5b8. Guarded release
+  42942075203 passed prepare/test/production; Worker 5dd8b8cc-e8ae-4097-8d61-e1c36df45007.
+  Apps Script remains v38. 190 tests, lint/build and both-host production smoke
+  pass (existing game hook warning). Live Chrome verifies the new heading and
+  absent subtitle. No order or Sheet data changes.
+
 - ADMIN-004 production release completed (11 Nov 2026), PR #32, source
   5370c82e69b07fdf7e4e44df49c11bf75c626a9c. Guarded release 42940207454 passed
   prepare/test/production. Worker da794f86-cb92-4f8a-aaa7-ada0732e825b;
@@ -196,10 +204,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- Merch heading changed to the user-requested “Swirl Girl Swag” (11 Nov 2026).
-  Heading released via 42941527613. User also requested removing the merch
-  subtitle completely; removal implemented, production verification in progress.
 
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
