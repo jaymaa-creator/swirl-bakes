@@ -197,6 +197,9 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Merch heading changed to the user-requested “Swirl Girl Swag” (11 Nov 2026).
+  Wording-only update; production release verification in progress.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.
