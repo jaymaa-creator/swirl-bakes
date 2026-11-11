@@ -20,7 +20,7 @@ export default {
       response.headers.set('X-Robots-Tag', 'noindex, nofollow');
       return response;
     }
-    if (isAdminPath(url.pathname) && !['/api/admin/reports', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(url.pathname)) return worker.fetch(request, { ...env, ISOLATED_TEST_BACKEND: true }, ctx);
+    if (isAdminPath(url.pathname) && !['/api/admin/bake-orders', '/api/admin/reports', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(url.pathname)) return worker.fetch(request, { ...env, ISOLATED_TEST_BACKEND: true }, ctx);
     // Retire the old production publisher without changing production's script or
     // causing its monitoring to report a failed publish. Nothing is persisted.
     if (url.pathname === '/api/menu/sync') {

@@ -15,7 +15,7 @@ async function token(email = 'owner@example.com', overrides = {}, key = privateK
 const request = (path, jwt, method = 'GET') => new Request(`https://test-swirl-girl.jaemcd95.workers.dev${path}`, { method, headers: jwt ? { 'Cf-Access-Jwt-Assertion': jwt } : {} });
 
 test('admin access rejects missing configuration and credentials on pages and all API paths', async () => {
-  for (const path of ['/admin', '/admin/', '/admin/future', '/api/admin', '/api/admin/session', '/api/admin/future', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish', '/api/admin/reports']) {
+  for (const path of ['/admin', '/admin/', '/admin/future', '/api/admin', '/api/admin/session', '/api/admin/future', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish', '/api/admin/reports', '/api/admin/bake-orders']) {
     assert.equal((await worker.fetch(request(path), {}, {})).status, 503);
     assert.equal((await worker.fetch(request(path), env, {})).status, 401);
     assert.equal((await testWorker.fetch(request(path), {}, {})).status, 503);
@@ -62,7 +62,7 @@ test('signed admin identities, expiry, audience, issuer and signature are enforc
     assert.equal(menu.status, 200);
     assert.equal((await menu.json()).products[0].id, 'tote-bag');
     assert.deepEqual(keys, ['isolated-test:menu-snapshots-v1']);
-    for (const path of ['/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish', '/api/admin/reports']) {
+    for (const path of ['/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish', '/api/admin/reports', '/api/admin/bake-orders']) {
       assert.equal((await testWorker.fetch(request(path), photoEnv, {})).status, 401);
       assert.equal((await testWorker.fetch(request(path, await token('stranger@example.com')), photoEnv, {})).status, 403);
     }

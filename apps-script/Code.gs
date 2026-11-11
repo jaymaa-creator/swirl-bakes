@@ -62,6 +62,8 @@ function doPost(event) {
       return jsonResponse({ ok: false, error: "Unauthorized" });
     }
 
+    if (payload.action === "adminBakeOrders") return jsonResponse(readAdminBakeOrders(payload));
+    if (payload.action === "adminUpdateBakeOrder") return jsonResponse(updateAdminBakeOrder(payload));
     if (payload.action === "adminSalesReport") {
       return jsonResponse(readAdminSalesReport(payload));
     }
@@ -1965,4 +1967,182 @@ function readAdminSalesReport(payload) {
     const result = buildAdminSalesReport(headers, rows, from, to);
     return { ...result, refreshedAt: new Date().toISOString(), source: environment + "-orders" };
   } catch (error) { return { ok: false, errorCode: "REPORT_SCHEMA" }; }
+}
+
+// Private operator view. No order details are published to menu snapshots.
+function adminOrdersEnvironment(payload) {
+  const id = ScriptApp.getScriptId();
+  const environment = id === "1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9" ? "test"
+    : id === "1YfNLgt5YZnDv8CwcR9zcGICM4v0jjfMCs9lzD_pWVh5M8O5Yc5xMVnhf" ? "production" : null;
+  return environment && payload.environment === environment ? environment : null;
+}
+
+function adminBakeDate(value) {
+  const canonical = adminReportDate(value);
+  if (canonical) return canonical;
+  const text = String(value || "").trim();
+  const parts = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (parts) return adminReportDate(`${parts[3]}-${parts[2].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+  if (/^(?:Sat(?:urday)?,?\s+)?\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}$/.test(text)) {
+    const parsed = new Date(text.replace(/^Sat(?:urday)?,?\s+/, "") + " 00:00:00 GMT+0800");
+    return adminReportDate(parsed);
+  }
+  return "";
+}
+
+function adminOrderItems(value) {
+  const text = String(value || "").trim();
+  if (!text || text.length > 6000) return null;
+  const items = [];
+  const pattern = /\s*([^\n]+?)\s+[x×]\s*(\d+)(?:\s*\(\+S\$\d+(?:\.\d{2})?\))?\s*(?:,|\n|$)/gy;
+  let offset = 0;
+  while (offset < text.length) {
+    pattern.lastIndex = offset;
+    const match = pattern.exec(text);
+    if (!match || !match[1].trim() || match[1].trim().length > 200 || Number(match[2]) < 1 || Number(match[2]) > 1000) return null;
+    items.push({ name: match[1].trim(), quantity: Number(match[2]) });
+    offset = pattern.lastIndex;
+  }
+  return items.length <= 50 ? items : null;
+}
+
+function adminOrderRevision(row) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, JSON.stringify(row), Utilities.Charset.UTF_8)
+    .map(value => (value < 0 ? value + 256 : value).toString(16).padStart(2, "0")).join("");
+}
+
+function adminOrderColumns(headers) {
+  const names = headers.map(normalizeHeader);
+  const find = aliases => aliases.map(name => names.indexOf(name)).find(i => i >= 0) ?? -1;
+  const cols = { ref: find(["order_no", "order_number"]), batch: find(["saturday_batch", "bake_window"]),
+    paid: find(["paid"]), status: find(["status"]), request: find(["request_id"]),
+    name: find(["name"]), phone: find(["whatsapp", "phone", "contact_number"]), items: find(["items"]),
+    fulfilment: find(["fulfilment", "fulfillment"]), slot: find(["collection_slot", "pickup_time"]),
+    address: find(["delivery_address", "address"]), notes: find(["notes"]), deliveryCost: find(["delivery_cost"]),
+    amounts: ["amount_due", "total", "estimated_total"].map(name => names.indexOf(name)).filter(i => i >= 0) };
+  if ([cols.ref, cols.batch, cols.status, cols.paid, cols.items].some(i => i < 0) || !cols.amounts.length) throw new Error("ORDERS_SCHEMA");
+  return cols;
+}
+
+function buildAdminBakeOrders(headers, rows, calendar, requested, today) {
+  const cols = adminOrderColumns(headers);
+  const text = (row, col) => col < 0 ? "" : String(row[col] ?? "").trim().replace(/^'/, "");
+  const references = new Map(), requests = new Map();
+  rows.forEach(row => {
+    const ref = text(row, cols.ref), request = text(row, cols.request);
+    if (ref) references.set(ref, (references.get(ref) || 0) + 1);
+    if (request) requests.set(request, (requests.get(request) || 0) + 1);
+  });
+  const dates = new Set(calendar.filter(entry => entry.open && adminReportDate(entry.date)).map(entry => entry.date));
+  const quality = { invalidDate: 0, duplicates: 0, missingReference: 0, invalidAmount: 0, invalidItems: 0 };
+  const parsed = rows.filter(row => text(row, cols.ref) || text(row, cols.name) || text(row, cols.items)).map(row => {
+    const batch = adminBakeDate(row[cols.batch]);
+    if (!batch) quality.invalidDate++;
+    if (batch && !isCancelledStatus(row[cols.status])) dates.add(batch);
+    return { row, batch };
+  });
+  const bakeDates = [...dates].sort();
+  const batch = requested || bakeDates.find(date => date >= today) || "";
+  if (requested && !bakeDates.includes(requested)) bakeDates.push(requested);
+  bakeDates.sort();
+  const orders = parsed.filter(entry => batch && entry.batch === batch).map(({ row }) => {
+    const orderNumber = text(row, cols.ref), request = text(row, cols.request), status = text(row, cols.status);
+    const duplicate = references.get(orderNumber) > 1 || Boolean(request && requests.get(request) > 1);
+    const amount = cols.amounts.map(i => row[i]).find(value => value !== "" && value != null);
+    const amountCents = adminReportMoney(amount), itemsText = text(row, cols.items), items = adminOrderItems(itemsText);
+    if (duplicate) quality.duplicates++;
+    if (!orderNumber) quality.missingReference++;
+    if (amountCents === null) quality.invalidAmount++;
+    if (!items) quality.invalidItems++;
+    const cancelled = isCancelledStatus(status);
+    return { orderNumber, batch, name: text(row, cols.name), phone: adminReportPhone(row[cols.phone]),
+      itemsText, items: items || [], amountCents,
+      deliveryCostCents: cols.deliveryCost < 0 || row[cols.deliveryCost] === "" || row[cols.deliveryCost] == null ? null : adminReportMoney(row[cols.deliveryCost]),
+      deliveryCostInvalid: cols.deliveryCost >= 0 && row[cols.deliveryCost] !== "" && row[cols.deliveryCost] != null && adminReportMoney(row[cols.deliveryCost]) === null,
+      status, paid: String(row[cols.paid]).toLowerCase() === "true" || status.toLowerCase() === "paid",
+      completed: status.toLowerCase() === "closed", cancelled, duplicate,
+      fulfilment: text(row, cols.fulfilment), collectionSlot: text(row, cols.slot), address: text(row, cols.address), notes: text(row, cols.notes),
+      revision: adminOrderRevision(row), editable: Boolean(orderNumber && !duplicate && !cancelled && amountCents !== null && items) };
+  });
+  if (orders.length > 500 || bakeDates.length > 2400) throw new Error("ORDERS_LIMIT");
+  return { ok: true, batch, bakeDates, orders, quality };
+}
+
+function readAdminBakeOrders(payload) {
+  const environment = adminOrdersEnvironment(payload);
+  if (!environment) return { ok: false, errorCode: "ORDERS_ENVIRONMENT" };
+  const batch = payload.batch || "";
+  if (typeof batch !== "string" || (batch && !adminReportDate(batch))) return { ok: false, errorCode: "ORDERS_DATE" };
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(ORDERS_SHEET_NAME);
+    if (!sheet || sheet.getLastColumn() > 100 || sheet.getLastRow() > 10001) return { ok: false, errorCode: "ORDERS_LIMIT" };
+    const values = sheet.getDataRange().getValues(), headers = values.shift() || [];
+    const result = buildAdminBakeOrders(headers, values, readBakeCalendar(spreadsheet), batch, Utilities.formatDate(new Date(), "Asia/Singapore", "yyyy-MM-dd"));
+    return { ...result, source: environment + "-orders", refreshedAt: new Date().toISOString() };
+  } catch (error) { return { ok: false, errorCode: error.message === "ORDERS_LIMIT" ? "ORDERS_LIMIT" : "ORDERS_SCHEMA" }; }
+}
+
+function updateAdminBakeOrder(payload) {
+  if (!adminOrdersEnvironment(payload)) return { ok: false, errorCode: "ORDERS_ENVIRONMENT" };
+  if (!['paid', 'completed', 'deliveryCost'].includes(payload.change) || typeof payload.orderNumber !== "string" ||
+      !/^[A-Za-z0-9-]{1,80}$/.test(payload.orderNumber) || !/^[a-f0-9]{64}$/.test(payload.revision || "") ||
+      (typeof payload.batch !== "string" || !adminReportDate(payload.batch))) return { ok: false, errorCode: "ORDERS_INPUT" };
+  if (payload.change === "deliveryCost" && (!Number.isSafeInteger(payload.deliveryCostCents) || payload.deliveryCostCents < 0 || payload.deliveryCostCents > 100000)) return { ok: false, errorCode: "ORDERS_INPUT" };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  let saved = false;
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID), sheet = spreadsheet.getSheetByName(ORDERS_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() > 10001 || sheet.getLastColumn() > 100) return { ok: false, errorCode: "ORDERS_LIMIT" };
+    const values = sheet.getDataRange().getValues(), headers = values.shift() || [], cols = adminOrderColumns(headers);
+    const matches = values.map((row, index) => ({ row, index })).filter(entry => String(entry.row[cols.ref]).trim() === payload.orderNumber);
+    if (matches.length !== 1) return { ok: false, errorCode: "ORDER_CONFLICT" };
+    const { row, index } = matches[0];
+    const request = cols.request >= 0 && String(row[cols.request] || "").trim();
+    if (request && values.filter(other => String(other[cols.request] || "").trim() === request).length !== 1) return { ok: false, errorCode: "ORDER_CONFLICT" };
+    if (adminBakeDate(row[cols.batch]) !== payload.batch || isCancelledStatus(row[cols.status])) return { ok: false, errorCode: "ORDER_CONFLICT" };
+    if (!adminOrderItems(row[cols.items]) || adminReportMoney(cols.amounts.map(i => row[i]).find(value => value !== "" && value != null)) === null) return { ok: false, errorCode: "ORDER_CONFLICT" };
+    if (payload.change === "deliveryCost") {
+      // This is the bakery's expense, never the customer's charge or amount due.
+      if (!/^delivery(?:\s|$)/i.test(String(row[cols.fulfilment] || "").trim()) || adminOrderRevision(row) !== payload.revision) return { ok: false, errorCode: "ORDER_CONFLICT" };
+      // Refuse ambiguous schemas and formulas; never replace operator calculations.
+      const costColumns = headers.map(normalizeHeader).filter(name => name === "delivery_cost");
+      if (costColumns.length > 1) return { ok: false, errorCode: "ORDERS_SCHEMA" };
+      let col = cols.deliveryCost;
+      if (col < 0) {
+        if (headers.length >= 100) return { ok: false, errorCode: "ORDERS_SCHEMA" };
+        col = headers.length;
+        if (col >= sheet.getMaxColumns()) sheet.insertColumnsAfter(sheet.getMaxColumns(), 1);
+        sheet.getRange(1, col + 1).setValue("delivery_cost");
+      }
+      const cell = sheet.getRange(index + 2, col + 1);
+      if (cell.getFormula()) return { ok: false, errorCode: "ORDER_CONFLICT" };
+      cell.setValue(payload.deliveryCostCents / 100);
+      SpreadsheetApp.flush();
+      saved = true;
+      return { ok: true, saved, referralDeferred: false };
+    }
+    const paid = String(row[cols.paid]).toLowerCase() === "true" || String(row[cols.status]).toLowerCase() === "paid";
+    const completed = String(row[cols.status]).toLowerCase() === "closed";
+    const alreadyDone = payload.change === "paid" ? paid : completed;
+    if (!alreadyDone && adminOrderRevision(row) !== payload.revision) return { ok: false, errorCode: "ORDER_CONFLICT" };
+    if (!alreadyDone) {
+      if (payload.change === "paid" || (payload.change === "completed" && paid)) {
+        sheet.getRange(index + 2, cols.paid + 1).setValue(true); row[cols.paid] = true;
+      }
+      if (payload.change === "completed") {
+        sheet.getRange(index + 2, cols.status + 1).setValue("Closed"); row[cols.status] = "Closed";
+      }
+      SpreadsheetApp.flush();
+    }
+    saved = true;
+    let referralDeferred = false;
+    if (payload.change === "paid") {
+      try { earnReferralCreditForOrder(spreadsheet, headers.map(normalizeHeader), row); SpreadsheetApp.flush(); }
+      catch (error) { referralDeferred = true; reportReferralLedgerSyncFailure(error); }
+    }
+    return { ok: true, saved, referralDeferred };
+  } catch (error) { return { ok: false, saved, errorCode: "ORDER_UPDATE_UNVERIFIED" }; }
+  finally { lock.releaseLock(); }
 }
