@@ -546,3 +546,12 @@ Architecture baseline and payment discovery.
 - Automated payment confirmation is not implemented or approved yet.
 
 Final test Worker: `de6b3baa-37e5-4a33-bed0-f6d3916c1a66` (Apps Script v19).
+
+- ADMIN-004 delivery expense extension test-deployed (11 Nov 2026). Our delivery
+  cost input on delivery orders saves numeric Orders.delivery_cost, lazily adding
+  the column. Customer charges/totals/QR, paid status and referrals are preserved.
+  Worker 11aedc8f-0458-4f39-8e14-d2ade4d7daef; test Apps Script v21. 190 tests,
+  lint/build/generated-script checks pass (existing hook warning). Mobile fixture
+  verifies validation, save/reload, zero cost and conflict recovery; live admin
+  read and storefront smoke pass. No live expense-cell write was exercised;
+  existing coming-bake test orders are collection. Production approval pending.

@@ -3,7 +3,7 @@
 ## Approval and scope
 User requested another admin dashboard for the coming bake on 10 Nov 2026 and
 explicitly chose paid/completed updates. This extends ADMIN-003's read-only scope
-with an authenticated operational order view and two explicit manual actions.
+with an authenticated operational order view and explicit manual actions.
 Implement and verify on isolated test first; production release is a separate
 final approval. No automatic payment detection, new orders, cancellation, refunds,
 unpay/reopen, customer messages, exports or public customer-data storage.
@@ -30,7 +30,15 @@ unpay/reopen, customer messages, exports or public customer-data storage.
   lock before any update. Reject stale, duplicate, cancelled or wrong-date rows.
   A repeated desired state is a safe no-op; never auto retry a timed-out write.
   Show uncertain-save error and require refresh before further editing.
-- No schema change. Programmatic paid writes explicitly run referral logic,
+- Delivery cost extension approved 11 Nov 2026: editable Our delivery cost (SGD)
+  on delivery orders, saved as a numeric expense in Orders.delivery_cost. Add that
+  column at the end only on the first save if absent. Blank is not recorded; zero
+  is a valid cost. Allow S$0–1,000, maximum two decimal places. Existing values
+  load on refresh. Save only this cell under the existing full-row revision lock;
+  reject stale, duplicate, cancelled, collection or formula-backed rows. Editing
+  paid/completed delivery orders is allowed. Do not modify customer totals,
+  delivery charges, QR links, paid state, referral credits or inventory.
+- Programmatic paid writes explicitly run referral logic,
   because Sheets edit triggers do not run for programmatic writes. Report
   deferred credit processing truthfully without hiding saved Paid state.
 
@@ -71,3 +79,22 @@ Test backend v19; previous v18 retained for rollback. Existing Access identities
 and configuration unchanged; denied-identity cases covered by automated tests.
 
 Final test Worker: `de6b3baa-37e5-4a33-bed0-f6d3916c1a66` (Apps Script v19).
+
+## Delivery cost extension verification (11 Nov 2026)
+- [x] Focused expense validation, schema, concurrency and write isolation tests.
+- [x] Full tests, lint, build, test script build and browser save/reload checks.
+- [x] Isolated live test deployment and read verification; production unchanged.
+
+Delivery expense test release: Worker `11aedc8f-0458-4f39-8e14-d2ade4d7daef`,
+Apps Script test v21. Previous Worker `de6b3baa-37e5-4a33-bed0-f6d3916c1a66`
+and Apps Script v19 retained for rollback. Remote v19 editor backed up and
+matched the committed baseline before push. Column creation is lazy; no Sheet
+schema or real expense values were changed during release verification.
+190 tests pass sequentially, lint/build/generated script/diff checks pass with
+the existing game hook warning. Mobile synthetic save/reload verified 12.50,
+0.00, invalid precision and conflict/refresh recovery; customer amount stayed
+35.50. Live authenticated test orders load successfully and storefront smoke
+passes. Live expense-cell writes were not exercised: existing coming-bake test
+orders are collection orders. Backend tests cover numeric cell writes, first
+column creation/grid expansion, full-row revision checks and formula protection.
+Production release remains pending, including the original ADMIN-004 dashboard.

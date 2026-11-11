@@ -9,3 +9,10 @@ export function summariseBakeOrders(orders) {
     items: [...quantities].map(([name, quantity]) => ({ name, quantity })).sort((a, b) => a.name.localeCompare(b.name)),
   };
 }
+
+// Accept ordinary SGD amounts only; blank means not recorded, never zero.
+export function parseDeliveryCost(value) {
+  if (typeof value !== 'string' || !/^\d{1,4}(?:\.\d{1,2})?$/.test(value.trim())) return null;
+  const cents = Math.round(Number(value.trim()) * 100);
+  return Number.isSafeInteger(cents) && cents >= 0 && cents <= 100000 ? cents : null;
+}

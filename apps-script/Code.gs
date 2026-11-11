@@ -2018,7 +2018,7 @@ function adminOrderColumns(headers) {
     paid: find(["paid"]), status: find(["status"]), request: find(["request_id"]),
     name: find(["name"]), phone: find(["whatsapp", "phone", "contact_number"]), items: find(["items"]),
     fulfilment: find(["fulfilment", "fulfillment"]), slot: find(["collection_slot", "pickup_time"]),
-    address: find(["delivery_address", "address"]), notes: find(["notes"]),
+    address: find(["delivery_address", "address"]), notes: find(["notes"]), deliveryCost: find(["delivery_cost"]),
     amounts: ["amount_due", "total", "estimated_total"].map(name => names.indexOf(name)).filter(i => i >= 0) };
   if ([cols.ref, cols.batch, cols.status, cols.paid, cols.items].some(i => i < 0) || !cols.amounts.length) throw new Error("ORDERS_SCHEMA");
   return cols;
@@ -2056,7 +2056,10 @@ function buildAdminBakeOrders(headers, rows, calendar, requested, today) {
     if (!items) quality.invalidItems++;
     const cancelled = isCancelledStatus(status);
     return { orderNumber, batch, name: text(row, cols.name), phone: adminReportPhone(row[cols.phone]),
-      itemsText, items: items || [], amountCents, status, paid: String(row[cols.paid]).toLowerCase() === "true" || status.toLowerCase() === "paid",
+      itemsText, items: items || [], amountCents,
+      deliveryCostCents: cols.deliveryCost < 0 || row[cols.deliveryCost] === "" || row[cols.deliveryCost] == null ? null : adminReportMoney(row[cols.deliveryCost]),
+      deliveryCostInvalid: cols.deliveryCost >= 0 && row[cols.deliveryCost] !== "" && row[cols.deliveryCost] != null && adminReportMoney(row[cols.deliveryCost]) === null,
+      status, paid: String(row[cols.paid]).toLowerCase() === "true" || status.toLowerCase() === "paid",
       completed: status.toLowerCase() === "closed", cancelled, duplicate,
       fulfilment: text(row, cols.fulfilment), collectionSlot: text(row, cols.slot), address: text(row, cols.address), notes: text(row, cols.notes),
       revision: adminOrderRevision(row), editable: Boolean(orderNumber && !duplicate && !cancelled && amountCents !== null && items) };
@@ -2082,9 +2085,10 @@ function readAdminBakeOrders(payload) {
 
 function updateAdminBakeOrder(payload) {
   if (!adminOrdersEnvironment(payload)) return { ok: false, errorCode: "ORDERS_ENVIRONMENT" };
-  if (!['paid', 'completed'].includes(payload.change) || typeof payload.orderNumber !== "string" ||
+  if (!['paid', 'completed', 'deliveryCost'].includes(payload.change) || typeof payload.orderNumber !== "string" ||
       !/^[A-Za-z0-9-]{1,80}$/.test(payload.orderNumber) || !/^[a-f0-9]{64}$/.test(payload.revision || "") ||
       (typeof payload.batch !== "string" || !adminReportDate(payload.batch))) return { ok: false, errorCode: "ORDERS_INPUT" };
+  if (payload.change === "deliveryCost" && (!Number.isSafeInteger(payload.deliveryCostCents) || payload.deliveryCostCents < 0 || payload.deliveryCostCents > 100000)) return { ok: false, errorCode: "ORDERS_INPUT" };
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   let saved = false;
@@ -2099,6 +2103,26 @@ function updateAdminBakeOrder(payload) {
     if (request && values.filter(other => String(other[cols.request] || "").trim() === request).length !== 1) return { ok: false, errorCode: "ORDER_CONFLICT" };
     if (adminBakeDate(row[cols.batch]) !== payload.batch || isCancelledStatus(row[cols.status])) return { ok: false, errorCode: "ORDER_CONFLICT" };
     if (!adminOrderItems(row[cols.items]) || adminReportMoney(cols.amounts.map(i => row[i]).find(value => value !== "" && value != null)) === null) return { ok: false, errorCode: "ORDER_CONFLICT" };
+    if (payload.change === "deliveryCost") {
+      // This is the bakery's expense, never the customer's charge or amount due.
+      if (!/^delivery(?:\s|$)/i.test(String(row[cols.fulfilment] || "").trim()) || adminOrderRevision(row) !== payload.revision) return { ok: false, errorCode: "ORDER_CONFLICT" };
+      // Refuse ambiguous schemas and formulas; never replace operator calculations.
+      const costColumns = headers.map(normalizeHeader).filter(name => name === "delivery_cost");
+      if (costColumns.length > 1) return { ok: false, errorCode: "ORDERS_SCHEMA" };
+      let col = cols.deliveryCost;
+      if (col < 0) {
+        if (headers.length >= 100) return { ok: false, errorCode: "ORDERS_SCHEMA" };
+        col = headers.length;
+        if (col >= sheet.getMaxColumns()) sheet.insertColumnsAfter(sheet.getMaxColumns(), 1);
+        sheet.getRange(1, col + 1).setValue("delivery_cost");
+      }
+      const cell = sheet.getRange(index + 2, col + 1);
+      if (cell.getFormula()) return { ok: false, errorCode: "ORDER_CONFLICT" };
+      cell.setValue(payload.deliveryCostCents / 100);
+      SpreadsheetApp.flush();
+      saved = true;
+      return { ok: true, saved, referralDeferred: false };
+    }
     const paid = String(row[cols.paid]).toLowerCase() === "true" || String(row[cols.status]).toLowerCase() === "paid";
     const completed = String(row[cols.status]).toLowerCase() === "closed";
     const alreadyDone = payload.change === "paid" ? paid : completed;

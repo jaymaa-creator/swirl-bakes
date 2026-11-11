@@ -31,6 +31,10 @@ export function validateBakeOrders(data, environment) {
     }
     if (row.amountCents !== null && (!Number.isSafeInteger(row.amountCents) || row.amountCents < 0 || row.amountCents > 100000000)) throw new Error('Invalid amount');
     result.amountCents = row.amountCents;
+    if (row.deliveryCostCents !== null && (!Number.isSafeInteger(row.deliveryCostCents) || row.deliveryCostCents < 0 || row.deliveryCostCents > 100000000)) throw new Error('Invalid delivery cost');
+    if (typeof row.deliveryCostInvalid !== 'boolean') throw new Error('Invalid delivery cost state');
+    result.deliveryCostCents = row.deliveryCostCents;
+    result.deliveryCostInvalid = row.deliveryCostInvalid;
     if (!Array.isArray(row.items) || row.items.length > 50) throw new Error('Invalid items');
     result.items = row.items.map(item => {
       if (!validText(item.name, 200) || !item.name.trim() || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 1000) throw new Error('Invalid item');
@@ -59,9 +63,10 @@ export async function handleBakeOrders(request, env) {
     try { bytes = await readLimited(request, 2000); } catch { return reply({ error: 'Request too large or empty' }, 413); }
     try {
       const data = JSON.parse(new TextDecoder().decode(bytes));
-      if (!['paid', 'completed'].includes(data.change) || !validText(data.orderNumber, 80) || !/^[A-Za-z0-9-]{1,80}$/.test(data.orderNumber)
+      if (!['paid', 'completed', 'deliveryCost'].includes(data.change) || !validText(data.orderNumber, 80) || !/^[A-Za-z0-9-]{1,80}$/.test(data.orderNumber)
           || !validText(data.batch, 10) || !data.batch || !validReportDate(data.batch) || !/^[a-f0-9]{64}$/.test(data.revision)) throw new Error();
-      command = { action: 'adminUpdateBakeOrder', orderNumber: data.orderNumber, batch: data.batch, revision: data.revision, change: data.change };
+      if (data.change === 'deliveryCost' && (!Number.isSafeInteger(data.deliveryCostCents) || data.deliveryCostCents < 0 || data.deliveryCostCents > 100000)) throw new Error();
+      command = { action: 'adminUpdateBakeOrder', orderNumber: data.orderNumber, batch: data.batch, revision: data.revision, change: data.change, ...(data.change === 'deliveryCost' ? { deliveryCostCents: data.deliveryCostCents } : {}) };
     } catch { return reply({ error: 'Invalid order update' }, 400); }
   }
   try {

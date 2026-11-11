@@ -1,9 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import CinnamonLoader from '../components/ui/CinnamonLoader';
-import { summariseBakeOrders } from './bakeOrderSummary.js';
+import { summariseBakeOrders, parseDeliveryCost } from './bakeOrderSummary.js';
 const money = cents => new Intl.NumberFormat('en-SG', { style: 'currency', currency: 'SGD' }).format(cents / 100);
 const dateLabel = date => date ? new Intl.DateTimeFormat('en-SG', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Singapore' }).format(new Date(date + 'T00:00:00+08:00')) : 'No upcoming bake';
 const button = 'rounded-full border border-line px-4 py-2 text-sm font-semibold disabled:opacity-50';
+
+function DeliveryCostForm({ order, disabled, update }) {
+  const [value, setValue] = useState(order.deliveryCostCents == null ? '' : (order.deliveryCostCents / 100).toFixed(2));
+  const [error, setError] = useState('');
+  return <form className="mt-4 rounded-xl bg-cream p-4" onSubmit={event => {
+    event.preventDefault();
+    if (disabled) return;
+    const deliveryCostCents = parseDeliveryCost(value);
+    if (deliveryCostCents === null) { setError('Enter an amount from S$0 to S$1,000, with up to two decimal places.'); return; }
+    setError(''); update({ order, change: 'deliveryCost', deliveryCostCents });
+  }}>
+    <label className="block text-sm font-semibold">Our delivery cost (S$)
+      <input className="mt-2 block w-full rounded-lg border border-line bg-white p-2" type="text" inputMode="decimal" maxLength={7} value={value} disabled={disabled} onChange={event => {setValue(event.target.value); setError('');}} placeholder="Not recorded" />
+    </label>
+    <p className="mt-2 text-xs text-inkMuted">What we paid the driver. This does not change the customer’s total.</p>
+    {order.deliveryCostInvalid && <p className="mt-2 text-sm text-amber-900">The recorded cost needs checking in the Sheet.</p>}
+    {error && <p role="alert" className="mt-2 text-sm text-amber-900">{error}</p>}
+    <button className={button + ' mt-3'} disabled={disabled || !value.trim() || (parseDeliveryCost(value) !== null && parseDeliveryCost(value) === order.deliveryCostCents)}>Save delivery cost</button>
+  </form>;
+}
 
 export function BakeOrdersView({ data, loading, error, notice, filter, setFilter, setBatch, refresh, busy, confirmation, setConfirmation, update }) {
   const summary = data && summariseBakeOrders(data.orders);
@@ -24,6 +44,9 @@ export function BakeOrdersView({ data, loading, error, notice, filter, setFilter
       {order.address && <div><dt className="text-inkMuted">Delivery address</dt><dd className="whitespace-pre-wrap break-words">{order.address}</dd></div>}
       {order.notes && <div><dt className="text-inkMuted">Order notes</dt><dd className="whitespace-pre-wrap break-words">{order.notes}</dd></div>}
     </dl>
+    {/^delivery(?:\s|$)/i.test(order.fulfilment) && (order.editable
+      ? <DeliveryCostForm key={order.revision} order={order} disabled={disabled} update={update} />
+      : <p className="mt-4 text-sm">Our delivery cost: {order.deliveryCostInvalid ? 'Needs checking' : order.deliveryCostCents == null ? 'Not recorded' : money(order.deliveryCostCents)}</p>)}
     {!order.editable && !order.cancelled && <p className="mt-4 text-sm text-amber-900">{order.duplicate ? 'Duplicate reference — check the Sheet before updating.' : 'Check this order in the Sheet before updating.'}</p>}
     {order.editable && <div className="mt-5 flex flex-wrap gap-2">
       {!order.paid && <button className={button} disabled={disabled} onClick={() => setConfirmation({ order, change: 'paid' })}>Mark paid</button>}
@@ -72,15 +95,15 @@ export default function BakeOrders() {
       .finally(() => { clearTimeout(timer); if (active) setLoading(false); });
     return () => { active = false; clearTimeout(timer); controller.abort(); };
   }, [batch, attempt]);
-  const update = async ({ order, change }) => {
+  const update = async ({ order, change, deliveryCostCents }) => {
     setBusy(true); setError(''); setNotice('');
     const controller = new AbortController(); writeController.current = controller;
     const timer = setTimeout(() => controller.abort(), 35000);
     try {
-      const response = await fetch('/api/admin/bake-orders', { method: 'POST', redirect: 'error', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderNumber: order.orderNumber, batch: order.batch, revision: order.revision, change }) });
+      const response = await fetch('/api/admin/bake-orders', { method: 'POST', redirect: 'error', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderNumber: order.orderNumber, batch: order.batch, revision: order.revision, change, ...(change === 'deliveryCost' ? { deliveryCostCents } : {}) }) });
       const result = await response.json();
       if (!response.ok || result.ok !== true) throw new Error(result.error || 'The update could not be confirmed. Refresh before trying again.');
-      setNotice(result.referralDeferred ? 'Paid status saved. Referral credit processing needs checking in the Sheet.' : `${order.orderNumber} marked ${change}.`);
+      setNotice(result.referralDeferred ? 'Paid status saved. Referral credit processing needs checking in the Sheet.' : change === 'deliveryCost' ? `${order.orderNumber} delivery cost saved to the Sheet.` : `${order.orderNumber} marked ${change}.`);
       setConfirmation(null); setAttempt(value => value + 1);
     } catch (error) { setError(error.name === 'AbortError' ? 'The update could not be confirmed. Refresh to check before trying again.' : error.message || 'The update could not be confirmed. Refresh before trying again.'); }
     finally { clearTimeout(timer); writeController.current = null; setBusy(false); }
