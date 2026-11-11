@@ -97,4 +97,11 @@ the existing game hook warning. Mobile synthetic save/reload verified 12.50,
 passes. Live expense-cell writes were not exercised: existing coming-bake test
 orders are collection orders. Backend tests cover numeric cell writes, first
 column creation/grid expansion, full-row revision checks and formula protection.
-Production release remains pending, including the original ADMIN-004 dashboard.
+Production release approved and completed 11 Nov 2026, including the original
+ADMIN-004 dashboard. See docs/admin-upcoming-bake.md for versions and evidence.
+
+## Production release (11 Nov 2026)
+User approved “push to prod”. PR #32 merged; release 42940207454 succeeded on
+5370c82e69b07fdf7e4e44df49c11bf75c626a9c. Production Worker
+`da794f86-cb92-4f8a-aaa7-ada0732e825b`, Apps Script v38. Live read verifies
+21 Nov preparation and delivery-expense input; no production data edited.

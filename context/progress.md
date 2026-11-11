@@ -6,6 +6,20 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- ADMIN-004 production release completed (11 Nov 2026), PR #32, source
+  5370c82e69b07fdf7e4e44df49c11bf75c626a9c. Guarded release 42940207454 passed
+  prepare/test/production. Worker da794f86-cb92-4f8a-aaa7-ada0732e825b;
+  production Apps Script v38 retains existing diagnostics. Test Worker
+  a1dc15d9-01c9-4da0-9627-4e0ff17e06fd and Apps Script v21 remain isolated.
+  Upcoming bake dashboard includes quantities, order/fulfilment details,
+  paid/completed controls and the bakery's editable delivery expense. Expense
+  saves only numeric Orders.delivery_cost; customer totals and QR are unchanged.
+  190 tests, lint/build and both-host production smoke pass. Live owner session
+  confirms 21 Nov orders, quantities and delivery expense input; unsigned API
+  requests denied. No production order statuses, expense values or payments
+  changed for verification. Rollback Worker 97a931eb-0117-402d-8f7c-6ddb17c1acc1,
+  Apps Script v37. See docs/admin-upcoming-bake.md.
+
 - Production PayNow QR checkout released (2026-11-10), PAY-008, PR #30,
   source 302826a9e93db3d782ca9fe9fc253fdfcf5e7b8a. Guarded release 42771662946
   passed prepare, test and user-approved production. Production Worker
@@ -182,15 +196,6 @@ Architecture baseline and payment discovery.
 - Repository context baseline created on 2026-08-27.
 
 ## In Progress
-
-- ADMIN-004 upcoming bake dashboard test-verified (2026-11-10). Includes date,
-  preparation quantities, order details, unpaid/completed filters and confirmed
-  paid/completed updates (Sheet completion value Closed). Revision checks reject
-  stale edits; paid writes reuse referral processing. 187 tests pass sequentially,
-  lint/build pass with existing hook warning. Mobile conflict/refresh flow and
-  live test-only paid/completed updates verified; storefront smoke passes.
-  Test Apps Script v19; production remains unchanged pending release approval.
-  Source: /private/tmp/swirl-upcoming-bake-20261110, feat/admin-upcoming-bake.
 
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
@@ -546,12 +551,3 @@ Architecture baseline and payment discovery.
 - Automated payment confirmation is not implemented or approved yet.
 
 Final test Worker: `de6b3baa-37e5-4a33-bed0-f6d3916c1a66` (Apps Script v19).
-
-- ADMIN-004 delivery expense extension test-deployed (11 Nov 2026). Our delivery
-  cost input on delivery orders saves numeric Orders.delivery_cost, lazily adding
-  the column. Customer charges/totals/QR, paid status and referrals are preserved.
-  Worker 11aedc8f-0458-4f39-8e14-d2ade4d7daef; test Apps Script v21. 190 tests,
-  lint/build/generated-script checks pass (existing hook warning). Mobile fixture
-  verifies validation, save/reload, zero cost and conflict recovery; live admin
-  read and storefront smoke pass. No live expense-cell write was exercised;
-  existing coming-bake test orders are collection. Production approval pending.
