@@ -24,3 +24,14 @@ Both the message helper and receipt UI require a saved, matching, unexpired QR.
 Pending/delayed requests keep the loader and disabled control; failed/unverified
 or saved-without-QR receipts retain reference/request ID and plain contact number.
 Late success enables a QR-first draft. No automatic order retry or paid changes.
+
+## Released 17 Nov 2026
+PR #37, source c4d1d32abb3d24c3658608f824e4fad18a6b18e1; guarded workflow
+44079245874 succeeded. Production Worker a7f452e2-236d-4158-a722-f8e7e01020ad,
+test aad0df9d-5786-4962-a64b-4d4a7ef289ee. Apps Script remains production v38,
+test v21. All 192 tests, lint/build and test/both-host production smoke pass.
+Live owner session verifies stock data and date-error/retry recovery, paid totals
+and repaired order; unsigned stock API redirects to Access. Phone fixture
+verifies early draft blocked, late QR enables draft, stock decisions/review/copy
+and refresh persistence. No successful production checkout was created for smoke.
+Rollback Worker 5dd8b8cc-e8ae-4097-8d61-e1c36df45007; preserve repaired Sheet data.
