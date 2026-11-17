@@ -205,6 +205,14 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- Order repair / WhatsApp QR readiness (17 Nov 2026): corrected SG-0074's copied
+  request ID and cleared its unrelated copied checkout fingerprint in production
+  Orders row 60; Amount Due now matches its existing Total of S$90. Paid/status,
+  items and customer identity retained. Alf SG-0075 is saved at S$46; its WhatsApp
+  message used the delayed/unverified fallback before the browser confirmed save.
+  Removing that draft path: only saved receipts with valid QR links may generate
+  order WhatsApp messages. Isolated checkout fix/order-identity-whatsapp-20261117.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.
@@ -559,3 +567,14 @@ Architecture baseline and payment discovery.
 - Automated payment confirmation is not implemented or approved yet.
 
 Final test Worker: `de6b3baa-37e5-4a33-bed0-f6d3916c1a66` (Apps Script v19).
+
+- ADMIN-005 stock restoration and paid summary in progress (17 Nov 2026). User
+  reported the stock checker missing from live admin and asked for paid count/SGD
+  total. Reuse the legacy ingredient-check workflow behind the existing admin
+  login, reading environment-specific published snapshots; legacy /stock stays
+  separate. Paid summary uses validated selected-bake orders without new writes.
+
+- The combined QR readiness, stock admin and paid-summary changes pass all 192
+  tests, lint/build and phone fixture checks. Anita repair verified live: S$90,
+  no duplicate warning; Federico remains unpaid S$20. Preparing guarded release;
+  Apps Script code and customer order writes are outside this application release.

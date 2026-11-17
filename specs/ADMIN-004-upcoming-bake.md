@@ -105,3 +105,10 @@ User approved “push to prod”. PR #32 merged; release 42940207454 succeeded o
 5370c82e69b07fdf7e4e44df49c11bf75c626a9c. Production Worker
 `da794f86-cb92-4f8a-aaa7-ada0732e825b`, Apps Script v38. Live read verifies
 21 Nov preparation and delivery-expense input; no production data edited.
+
+## Paid summary extension (17 Nov 2026)
+User requested paid value and quantity. Add a Paid summary card with the number
+of paid active, nonduplicate orders and their recorded amounts due summed in SGD.
+Use the selected bake's existing validated response. Exclude cancelled/duplicate
+records and do not estimate unreadable amounts; retain existing quality warnings.
+No new payment, paid-state, Sheet or referral writes.

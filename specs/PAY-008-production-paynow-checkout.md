@@ -69,3 +69,16 @@ cross-environment short links checked live. Existing test link unchanged and
 rendered in Chrome. Browser fixtures verify production items/WhatsApp/loading,
 read-only retry and independently decoded PNG download. No real production
 order or payment created for smoke; physical bank-app import remains unverified.
+
+## WhatsApp readiness correction approved 17 Nov 2026
+
+User reported Alf's unconfirmed-save WhatsApp draft and explicitly requires the
+QR link before generating WhatsApp. This supersedes the earlier optional-QR and
+unconfirmed-save handoff exceptions above. Both production and test generate an
+order draft only for a saved receipt with a valid, matching, unexpired QR link.
+Pending/delayed states retain their loader while the single request is active;
+no fallback draft after eight seconds. Saved-without-QR, expired/mismatched QR,
+reload/unverified and network failure show no generated draft. Retain the saved
+receipt/reference/request ID and plain bakery contact number for manual help;
+never retry the order write or infer payment. A late valid saved result enables
+the draft, with the QR link first. User expects the production issue fixed.

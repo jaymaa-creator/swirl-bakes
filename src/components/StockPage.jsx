@@ -25,8 +25,10 @@ function groupByLocation(items) {
     }, []);
 }
 
-export default function StockPage({ isTestSite }) {
+export default function StockPage({ isTestSite, adminMode = false, batchKey = "", onRetry }) {
+  const Page = adminMode ? "div" : "main";
   const [hasStockAccess, setHasStockAccess] = useState(() => {
+    if (adminMode) return true;
     try {
       return window.sessionStorage.getItem(STOCK_ACCESS_KEY) === "granted";
     } catch {
@@ -48,14 +50,15 @@ export default function StockPage({ isTestSite }) {
   const feedbackTimer = useRef(null);
 
   useEffect(() => {
-    if (!isTestSite || !hasStockAccess) return undefined;
+    if ((!isTestSite && !adminMode) || !hasStockAccess) return undefined;
 
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 8_000);
 
-    fetch(`/api/stock?refresh=${Date.now()}`, {
+    fetch(adminMode ? `/api/admin/stock?batch=${encodeURIComponent(batchKey)}` : `/api/stock?refresh=${Date.now()}`, {
       cache: "no-store",
       signal: controller.signal,
+      redirect: "error",
       headers: { Accept: "application/json" },
     })
       .then(async (response) => {
@@ -90,7 +93,7 @@ export default function StockPage({ isTestSite }) {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [hasStockAccess, isTestSite]);
+  }, [hasStockAccess, isTestSite, adminMode, batchKey]);
 
   useEffect(() => {
     if (!shopping || status !== "ready") return;
@@ -99,7 +102,7 @@ export default function StockPage({ isTestSite }) {
 
   useEffect(() => () => window.clearTimeout(feedbackTimer.current), []);
 
-  if (!isTestSite) {
+  if (!isTestSite && !adminMode) {
     return <AccessMessage title="This stock page is only available on the test site." />;
   }
 
@@ -122,7 +125,7 @@ export default function StockPage({ isTestSite }) {
 
   if (!hasStockAccess) {
     return (
-      <main className="stock-page">
+      <Page className="stock-page">
         <section className="stock-message stock-access" aria-labelledby="stock-access-title">
           <img src="/logo.webp" alt="Swirl Girl" />
           <span className="stock-eyebrow">Kitchen access</span>
@@ -146,23 +149,23 @@ export default function StockPage({ isTestSite }) {
             <button type="submit">Continue</button>
           </form>
         </section>
-      </main>
+      </Page>
     );
   }
 
   if (status === "loading") {
     return (
-      <main className="stock-page">
+      <Page className="stock-page">
         <div className="stock-loading" role="status">
           <CinnamonLoader size={58} className="text-brandBrown" />
           <p>Preparing this week&apos;s ingredient list...</p>
         </div>
-      </main>
+      </Page>
     );
   }
 
   if (status === "error" || !shopping) {
-    return <AccessMessage title="We could not load the stock list." detail={errorMessage} retry />;
+    return <AccessMessage title="We could not load the stock list." detail={errorMessage} retry retryAction={onRetry} embedded={adminMode} />;
   }
 
   const items = shopping.items;
@@ -303,7 +306,7 @@ export default function StockPage({ isTestSite }) {
   };
 
   return (
-    <main className="stock-page">
+    <Page className="stock-page">
       <div className="stock-shell">
         <header className="stock-header">
           <a href="/" className="stock-brand" aria-label="Back to Swirl Girl">
@@ -427,19 +430,20 @@ export default function StockPage({ isTestSite }) {
           </section>
         )}
       </div>
-    </main>
+    </Page>
   );
 }
 
-function AccessMessage({ title, detail = "", retry = false }) {
+function AccessMessage({ title, detail = "", retry = false, retryAction, embedded = false }) {
+  const Page = embedded ? "div" : "main";
   return (
-    <main className="stock-page">
+    <Page className="stock-page">
       <div className="stock-message">
         <img src="/logo.webp" alt="Swirl Girl" />
         <h1>{title}</h1>
         {detail ? <p>{detail}</p> : null}
-        {retry ? <button type="button" onClick={() => window.location.reload()}>Try again</button> : <a href="/">Back to Swirl Girl</a>}
+        {retry ? <button type="button" onClick={retryAction || (() => window.location.reload())}>Try again</button> : <a href="/">Back to Swirl Girl</a>}
       </div>
-    </main>
+    </Page>
   );
 }

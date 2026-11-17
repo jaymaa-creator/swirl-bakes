@@ -20,7 +20,7 @@ export default {
       response.headers.set('X-Robots-Tag', 'noindex, nofollow');
       return response;
     }
-    if (isAdminPath(url.pathname) && !['/api/admin/bake-orders', '/api/admin/reports', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(url.pathname)) return worker.fetch(request, { ...env, ISOLATED_TEST_BACKEND: true }, ctx);
+    if (isAdminPath(url.pathname) && !['/api/admin/stock', '/api/admin/bake-orders', '/api/admin/reports', '/api/admin/menu', '/api/admin/photos/upload', '/api/admin/photos/publish'].includes(url.pathname)) return worker.fetch(request, { ...env, ISOLATED_TEST_BACKEND: true }, ctx);
     // Retire the old production publisher without changing production's script or
     // causing its monitoring to report a failed publish. Nothing is persisted.
     if (url.pathname === '/api/menu/sync') {
@@ -37,7 +37,7 @@ export default {
     // One fresh snapshot per request. Start it alongside the identity check;
     // reuse it for validation and item labels, never across customer requests.
     const kv = env.MENU_SNAPSHOT;
-    const needsMenu = ['/api/menu', '/api/stock', '/api/orders'].includes(url.pathname);
+    const needsMenu = ['/api/admin/stock', '/api/menu', '/api/stock', '/api/orders'].includes(url.pathname);
     const bundlePromise = needsMenu
       ? Promise.resolve().then(() => kv?.get('isolated-test:menu-snapshots-v1', 'json')).catch(() => null)
       : null;

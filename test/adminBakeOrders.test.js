@@ -42,7 +42,7 @@ test('upcoming bake remains through cutoff and bake day, honours closed dates wi
 test('item totals preserve units, add-ons, names and cancellations; duplicates never inflate summary',()=>{
   const h=harness([row(),row({0:'SG-002',4:'Banana Cake (cake) x2, Chocolate chips for Banana Cake x2 (+S$4.00), Tote bag (bag) x1',5:54,7:true,8:'Closed',13:'r2'}),row({0:'SG-003',8:'Cancelled',13:'r3'}),row({0:'SG-004',13:'duplicate'}),row({0:'SG-005',13:'duplicate'})]);
   const report=h.report(), summary=summariseBakeOrders(report.orders);
-  assert.equal(summary.orders,2);assert.equal(summary.completed,1);assert.equal(summary.unpaid,1);assert.equal(summary.unpaidCents,2550);
+  assert.equal(summary.orders,2);assert.equal(summary.completed,1);assert.equal(summary.unpaid,1);assert.equal(summary.unpaidCents,2550);assert.equal(summary.paid,1);assert.equal(summary.paidCents,5400);
   assert.equal(summary.items.find(i=>i.name==='Sourdough (loaf)').quantity,2);
   assert.equal(summary.items.find(i=>i.name==='Chocolate chips for Banana Cake').quantity,2);
   assert.equal(summary.items.find(i=>i.name==='Tote bag (bag)').quantity,1);
