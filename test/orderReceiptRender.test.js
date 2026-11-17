@@ -10,8 +10,9 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
   const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: "custom" });
   try {
     const { default: OrderReceipt } = await server.ssrLoadModule("/src/components/OrderReceipt.jsx");
+    const production = await productionPayments.issue({ ok: true, orderNumber: "SG-0123", amountDueSgd: 25.50 }, "fixture", undefined, [{ name: "Sourdough (loaf)", quantity: 1 }]);
     const render = (changes = {}, enabled = true, testMode = false, requestPending = false) => renderToStaticMarkup(React.createElement(OrderReceipt, {
-      receipt: { status: "saved", orderNumber: "SG-TEST", whatsappOpened: true, message: "Test order", ...changes },
+      receipt: { status: "saved", orderNumber: production.orderNumber, paynow: production, amountDueSgd:25.5, whatsappOpened: true, message: "Test order", ...changes },
       brand: { name: "Swirl Girl", waNumberE164: "6581234567" },
       miniGameEnabled: enabled,
       testMode, requestPending,
@@ -27,7 +28,7 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
       { status: "unverified" }, { orderNumber: "" },
     ]) assert.doesNotMatch(render(changes), /href="\/minigame"/);
     assert.doesNotMatch(render({}, false), /href="\/minigame"/);
-    assert.match(render({}, true, true), /https:\/\/wa.me/);
+    assert.doesNotMatch(render({}, true, true), /https:\/\/wa.me/);
     assert.match(render({}, true, true), /TEST order only/);
     const paynow = await issueTestPayment({ ok: true, orderNumber: "TEST-qr-render", amountDueSgd: 11.34 }, "test-secret", undefined, [{ name: "Banana Cake", quantity: 2 }]);
     const changes = { paynow, orderNumber: paynow.orderNumber, amountDueSgd: 11.34 };
@@ -44,7 +45,7 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
     assert.match(paymentHtml, /Your order/);
     assert.match(paymentHtml, /Banana Cake/);
     assert.match(paymentHtml, /× 2/);
-    assert.match(render({ status: "delayed", orderNumber: "" }, true, true), /Ask us to check this order — no QR yet/);
+    assert.match(render({ status: "delayed", orderNumber: "" }, true, true), /WhatsApp waiting for QR link/);
     assert.doesNotMatch(render({ status: "delayed", orderNumber: "" }, true, true), />Send via WhatsApp</);
     assert.match(render({ status: "pending", orderNumber: "" }, true, true), /Saving your order and preparing its QR link/);
     const slowLive = render({ status: "delayed", orderNumber: "" }, true, true, true);
@@ -56,12 +57,11 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
     assert.match(render({ status: "delayed" }, true, false, true), /cinnamon-loader__rotor/);
     for (const status of ["delayed", "unverified"]) {
       const fallback = render({ status, orderNumber: "", whatsappOpened: false, id: "123e4567-e89b-42d3-a456-426614174000" });
-      assert.match(fallback, /Ask us to check this order/);
+      assert.match(fallback, /WhatsApp waiting for QR link/);
       assert.doesNotMatch(fallback, /Send via WhatsApp/);
-      const href = fallback.match(/href="(https:\/\/wa.me[^"]+)"/)[1].replace(/&amp;/g, "&");
-      assert.match(new URL(href).searchParams.get("text"), /^Order save not confirmed\./);
+      assert.doesNotMatch(fallback, /https:\/\/wa.me|\?text=/);
+      assert.match(fallback,/123e4567-e89b-42d3-a456-426614174000/);
     }
-    const production = await productionPayments.issue({ ok: true, orderNumber: "SG-0123", amountDueSgd: 25.50 }, "fixture", undefined, [{ name: "Sourdough (loaf)", quantity: 1 }]);
     const productionReceipt = render({ paynow: production, orderNumber: production.orderNumber, amountDueSgd: 25.50 });
     assert.match(productionReceipt, /Your payment QR is ready/);
     assert.doesNotMatch(productionReceipt, /TEST|Test order: paying/);
@@ -70,6 +70,15 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
     assert.match(productionHtml, /S\$25.50/);
     assert.match(productionHtml, /Wait for bakery confirmation/);
     assert.doesNotMatch(productionHtml, /TEST|Test checkout/);
+    for (const changes of [{paynow:undefined},{amountDueSgd:0},{paynow:{...production,expiresAt:1}},{paynow:{...production,orderNumber:'SG-other'}}]) {
+      const blocked=render({...changes,whatsappOpened:false});
+      assert.doesNotMatch(blocked,/href="https:\/\/wa.me|>Send via WhatsApp</);
+      assert.match(blocked,/WhatsApp waiting for QR link/);
+    }
+    const early=render({status:'delayed',orderNumber:'',paynow:undefined,whatsappOpened:false},true,false,true);
+    assert.doesNotMatch(early,/href="https:\/\/wa.me/);
+    assert.match(early,/cinnamon-loader__rotor/);
+    assert.match(productionReceipt, /Payment%20QR%3A/);
     const rejected = render({ status: "rejected", orderNumber: "", whatsappOpened: false });
     assert.match(rejected, /This order was not recorded/);
     assert.doesNotMatch(rejected, /Send via WhatsApp|Simulate WhatsApp handoff/);

@@ -22,12 +22,8 @@ export function watchOrderRequest(request, onUpdate) {
 }
 
 export function receiptMessage(receipt, { testMode = false } = {}) {
-  if (!receipt.orderNumber) {
-    if (testMode) return `TEST ONLY — Order reference and payment QR are not ready yet. Please check this order before I pay.\n\n${receipt.message}`;
-    const requestId = typeof receipt.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipt.id)
-      ? [`Request ID: ${receipt.id}`] : [];
-    return ["Order save not confirmed. Please check whether this order is in the Sheet before confirming it.", ...requestId, "", receipt.message].join("\n");
-  }
+  const payment = receiptPayment(receipt, undefined, { testMode });
+  if (!payment) return "";
   const [heading, ...lines] = receipt.message.split("\n");
   const confirmed = [];
   if (Number.isFinite(receipt.amountDueSgd)) confirmed.push(`Confirmed amount due: S$${receipt.amountDueSgd.toFixed(2)}`);
@@ -35,7 +31,6 @@ export function receiptMessage(receipt, { testMode = false } = {}) {
   const detailLines = Number.isFinite(receipt.amountDueSgd)
     ? lines.filter((line) => !/^Estimated total:/i.test(line))
     : lines;
-  const payment = receiptPayment(receipt, undefined, { testMode });
   const paymentLines = payment ? [`Payment QR${testMode ? " (TEST)" : ""}: ${payment.url}`, ""] : [];
   const messageLines = payment ? detailLines.filter(line => line !== "Please confirm availability and PayNow details.") : detailLines;
   return [...paymentLines, testMode ? `TEST ONLY — ${heading}` : heading, `Order reference: ${receipt.orderNumber}`, ...confirmed, ...messageLines, ...(payment ? ["", "Please confirm my order before I pay. Payment will be checked manually."] : [])].join("\n");

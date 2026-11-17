@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { productionPayments } from "../src/paynowPayments.js";
 import { watchOrderRequest, receiptMessage, REFERENCE_WAIT_MS } from "../src/lib/orderReceipt.js";
 
 test("slow order shows a fallback after eight seconds and accepts a late reference", async (t) => {
@@ -36,9 +37,11 @@ test("known stock rejection is distinguished from an uncertain network failure",
   assert.deepEqual(states, [{ status: "rejected", errorCode: "ORDER_UNAVAILABLE" }]);
 });
 
-test("receipt WhatsApp message includes returned reference without changing receipt details", () => {
-  const receipt = { message: "Swirl Girl\nTotal: S$15.50", orderNumber: "SG-0123" };
-  assert.equal(receiptMessage(receipt), "Swirl Girl\nOrder reference: SG-0123\nTotal: S$15.50");
+test("receipt WhatsApp message requires its QR and includes the returned reference", async () => {
+  const paynow = await productionPayments.issue({ok:true,orderNumber:"SG-0123",amountDueSgd:15.5},"fixture");
+  const receipt = {status:"saved",paynow,amountDueSgd:15.5,message: "Swirl Girl\nTotal: S$15.50", orderNumber: "SG-0123" };
+  assert.ok(receiptMessage(receipt).startsWith(`Payment QR: ${paynow.url}\n`));
+  assert.match(receiptMessage(receipt), /Order reference: SG-0123/);
   assert.equal(receipt.message, "Swirl Girl\nTotal: S$15.50");
 });
 
@@ -47,7 +50,8 @@ test("receipt uses authoritative referral result in WhatsApp text", async () => 
   await watchOrderRequest(Promise.resolve({ orderNumber: "SG-77", referralCode: "SGABC123",
     referralDiscountSgd: 5, creditRedeemedSgd: 0, amountDueSgd: 30 }), (state) => states.push(state));
   assert.equal(states[0].amountDueSgd, 30);
-  const message = receiptMessage({ message: "Swirl Girl\nItems subtotal: S$35.00\nEstimated total: S$35.00",
+  const paynow = await productionPayments.issue({ok:true,orderNumber:"SG-77",amountDueSgd:30},"fixture");
+  const message = receiptMessage({ status:"saved",paynow,message: "Swirl Girl\nItems subtotal: S$35.00\nEstimated total: S$35.00",
     orderNumber: "SG-77", referralCode: "SGABC123", amountDueSgd: 30 });
   assert.match(message, /Confirmed amount due: S\$30\.00/);
   assert.doesNotMatch(message, /Estimated total:/);
@@ -55,18 +59,10 @@ test("receipt uses authoritative referral result in WhatsApp text", async () => 
 });
 
 
-test("unconfirmed WhatsApp handoffs explicitly request a recording check and retain order details", () => {
-  const receipt = { id: "123e4567-e89b-42d3-a456-426614174000", message: "Swirl Girl\nItems: Cinnamon x1\nEstimated total: S$15.50", orderNumber: "" };
-  for (const status of ["delayed", "unverified"]) {
-    const message = receiptMessage({ ...receipt, status });
-    assert.match(message, /^Order save not confirmed\./);
-    assert.match(message, /Please check whether this order is in the Sheet before confirming it/);
-    assert.match(message, /Request ID: 123e4567-e89b-42d3-a456-426614174000/);
-    assert.ok(message.endsWith(receipt.message));
-    assert.doesNotMatch(message, /Order reference:/);
-  }
-  assert.doesNotMatch(receiptMessage({ ...receipt, id: undefined }), /undefined|Request ID:/);
-  const saved = receiptMessage({ ...receipt, status: "saved", orderNumber: "SG-123" });
-  assert.doesNotMatch(saved, /save not confirmed|Request ID:/);
-  assert.match(saved, /Order reference: SG-123/);
+test("no WhatsApp draft exists without a saved, matching, unexpired QR", async () => {
+  const paynow = await productionPayments.issue({ok:true,orderNumber:"SG-75",amountDueSgd:46},"fixture");
+  const receipt={status:"saved",paynow,amountDueSgd:46,orderNumber:"SG-75",id:"fixture",message:"Swirl Girl\nItems: Cake x1"};
+  for(const status of ["pending","delayed","unverified","rejected"])assert.equal(receiptMessage({...receipt,status}),"");
+  for(const changes of [{paynow:undefined},{orderNumber:"SG-other"},{amountDueSgd:20},{amountDueSgd:0},{paynow:{...paynow,expiresAt:1}},{paynow:{...paynow,url:"https://evil.invalid/pay#s.aaaaaaaaaaaaaaaaaaaaaa"}}])assert.equal(receiptMessage({...receipt,...changes}),"");
+  assert.ok(receiptMessage(receipt).startsWith(`Payment QR: ${paynow.url}\n`));
 });

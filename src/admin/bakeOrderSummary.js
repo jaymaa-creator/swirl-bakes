@@ -4,6 +4,8 @@ export function summariseBakeOrders(orders) {
   for (const order of active) for (const item of order.items) quantities.set(item.name, (quantities.get(item.name) || 0) + item.quantity);
   return {
     orders: active.length, completed: active.filter(o => o.completed).length,
+    paid: active.filter(o => o.paid).length,
+    paidCents: active.filter(o => o.paid && o.amountCents !== null).reduce((n, o) => n + o.amountCents, 0),
     unpaid: active.filter(o => !o.paid).length,
     unpaidCents: active.filter(o => !o.paid && o.amountCents !== null).reduce((n, o) => n + o.amountCents, 0),
     items: [...quantities].map(([name, quantity]) => ({ name, quantity })).sort((a, b) => a.name.localeCompare(b.name)),
