@@ -6,6 +6,8 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Equalized mobile carousel card heights on the test storefront.
+
 - Consolidated pickup and delivery wording in the mobile test process section.
 
 - Mobile storefront deployed to test only (19 Nov 2026). Phone layouts feature the
