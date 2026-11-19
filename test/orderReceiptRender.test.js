@@ -50,7 +50,9 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
     assert.match(render({ status: "pending", orderNumber: "" }, true, true), /Saving your order and preparing its QR link/);
     const slowLive = render({ status: "delayed", orderNumber: "" }, true, true, true);
     assert.match(slowLive, /cinnamon-loader__rotor/);
-    assert.match(slowLive, /Saving your order and preparing its QR link/);
+    assert.match(slowLive, /Still waiting for your order reference/);
+    assert.match(slowLive, /role="progressbar"[^>]*>[\s\S]*?receipt-bun-hop/);
+    assert.doesNotMatch(render({ status: "unverified" }), /role="progressbar"/);
     assert.doesNotMatch(slowLive, />Send via WhatsApp</);
     for (const status of ["saved", "unverified", "rejected"]) assert.doesNotMatch(render({ status }, true, true, true), /cinnamon-loader__rotor/);
     assert.doesNotMatch(render({ status: "delayed" }, true, true, false), /cinnamon-loader__rotor/);
