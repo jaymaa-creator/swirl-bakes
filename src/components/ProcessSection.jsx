@@ -28,9 +28,18 @@ function StepIcon({ kind }) {
   );
 }
 
-export default function ProcessSection({ brand, brandColors }) {
+export default function ProcessSection({ brand, brandColors, mobile }) {
   const deliveryMinimum = `S$${brand.deliveryMinimumSgd}`;
   const deliveryFee = `S$${brand.deliveryFeeSgd}`;
+
+  if (mobile) return (
+    <section id="how" className="mx-4 scroll-mt-20 border-b border-line pb-6 pt-2">
+      <h2 className="text-2xl text-ink">Saturday pickup &amp; delivery</h2>
+      <p className="mt-2 text-sm leading-6 text-inkMuted">
+        Collect in Joo Chiat, or get delivery for {deliveryFee} on bake orders of {deliveryMinimum} or more.
+      </p>
+    </section>
+  );
 
   return (
     <section
@@ -108,7 +117,7 @@ export default function ProcessSection({ brand, brandColors }) {
                   <div className="text-base font-bold tracking-tight text-ink">{s.title}</div>
                 </div>
               </div>
-              <div className="mt-5 max-w-[260px] text-[0.9rem] text-inkMuted leading-7">{s.body}{s.step === "3" && <span className="sm:hidden"> We’ll share the pickup details after confirmation.</span>}</div>
+              <div className="mt-5 max-w-[260px] text-[0.9rem] text-inkMuted leading-7">{s.body}</div>
             </div>
           </div>
         ))}

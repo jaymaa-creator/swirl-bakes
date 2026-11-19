@@ -422,6 +422,7 @@ function BakesLandingPage() {
         <InstagramReelSection mobile={mobile} brand={BRAND} />
 
         <ProcessSection
+          mobile={mobile}
           brand={BRAND}
           brandColors={BRAND.colors}
           deliveryOptions={BRAND.deliveryOptions}
