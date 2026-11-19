@@ -6,6 +6,9 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Receipt UX: three left-to-right buns, 40px hops, 0.5s per hop and six-second crossings. Progress uses existing request state without polling.
+
+
 - Sharpened the mobile hero and poster and reduced video compression on test. The 60 fps pullback reverses into the close-up before looping.
 
 - Interpolated the tracked mobile pullback to 60 fps at its intended slow-motion speed.

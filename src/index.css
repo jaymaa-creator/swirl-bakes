@@ -414,3 +414,17 @@ h1, h2, h3, h4 {
   letter-spacing: 0.12em;
 }
 .bake-rail .bake-photo { aspect-ratio: 16 / 10; }
+
+@keyframes receipt-bun-travel {
+  from { left: -32px; }
+  to { left: 100%; }
+}
+@keyframes receipt-bun-hop {
+  from { transform: translateY(0); animation-timing-function: ease-out; }
+  50% { transform: translateY(calc(-1 * var(--hop-height, 40px))); animation-timing-function: ease-in; }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .receipt-bun { animation: receipt-bun-travel var(--crossing, 6s) linear infinite; animation-delay: calc(var(--phase) * var(--crossing, 6s)); }
+  .receipt-bun-hop { animation: receipt-bun-hop var(--hop-time, 0.5s) infinite; animation-delay: var(--hop-delay); }
+}

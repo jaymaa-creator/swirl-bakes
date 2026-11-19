@@ -1,7 +1,7 @@
 import { receiptPayment } from "../lib/paynow";
 import { buildWhatsAppLink } from "../lib/orderMessaging";
 import { receiptMessage } from "../lib/orderReceipt";
-import CinnamonLoader from "./ui/CinnamonLoader";
+import BunProgress from "./BunProgress";
 
 export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp, miniGameEnabled = false, testMode = false, requestPending = false }) {
   const payment = receiptPayment(receipt, undefined, { testMode });
@@ -16,6 +16,13 @@ export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp,
         {testMode ? <p className="mt-3 font-semibold text-brandBrown">TEST order only — WhatsApp will open a draft for you to review and send.</p> : null}
         <h1 className="mt-4 text-3xl text-ink" tabIndex={-1} autoFocus>Your order request</h1>
         <div className="mt-5 rounded-2xl border border-line bg-cream p-4" role="status">
+          {loading ? <>
+            <div className="flex items-center gap-3 font-semibold text-brandBrown">
+              <span>{pending ? "Saving your order and preparing its QR link…" : "Still waiting for your order reference…"}</span>
+            </div>
+            <BunProgress />
+            <p className="text-sm text-inkMuted">{pending ? "When your order is ready, tap Send via WhatsApp." : "Keep this page open. Your request is still in progress."}</p>
+          </> : <>
           <p className="font-semibold text-ink">{saved ? `Reference: ${receipt.orderNumber}` : pending ? "Getting your order reference..." : rejected ? "This order was not recorded" : "Reference not confirmed yet"}</p>
           <p className="mt-2 text-sm leading-6 text-inkMuted">
             {saved
@@ -27,6 +34,7 @@ export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp,
                   : loading ? "Still saving your order and preparing its QR link. Please wait here; do not place another order."
                   : "The save could not be verified. Do not place another order. Contact the bakery with the request ID below so we can check the Sheet."}
           </p>
+          </>}
           {!rejected ? <p className="mt-2 text-xs text-inkMuted">Awaiting bakery confirmation. Payment has not been confirmed.</p> : null}
         </div>
         <dl className="mt-6 grid gap-4 text-sm">
@@ -50,13 +58,6 @@ export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp,
           {testMode ? <p className="mt-2 text-xs font-semibold text-brandBrown">Test order: paying this QR sends real money.</p> : null}
           <a href={payment.url} target="_blank" rel="noopener noreferrer" className="mt-3 block text-sm font-semibold text-brandBrown underline">View payment QR</a>
         </div> : null}
-        {loading ? (
-          <div className="mt-6 flex items-center justify-center gap-1 text-sm text-inkMuted sm:gap-3" role="status">
-            <CinnamonLoader size={96} className="text-brandBrown" />
-            <p className="min-w-0 flex-1 break-words text-center">Saving your order and preparing its QR link…</p>
-            <CinnamonLoader size={96} className="text-brandBrown" />
-          </div>
-        ) : null}
         {payment ? (
           <a href={buildWhatsAppLink(brand.waNumberE164, receiptMessage(receipt, { testMode }))} target="_blank" rel="noopener noreferrer" onClick={event => {
             if (!receiptPayment(receipt, undefined, { testMode })) { event.preventDefault(); return; }
