@@ -1,6 +1,6 @@
 import Card from "./ui/Card";
 
-export default function StorySection({ brand }) {
+export default function StorySection({ brand, mobile }) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-14 sm:py-18">
       <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
@@ -27,7 +27,7 @@ export default function StorySection({ brand }) {
         </Card>
 
         <div className="grid gap-5">
-          <Card>
+          {!mobile && <Card>
             <div className="p-6" data-reveal="right">
               <div className="text-xs uppercase tracking-[0.22em] text-inkMuted">Ingredients</div>
               <h3 className="mt-3 text-2xl text-ink">Ingredient notes</h3>
@@ -40,7 +40,7 @@ export default function StorySection({ brand }) {
                 ))}
               </ul>
             </div>
-          </Card>
+          </Card>}
 
           <Card>
             <div className="p-6" data-reveal="right">

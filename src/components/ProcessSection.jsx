@@ -1,3 +1,4 @@
+import InstagramIcon from "./ui/InstagramIcon";
 import Card from "./ui/Card";
 
 function StepIcon({ kind }) {
@@ -28,9 +29,20 @@ function StepIcon({ kind }) {
   );
 }
 
-export default function ProcessSection({ brand, brandColors }) {
+export default function ProcessSection({ brand, brandColors, mobile }) {
   const deliveryMinimum = `S$${brand.deliveryMinimumSgd}`;
   const deliveryFee = `S$${brand.deliveryFeeSgd}`;
+
+  if (mobile) return (
+    <section id="how" className="mx-4 scroll-mt-20 border-b border-line pb-6 pt-2">
+      <h2 id="story" className="scroll-mt-20 text-2xl text-ink">Saturday pickup &amp; delivery</h2>
+      <p className="mt-2 text-sm leading-6 text-inkMuted">
+        Collect in Joo Chiat. We’ll confirm the pickup time and address with your order.
+      </p>
+      <p className="mt-1 text-sm leading-6 text-inkMuted">Delivery is {deliveryFee} on bake orders of {deliveryMinimum} or more.</p>
+      <a href={brand.instagramUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm text-brandBrown underline underline-offset-4"><InstagramIcon />{brand.instagramHandle}</a>
+    </section>
+  );
 
   return (
     <section
@@ -114,7 +126,7 @@ export default function ProcessSection({ brand, brandColors }) {
         ))}
       </div>
 
-      <div className="mt-6 rounded-3xl border border-line/70 bg-surface p-5 shadow-card" data-reveal="up">
+      <div className="mt-6 hidden sm:block rounded-3xl border border-line/70 bg-surface p-5 shadow-card" data-reveal="up">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
           <div>
             <div className="text-sm font-semibold text-ink">Delivery and pickup</div>

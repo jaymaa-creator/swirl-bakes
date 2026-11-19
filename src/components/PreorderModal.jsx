@@ -5,6 +5,7 @@ import {
   calculateBakesTotalSgd,
   hasSelectedBakes,
 } from "../lib/pricing";
+import MobileOrderItems from "./MobileOrderItems";
 import Card from "./ui/Card";
 import Field from "./ui/Field";
 import Input from "./ui/Input";
@@ -17,6 +18,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 export default function PreorderModal({
   open,
+  mobile = false,
   onClose,
   form,
   setForm,
@@ -117,6 +119,119 @@ export default function PreorderModal({
     setTurnstileToken("");
   }
 
+  if (!open) return null;
+
+  const itemEditor = (
+    <Card>
+      <div id={mobile ? undefined : "order-items"} tabIndex={mobile ? undefined : -1} className="p-3 sm:p-4">
+        {!mobile && <>
+          <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-sm font-semibold">Items</div>
+            <div className="text-xs text-inkMuted">Set quantities for your Saturday batch reservation.</div>
+          </div>
+          <div className="text-sm font-semibold">
+            Price: {menuStatus === "ready" ? money(estimatedTotal) : "—"}
+          </div>
+        </div>
+        {menuStatus === "ready" ? (
+          <div className="mt-2 text-xs text-inkMuted">
+            Items {money(itemsTotal)}
+            {addOnTotal > 0 ? ` (includes ${money(addOnTotal)} chocolate chips)` : ""}
+            {deliveryFee > 0 ? ` + delivery ${money(deliveryFee)}` : ""}
+          </div>
+        ) : null}
+        </>}
+        {menuStatus !== "ready" ? (
+          <div className="mt-3 rounded-2xl border border-line bg-cream px-4 py-3 text-sm text-inkMuted">
+            {menuStatus === "error" ? "The menu couldn't load. Use Retry menu below." : "Loading the current menu and prices..."}
+          </div>
+        ) : (
+          <div className="mt-3 grid gap-3">
+          {menu.map((m) => {
+            const quantityChoices = m.quantityOptions || quantityOptions;
+            const isAvailable = m.available !== false;
+
+            return (
+              <div
+                key={m.id}
+                className={`flex flex-col gap-3 rounded-2xl border border-line bg-cream px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+                  isAvailable ? "" : "opacity-70"
+                }`}
+              >
+                <div>
+                  <div className="text-sm font-medium text-ink">{m.name}</div>
+                  {m.kind === "merch" ? <div className="text-xs text-inkMuted">Only with bakes · collected or delivered together</div> : null}
+                  <div className="text-xs text-inkMuted">
+                    {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : (m.kind === "merch" ? "Sold out" : "Sold out for this bake")}
+                  </div>
+                  {m.id === "banana-bread" && isAvailable ? (
+                    <button
+                      type="button"
+                      disabled={Number(form.items[m.id] || 0) === 0}
+                      onClick={() =>
+                        setForm((current) => {
+                          const nextForm = {
+                            ...current,
+                            bananaChocolateChips: !current.bananaChocolateChips,
+                          };
+                          const nextItemsTotal = calculateBakesTotalSgd(nextForm, menu);
+                          const mustUseCollection = nextItemsTotal < brand.deliveryMinimumSgd;
+
+                          return {
+                            ...nextForm,
+                            delivery: mustUseCollection ? brand.deliveryOptions[1] : current.delivery,
+                            address: mustUseCollection ? "" : current.address,
+                          };
+                        })
+                      }
+                      className={`mt-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                        form.bananaChocolateChips
+                          ? "border-brandBrown bg-brandBrown text-white"
+                          : "border-[#DCCEBF] text-inkMuted hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
+                      }`}
+                      aria-pressed={Boolean(form.bananaChocolateChips)}
+                    >
+                      Add chocolate chips +{money(BANANA_CHOCOLATE_CHIPS_PRICE_SGD)} per cake
+                    </button>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {quantityChoices.map((qty) => {
+                    const isSelected = Number(form.items[m.id] || 0) === qty;
+                    return (
+                      <button
+                        key={qty}
+                        type="button"
+                        disabled={!isAvailable || (m.kind === "merch" && !hasSelectedBakes(menu, form.items))}
+                        onClick={() =>
+                          setItemQuantity(
+                            m.id,
+                            Number(form.items[m.id] || 0) === qty ? 0 : qty
+                          )
+                        }
+                        className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
+                          isSelected
+                            ? "border-brandBrown bg-brandBrown text-white"
+                            : "border-[#DCCEBF] bg-transparent text-inkMuted hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          </div>
+        )}
+
+      </div>
+    </Card>
+  );
+
   return (
     <>
       <Modal
@@ -140,6 +255,9 @@ export default function PreorderModal({
         }
       >
         <div className="grid gap-4">
+          {mobile && <MobileOrderItems menu={menu} form={form} addOnTotal={addOnTotal} menuStatus={menuStatus}>
+            {itemEditor}
+          </MobileOrderItems>}
           <section className="rounded-card border border-line bg-cream p-4 sm:p-5">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">1. Your details</div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -183,113 +301,7 @@ export default function PreorderModal({
             </div>
           </section>
 
-          <Card>
-            <div id="order-items" tabIndex={-1} className="p-3 sm:p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm font-semibold">Items</div>
-                  <div className="text-xs text-inkMuted">Set quantities for your Saturday batch reservation.</div>
-                </div>
-                <div className="text-sm font-semibold">
-                  Price: {menuStatus === "ready" ? money(estimatedTotal) : "—"}
-                </div>
-              </div>
-              {menuStatus === "ready" ? (
-                <div className="mt-2 text-xs text-inkMuted">
-                  Items {money(itemsTotal)}
-                  {addOnTotal > 0 ? ` (includes ${money(addOnTotal)} chocolate chips)` : ""}
-                  {deliveryFee > 0 ? ` + delivery ${money(deliveryFee)}` : ""}
-                </div>
-              ) : null}
-
-              {menuStatus !== "ready" ? (
-                <div className="mt-3 rounded-2xl border border-line bg-cream px-4 py-3 text-sm text-inkMuted">
-                  {menuStatus === "error" ? "The menu couldn't load. Use Retry menu below." : "Loading the current menu and prices..."}
-                </div>
-              ) : (
-                <div className="mt-3 grid gap-3">
-                {menu.map((m) => {
-                  const quantityChoices = m.quantityOptions || quantityOptions;
-                  const isAvailable = m.available !== false;
-
-                  return (
-                    <div
-                      key={m.id}
-                      className={`flex flex-col gap-3 rounded-2xl border border-line bg-cream px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
-                        isAvailable ? "" : "opacity-70"
-                      }`}
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-ink">{m.name}</div>
-                        {m.kind === "merch" ? <div className="text-xs text-inkMuted">Only with bakes · collected or delivered together</div> : null}
-                        <div className="text-xs text-inkMuted">
-                          {isAvailable ? `${money(m.priceSgd)} ${m.unitLabel || "each"}` : (m.kind === "merch" ? "Sold out" : "Sold out for this bake")}
-                        </div>
-                        {m.id === "banana-bread" && isAvailable ? (
-                          <button
-                            type="button"
-                            disabled={Number(form.items[m.id] || 0) === 0}
-                            onClick={() =>
-                              setForm((current) => {
-                                const nextForm = {
-                                  ...current,
-                                  bananaChocolateChips: !current.bananaChocolateChips,
-                                };
-                                const nextItemsTotal = calculateBakesTotalSgd(nextForm, menu);
-                                const mustUseCollection = nextItemsTotal < brand.deliveryMinimumSgd;
-
-                                return {
-                                  ...nextForm,
-                                  delivery: mustUseCollection ? brand.deliveryOptions[1] : current.delivery,
-                                  address: mustUseCollection ? "" : current.address,
-                                };
-                              })
-                            }
-                            className={`mt-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                              form.bananaChocolateChips
-                                ? "border-brandBrown bg-brandBrown text-white"
-                                : "border-[#DCCEBF] text-inkMuted hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
-                            }`}
-                            aria-pressed={Boolean(form.bananaChocolateChips)}
-                          >
-                            Add chocolate chips +{money(BANANA_CHOCOLATE_CHIPS_PRICE_SGD)} per cake
-                          </button>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {quantityChoices.map((qty) => {
-                          const isSelected = Number(form.items[m.id] || 0) === qty;
-                          return (
-                            <button
-                              key={qty}
-                              type="button"
-                              disabled={!isAvailable || (m.kind === "merch" && !hasSelectedBakes(menu, form.items))}
-                              onClick={() =>
-                                setItemQuantity(
-                                  m.id,
-                                  Number(form.items[m.id] || 0) === qty ? 0 : qty
-                                )
-                              }
-                              className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                                isSelected
-                                  ? "border-brandBrown bg-brandBrown text-white"
-                                  : "border-[#DCCEBF] bg-transparent text-inkMuted hover:border-brandCinnamon disabled:cursor-not-allowed disabled:opacity-45"
-                              }`}
-                              aria-pressed={isSelected}
-                            >
-                              {qty} {qty === 1 ? m.quantityLabel || "item" : m.quantityLabelPlural || "items"}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-                </div>
-              )}
-
-            </div>
-          </Card>
+          {!mobile && itemEditor}
 
           <section id="order-delivery" tabIndex={-1} className="rounded-card border border-line bg-cream p-4 sm:p-5">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brandBrown">2. Delivery method</div>

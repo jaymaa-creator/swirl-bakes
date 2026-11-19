@@ -6,6 +6,30 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Sharpened the mobile hero and poster and reduced video compression on test. The 60 fps pullback reverses into the close-up before looping.
+
+- Interpolated the tracked mobile pullback to 60 fps at its intended slow-motion speed.
+
+- Stabilised the mobile hero pullback around the centre bun with a tracked crop and matching poster on test.
+
+- Consolidated the mobile about, social and collection details into the pickup and delivery section on test, with the Instagram camera icon beside the handle.
+
+- Replaced the mobile ordering walkthrough with a short Saturday fulfilment note on test.
+
+- Removed the standalone Ingredient notes card from the mobile test storefront.
+
+- Equalized mobile carousel card heights on the test storefront.
+
+- Consolidated pickup and delivery wording in the mobile test process section.
+
+- Mobile storefront deployed to test only (19 Nov 2026). Phone layouts feature the
+  shorter Joo Chiat hero, swipeable weekly bakes, stock-limited quantity controls,
+  selected-item checkout summary and a single Instagram link. Existing desktop
+  layout retained. Test Worker ad160d2b-446a-48b6-a7dd-f826aac9e295, source 88601d5.
+  All 194 tests passed, along with build, isolation guard and live test smoke checks.
+  Verified the live menu and basket at 320, 390 and 430px, including a touch swipe
+  and checkout quantity edits at 390px. Checked the desktop grid at 1280px.
+
 - QR readiness, stock admin restoration and paid summary released (17 Nov 2026),
   PR #37, source c4d1d32abb3d24c3658608f824e4fad18a6b18e1. Guarded release
   44079245874 passed all jobs. Production Worker a7f452e2-236d-4158-a722-f8e7e01020ad;

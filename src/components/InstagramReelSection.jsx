@@ -1,14 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-function InstagramIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
+import InstagramIcon from "./ui/InstagramIcon";
 
 function loadInstagramScriptOnce() {
   if (typeof window === "undefined") return Promise.resolve();
@@ -72,7 +64,7 @@ function InstagramEmbed({ permalink, shouldRenderEmbed }) {
   );
 }
 
-export default function InstagramReelSection({ brand }) {
+export default function InstagramReelSection({ brand, mobile }) {
   const sectionRef = useRef(null);
   const [isInView, setIsInView] = useState(false);
   const [scriptReady, setScriptReady] = useState(false);
@@ -94,10 +86,10 @@ export default function InstagramReelSection({ brand }) {
 
     observer.observe(sectionRef.current);
     return () => observer.disconnect();
-  }, [isInView]);
+  }, [isInView, mobile]);
 
   useEffect(() => {
-    if (!isInView) return;
+    if (!isInView || mobile) return;
 
     let cancelled = false;
     loadInstagramScriptOnce()
@@ -110,13 +102,22 @@ export default function InstagramReelSection({ brand }) {
     return () => {
       cancelled = true;
     };
-  }, [isInView]);
+  }, [isInView, mobile]);
 
   useEffect(() => {
     if (!shouldRenderEmbed || !scriptReady) return;
     if (!window.instgrm?.Embeds?.process) return;
     window.instgrm.Embeds.process();
   }, [shouldRenderEmbed, scriptReady]);
+
+  if (mobile) return (
+    <section className="mx-4 border-y border-line py-5">
+      <a href={brand.instagramUrl} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-between gap-3 text-brandBrown">
+        <span className="text-xl font-medium">From the kitchen</span>
+        <span className="flex items-center gap-2 text-sm"><InstagramIcon />{brand.instagramHandle}</span>
+      </a>
+    </section>
+  );
 
   return (
     <section

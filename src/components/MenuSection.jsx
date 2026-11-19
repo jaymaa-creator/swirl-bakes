@@ -2,9 +2,19 @@ import { useMemo } from "react";
 import { ALLERGEN_NAMES } from "../config/products";
 import { money } from "../lib/pricing";
 
+import BakeCarousel from "./BakeCarousel";
+import BakeQuantity from "./BakeQuantity";
+import { mobileBakeCopy } from "../lib/mobileBakeCopy";
+
+function MenuGrid({ children }) {
+  return <div className="mt-8 grid gap-5 lg:grid-cols-2">{children}</div>;
+}
+
 export default function MenuSection({
   menu,
   merch = false,
+  mobile = false,
+  currentWeek = true,
   hasSelectedBakes = false,
   quantityOptions,
   form,
@@ -69,17 +79,19 @@ export default function MenuSection({
     );
   }
 
+  const carousel = mobile && !merch;
+  const Layout = carousel ? BakeCarousel : MenuGrid;
   return (
     <section
       id={merch ? "merch" : "menu"}
-      className="mx-auto max-w-6xl rounded-[28px] bg-[#F3ECE4] px-4 py-12 sm:py-16"
+      className={`mx-auto max-w-6xl rounded-[28px] bg-[#F3ECE4] px-4 sm:py-16 ${carousel ? "scroll-mt-24 py-3" : "py-12"}`}
       style={{
         background:
           "radial-gradient(circle at 85% 15%, rgba(196,122,58,0.08), transparent 58%)",
       }}
     >
       <div className="max-w-5xl">
-        <div className="max-w-3xl">
+        {!carousel && <div className="max-w-3xl">
           <div className="text-xs uppercase tracking-[0.2em] text-inkMuted">{merch ? "Merch" : "Menu"}</div>
           <h2 className="mt-2 text-3xl text-ink sm:text-4xl">
             {merch ? "Swirl Girl Swag" : batchLabel ? `Bakes for ${batchLabel}` : "Next available bake"}
@@ -87,7 +99,7 @@ export default function MenuSection({
           {!merch && <p className="mt-3 text-sm leading-7 text-inkMuted sm:text-[1rem]">
             {`Choose your bakes, then reserve the ${batchLabel || "next Saturday"} batch.`}
           </p>}
-        </div>
+        </div>}
 
         {showFollowingBatch ? (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#D8D7D4] bg-[#F0EFED] px-5 py-4 text-sm text-[#5F5E5A]">
@@ -102,7 +114,7 @@ export default function MenuSection({
           </div>
         ) : null}
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+        <Layout key={batchLabel} date={batchLabel?.replace(/,? \d{4}$/, "")} title={currentWeek ? "This week’s bakes" : "Upcoming bakes"}>
           {visibleItems.map((m) => {
             const quantityChoices = m.quantityOptions || quantityOptions;
             const isAvailable = m.available !== false;
@@ -117,7 +129,7 @@ export default function MenuSection({
                 }`}
               >
                 {isFeatured ? (
-                  <div className="border-b border-[#E7C5A3] bg-[linear-gradient(120deg,#FFF7E9,#F4C98C)] px-5 py-4 text-xs font-bold uppercase tracking-[0.2em] text-brandBrown lg:col-span-2">
+                  <div className="bake-special border-b border-[#E7C5A3] bg-[linear-gradient(120deg,#FFF7E9,#F4C98C)] px-5 py-4 text-xs font-bold uppercase tracking-[0.2em] text-brandBrown lg:col-span-2">
                     Weekly special
                   </div>
                 ) : null}
@@ -126,7 +138,7 @@ export default function MenuSection({
                     <img
                       src={m.image}
                       alt={m.imageAlt}
-                      className="aspect-[4/3] w-full object-cover"
+                      className="bake-photo aspect-[4/3] w-full object-cover"
                       loading="lazy"
                       decoding="async"
                     />
@@ -155,7 +167,7 @@ export default function MenuSection({
                     </div>
                   </div>
                 )}
-                <div className={`min-w-0 px-5 py-6 ${isFeatured ? "lg:self-center lg:px-8 lg:py-8" : ""}`}>
+                <div className={`min-w-0 ${carousel ? "px-4 py-4" : "px-5 py-6"} ${isFeatured ? "lg:self-center lg:px-8 lg:py-8" : ""}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="text-2xl text-ink">{m.name}</div>
@@ -166,14 +178,19 @@ export default function MenuSection({
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-inkMuted">{m.note}</p>
+                  {carousel && <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-ink">{money(m.priceSgd)} <span className="font-normal text-inkMuted">{m.unitLabel || "each"}</span></div>
+                    {isAvailable && <BakeQuantity item={m} choices={quantityChoices} quantity={Number(form.items[m.id] || 0)}
+                      onChange={(value) => setForm((f) => ({ ...f, items: { ...f.items, [m.id]: value } }))} />}
+                  </div>}
+                  <p className="mt-3 text-sm leading-relaxed text-inkMuted">{carousel ? mobileBakeCopy(m.note) : m.note}</p>
                   {m.ingredients ? (
                     <div className="mt-4 rounded-card bg-cream px-3 py-3 text-xs leading-5 text-inkMuted">
                       <span className="font-semibold text-ink">Ingredients: </span>
                       {m.ingredients.join(", ")}
                     </div>
                   ) : null}
-                  <div className="mt-4 text-sm font-semibold text-ink">{money(m.priceSgd)} {m.unitLabel || "each"}</div>
+                  {!carousel && <><div className="mt-4 text-sm font-semibold text-ink">{money(m.priceSgd)} {m.unitLabel || "each"}</div>
                   <div className="mt-5 flex flex-wrap items-center gap-2">
                     {isAvailable ? quantityChoices.map((qty) => {
                       const isSelected = Number(form.items[m.id] || 0) === qty;
@@ -204,7 +221,7 @@ export default function MenuSection({
                         </button>
                       );
                     }) : null}
-                  </div>
+                  </div></>}
                   {merch ? (
                     <p className="mt-4 text-xs text-inkMuted">
                       {!isAvailable ? "Sold out" : !hasSelectedBakes ? "Choose your bakes first to add a tote." : `${m.remainingQuantity} available`}
@@ -224,7 +241,7 @@ export default function MenuSection({
               </div>
             );
           })}
-        </div>
+        </Layout>
         {allergenDisclaimer ? (
           <p className="mt-6 max-w-4xl text-xs leading-6 text-inkMuted">
             Baked in a home kitchen. Allergens present in the kitchen may include:{" "}
