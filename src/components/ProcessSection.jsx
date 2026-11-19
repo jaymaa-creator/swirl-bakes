@@ -34,10 +34,12 @@ export default function ProcessSection({ brand, brandColors, mobile }) {
 
   if (mobile) return (
     <section id="how" className="mx-4 scroll-mt-20 border-b border-line pb-6 pt-2">
-      <h2 className="text-2xl text-ink">Saturday pickup &amp; delivery</h2>
+      <h2 id="story" className="scroll-mt-20 text-2xl text-ink">Saturday pickup &amp; delivery</h2>
       <p className="mt-2 text-sm leading-6 text-inkMuted">
-        Collect in Joo Chiat, or get delivery for {deliveryFee} on bake orders of {deliveryMinimum} or more.
+        Collect in Joo Chiat. We’ll confirm the pickup time and address with your order.
       </p>
+      <p className="mt-1 text-sm leading-6 text-inkMuted">Delivery is {deliveryFee} on bake orders of {deliveryMinimum} or more.</p>
+      <a href={brand.instagramUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center text-sm text-brandBrown underline underline-offset-4">{brand.instagramHandle}</a>
     </section>
   );
 

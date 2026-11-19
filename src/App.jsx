@@ -419,7 +419,7 @@ function BakesLandingPage() {
           />
         ) : null}
 
-        <InstagramReelSection mobile={mobile} brand={BRAND} />
+        {!mobile && <InstagramReelSection brand={BRAND} />}
 
         <ProcessSection
           mobile={mobile}
@@ -428,9 +428,9 @@ function BakesLandingPage() {
           deliveryOptions={BRAND.deliveryOptions}
         />
 
-        <div id="story">
-          <StorySection mobile={mobile} brand={BRAND} />
-        </div>
+        {!mobile && <div id="story">
+          <StorySection brand={BRAND} />
+        </div>}
 
         <FaqSection faq={FAQ} />
 

@@ -6,6 +6,8 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Consolidated the mobile about, social and collection details into the pickup and delivery section on test.
+
 - Replaced the mobile ordering walkthrough with a short Saturday fulfilment note on test.
 
 - Removed the standalone Ingredient notes card from the mobile test storefront.
