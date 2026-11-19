@@ -6,6 +6,8 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Consolidated pickup and delivery wording in the mobile test process section.
+
 - Mobile storefront deployed to test only (19 Nov 2026). Phone layouts feature the
   shorter Joo Chiat hero, swipeable weekly bakes, stock-limited quantity controls,
   selected-item checkout summary and a single Instagram link. Existing desktop

@@ -108,13 +108,13 @@ export default function ProcessSection({ brand, brandColors }) {
                   <div className="text-base font-bold tracking-tight text-ink">{s.title}</div>
                 </div>
               </div>
-              <div className="mt-5 max-w-[260px] text-[0.9rem] text-inkMuted leading-7">{s.body}</div>
+              <div className="mt-5 max-w-[260px] text-[0.9rem] text-inkMuted leading-7">{s.body}{s.step === "3" && <span className="sm:hidden"> We’ll share the pickup details after confirmation.</span>}</div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 rounded-3xl border border-line/70 bg-surface p-5 shadow-card" data-reveal="up">
+      <div className="mt-6 hidden sm:block rounded-3xl border border-line/70 bg-surface p-5 shadow-card" data-reveal="up">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
           <div>
             <div className="text-sm font-semibold text-ink">Delivery and pickup</div>
