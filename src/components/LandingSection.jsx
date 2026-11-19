@@ -20,14 +20,14 @@ export default function LandingSection({ brand, batchDate, batchLabel, mobile })
       <div className="relative overflow-hidden rounded-card border border-line bg-surface shadow-card" data-reveal>
         <video
           ref={heroVideoRef}
-          src="/hero-video-opt.webm"
+          src={mobile ? "/hero-mobile.webm" : "/hero-video-opt.webm"}
           className="h-[clamp(260px,44svh,385px)] w-full object-cover sm:h-auto sm:aspect-[16/9]"
           autoPlay
           muted
           loop
           playsInline
           preload="metadata"
-          poster="/hero-poster.jpg"
+          poster={mobile ? "/hero-mobile-poster.jpg" : "/hero-poster.jpg"}
           aria-hidden="true"
         />
         {mobile ? (
