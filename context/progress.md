@@ -6,6 +6,11 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Mobile storefront candidate for test only (19 Nov 2026). Phone layouts feature the
+  shorter Joo Chiat hero, swipeable weekly bakes, stock-limited quantity controls,
+  selected-item checkout summary and a single Instagram link. Existing desktop
+  layout retained. Verified browsing, adding, editing and removing in mobile Chrome.
+
 - QR readiness, stock admin restoration and paid summary released (17 Nov 2026),
   PR #37, source c4d1d32abb3d24c3658608f824e4fad18a6b18e1. Guarded release
   44079245874 passed all jobs. Production Worker a7f452e2-236d-4158-a722-f8e7e01020ad;

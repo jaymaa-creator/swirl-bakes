@@ -378,3 +378,39 @@ h1, h2, h3, h4 {
     transition: none;
   }
 }
+
+.bake-rail {
+  --peek: 2rem;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-block: 0.25rem 0.5rem;
+}
+.bake-rail::-webkit-scrollbar { display: none; }
+.bake-rail > [data-product-id] {
+  position: relative;
+  flex: 0 0 calc(100% - var(--peek));
+  min-width: 0;
+  scroll-snap-align: start;
+  box-shadow: 0 2px 6px rgb(90 56 37 / 7%);
+}
+.bake-rail > :last-child { margin-right: var(--peek); }
+.bake-rail > :only-child { flex-basis: 100%; margin-right: 0; }
+.bake-rail .bake-special {
+  position: absolute;
+  z-index: 1;
+  top: 0.75rem;
+  left: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: #fff5e5;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+}
+.bake-rail .bake-photo { aspect-ratio: 16 / 10; }

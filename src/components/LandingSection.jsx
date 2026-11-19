@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import CutoffCountdown from "./CutoffCountdown";
 import { formatSgDate, getCutoffForSaturday } from "../lib/dates";
 
-export default function LandingSection({ brand, batchDate, batchLabel }) {
+export default function LandingSection({ brand, batchDate, batchLabel, mobile }) {
   const heroVideoRef = useRef(null);
   useEffect(() => {
     if (!heroVideoRef.current) return;
@@ -11,7 +11,7 @@ export default function LandingSection({ brand, batchDate, batchLabel }) {
 
   return (
     <section
-      className="mx-auto max-w-6xl px-4 pb-12 pt-10 sm:pb-16 sm:pt-16"
+      className="mx-auto max-w-6xl px-4 pb-2 pt-4 sm:pb-16 sm:pt-16"
       style={{
         background:
           "radial-gradient(circle at 20% 10%, rgba(196,122,58,0.08), transparent 60%)",
@@ -21,7 +21,7 @@ export default function LandingSection({ brand, batchDate, batchLabel }) {
         <video
           ref={heroVideoRef}
           src="/hero-video-opt.webm"
-          className="h-[490px] w-full object-cover sm:h-auto sm:aspect-[16/9]"
+          className="h-[clamp(260px,44svh,385px)] w-full object-cover sm:h-auto sm:aspect-[16/9]"
           autoPlay
           muted
           loop
@@ -30,6 +30,12 @@ export default function LandingSection({ brand, batchDate, batchLabel }) {
           poster="/hero-poster.jpg"
           aria-hidden="true"
         />
+        {mobile ? (
+          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/5 to-transparent p-5 text-white">
+            <h1 className="max-w-[15ch] text-[2.35rem] leading-[1.02]">Saturday bakes from Joo Chiat.</h1>
+            <p className="mt-2 text-sm font-medium">{batchLabel ? `Next bake · ${batchLabel}` : "Checking the next bake…"}</p>
+          </div>
+        ) : <>
         <div className="absolute inset-0 bg-gradient-to-b from-brandBrown/20 via-brandBrown/30 to-brandBrown/45" />
         <div className="absolute inset-0 flex items-end sm:items-center">
           <div className="flex w-full justify-center px-3 pb-3 sm:px-8 sm:pb-0 lg:px-10">
@@ -64,6 +70,7 @@ export default function LandingSection({ brand, batchDate, batchLabel }) {
             </div>
           </div>
         </div>
+        </>}
       </div>
 
     </section>

@@ -1,6 +1,6 @@
 import { PAYNOW_TEST_HOST, PAYNOW_PRODUCTION_HOST } from "./lib/paynow";
 import AdminPage from "./admin/AdminPage";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import PrivacySection from "./components/PrivacySection";
 import FaqSection from "./components/FaqSection";
 import Seo from "./components/Seo";
@@ -71,7 +71,15 @@ function ReceiptPreview() {
   </>;
 }
 
+const phoneLayout = window.matchMedia("(max-width: 639px)");
+function subscribeToPhoneLayout(notify) {
+  phoneLayout.addEventListener("change", notify);
+  return () => phoneLayout.removeEventListener("change", notify);
+}
+function isPhoneLayout() { return phoneLayout.matches; }
+
 function BakesLandingPage() {
+  const mobile = useSyncExternalStore(subscribeToPhoneLayout, isPhoneLayout);
   const ribbonItems = [
     "Small-batch Saturday baking",
     "Pre-orders close Thursday 10pm",
@@ -380,9 +388,11 @@ function BakesLandingPage() {
       ) : null}
 
       <main className="space-y-6 pb-24 sm:space-y-10 sm:pb-24">
-        <LandingSection brand={BRAND} batchDate={selectedBakeDate} batchLabel={displayBakeWindow} />
+        <LandingSection mobile={mobile} brand={BRAND} batchDate={selectedBakeDate} batchLabel={displayBakeWindow} />
 
         <MenuSection
+          mobile={mobile}
+          currentWeek={selectedBatchKey === nextSaturdayKey && !activeBatchKey}
           menu={bakeMenu}
           quantityOptions={QUANTITY_OPTIONS}
           form={orderForm}
@@ -409,7 +419,7 @@ function BakesLandingPage() {
           />
         ) : null}
 
-        <InstagramReelSection brand={BRAND} />
+        <InstagramReelSection mobile={mobile} brand={BRAND} />
 
         <ProcessSection
           brand={BRAND}
@@ -446,6 +456,7 @@ function BakesLandingPage() {
       ) : null}
 
       <PreorderModal
+        mobile={mobile}
         open={modalOpen}
         onClose={closePreorderModal}
         form={{ ...orderForm, bakeWindow: selectedBatchKey }}

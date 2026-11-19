@@ -72,7 +72,7 @@ function InstagramEmbed({ permalink, shouldRenderEmbed }) {
   );
 }
 
-export default function InstagramReelSection({ brand }) {
+export default function InstagramReelSection({ brand, mobile }) {
   const sectionRef = useRef(null);
   const [isInView, setIsInView] = useState(false);
   const [scriptReady, setScriptReady] = useState(false);
@@ -94,10 +94,10 @@ export default function InstagramReelSection({ brand }) {
 
     observer.observe(sectionRef.current);
     return () => observer.disconnect();
-  }, [isInView]);
+  }, [isInView, mobile]);
 
   useEffect(() => {
-    if (!isInView) return;
+    if (!isInView || mobile) return;
 
     let cancelled = false;
     loadInstagramScriptOnce()
@@ -110,13 +110,22 @@ export default function InstagramReelSection({ brand }) {
     return () => {
       cancelled = true;
     };
-  }, [isInView]);
+  }, [isInView, mobile]);
 
   useEffect(() => {
     if (!shouldRenderEmbed || !scriptReady) return;
     if (!window.instgrm?.Embeds?.process) return;
     window.instgrm.Embeds.process();
   }, [shouldRenderEmbed, scriptReady]);
+
+  if (mobile) return (
+    <section className="mx-4 border-y border-line py-5">
+      <a href={brand.instagramUrl} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-between gap-3 text-brandBrown">
+        <span className="text-xl font-medium">From the kitchen</span>
+        <span className="flex items-center gap-2 text-sm"><InstagramIcon />{brand.instagramHandle}</span>
+      </a>
+    </section>
+  );
 
   return (
     <section
