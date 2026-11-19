@@ -6,6 +6,8 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Sharpened the mobile hero and poster and reduced video compression on test. The 60 fps pullback reverses into the close-up before looping.
+
 - Interpolated the tracked mobile pullback to 60 fps at its intended slow-motion speed.
 
 - Stabilised the mobile hero pullback around the centre bun with a tracked crop and matching poster on test.
