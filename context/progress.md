@@ -6,6 +6,8 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Interpolated the tracked mobile pullback to 60 fps at its intended slow-motion speed.
+
 - Stabilised the mobile hero pullback around the centre bun with a tracked crop and matching poster on test.
 
 - Consolidated the mobile about, social and collection details into the pickup and delivery section on test, with the Instagram camera icon beside the handle.

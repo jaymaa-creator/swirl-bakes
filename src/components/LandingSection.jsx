@@ -6,8 +6,8 @@ export default function LandingSection({ brand, batchDate, batchLabel, mobile })
   const heroVideoRef = useRef(null);
   useEffect(() => {
     if (!heroVideoRef.current) return;
-    heroVideoRef.current.playbackRate = 0.5;
-  }, []);
+    heroVideoRef.current.playbackRate = mobile ? 1 : 0.5;
+  }, [mobile]);
 
   return (
     <section
