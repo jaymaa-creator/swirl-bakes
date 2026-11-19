@@ -428,7 +428,7 @@ function BakesLandingPage() {
         />
 
         <div id="story">
-          <StorySection brand={BRAND} />
+          <StorySection mobile={mobile} brand={BRAND} />
         </div>
 
         <FaqSection faq={FAQ} />

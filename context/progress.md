@@ -6,6 +6,8 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Removed the standalone Ingredient notes card from the mobile test storefront.
+
 - Equalized mobile carousel card heights on the test storefront.
 
 - Consolidated pickup and delivery wording in the mobile test process section.
