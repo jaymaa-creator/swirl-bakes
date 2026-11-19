@@ -1,3 +1,4 @@
+import InstagramIcon from "./ui/InstagramIcon";
 import Card from "./ui/Card";
 
 function StepIcon({ kind }) {
@@ -39,7 +40,7 @@ export default function ProcessSection({ brand, brandColors, mobile }) {
         Collect in Joo Chiat. We’ll confirm the pickup time and address with your order.
       </p>
       <p className="mt-1 text-sm leading-6 text-inkMuted">Delivery is {deliveryFee} on bake orders of {deliveryMinimum} or more.</p>
-      <a href={brand.instagramUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center text-sm text-brandBrown underline underline-offset-4">{brand.instagramHandle}</a>
+      <a href={brand.instagramUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm text-brandBrown underline underline-offset-4"><InstagramIcon />{brand.instagramHandle}</a>
     </section>
   );
 

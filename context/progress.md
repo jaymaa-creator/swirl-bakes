@@ -6,7 +6,7 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
-- Consolidated the mobile about, social and collection details into the pickup and delivery section on test.
+- Consolidated the mobile about, social and collection details into the pickup and delivery section on test, with the Instagram camera icon beside the handle.
 
 - Replaced the mobile ordering walkthrough with a short Saturday fulfilment note on test.
 
