@@ -18,6 +18,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 export default function PreorderModal({
   open,
+  phoneHandoff = false,
   mobile = false,
   onClose,
   form,
@@ -243,13 +244,13 @@ export default function PreorderModal({
           <div className="grid gap-2">
             <div className="flex items-center justify-between text-sm font-semibold"><span>Order total</span><span>{money(estimatedTotal)}</span></div>
             <p id="checkout-guidance" role="status" aria-live="polite" aria-atomic="true" className="text-sm leading-5 text-brandBrown">
-              {firstIssue ? `To continue: ${firstIssue.message}` : "Ready to review your order."}
+              {firstIssue ? `To continue: ${firstIssue.message}` : "Ready to place your order."}
             </p>
             {(menuStatus === "error" || (menuStatus === "ready" && !hasCurrentPrices)) && onRetryMenu ? (
               <button type="button" onClick={onRetryMenu} className="text-left text-sm font-medium text-brandBrown underline">Retry menu</button>
             ) : null}
             <button type="button" onClick={handleWaClick} aria-describedby="checkout-guidance" className="w-full rounded-button bg-brandBrown px-5 py-3 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-brandCinnamon">
-              Review order receipt
+              {phoneHandoff ? "Place order & open WhatsApp" : "Place order to continue to WhatsApp"}
             </button>
           </div>
         }

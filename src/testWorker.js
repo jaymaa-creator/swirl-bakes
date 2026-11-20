@@ -1,3 +1,4 @@
+import { checkout, checkoutMenu, flushCheckout, publishCheckout, refreshCheckout } from "./testCheckout.js";
 import { isAdminPath } from "./admin/access.js";
 import { handleTestPayment, issueShortTestPayment, paymentItemsForOrder } from "./paynowTest.js";
 import worker from './worker.js';
@@ -8,10 +9,29 @@ const SHEET_ID = '1N18vGGPWD9u47Wr2YeWfEydA4oK9Ab-ooEfIvycUbGc';
 const reply = (body, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 export default {
+  async scheduled(_event, env, ctx) {
+    if (env.TEST_D1_CHECKOUT === "1") ctx.waitUntil(flushCheckout(env));
+  },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.hostname !== HOST) return reply({ ok: false, error: 'Test host only' }, 403);
-    if (url.pathname === '/api/paynow/resolve') return handleTestPayment(request, env);
+    const cloudCheckout = env.TEST_D1_CHECKOUT === "1";
+    if (url.pathname === '/api/paynow/resolve') {
+      if (!env.PAYMENT_ORDERS?.prepare) return handleTestPayment(request, env);
+      // Keep existing KV-backed short links readable during the transition.
+      return handleTestPayment(request, {...env, MENU_SNAPSHOT:{get:async key => {
+        const id=key.slice("isolated-test:paynow-link-v1:".length);
+        let row;
+        try {
+          row = await env.PAYMENT_ORDERS.prepare("SELECT token FROM checkout_orders WHERE payment_id=?").bind(id).first();
+        } catch (error) {
+          const legacyToken = await env.MENU_SNAPSHOT.get(key);
+          if (legacyToken) return legacyToken;
+          throw error;
+        }
+        return row?.token || env.MENU_SNAPSHOT.get(key);
+      }}});
+    }
     if (url.pathname === '/pay' || url.pathname === '/pay/') {
       const asset = await env.ASSETS.fetch(request);
       const response = new Response(asset.body, asset);
@@ -30,7 +50,20 @@ export default {
       if (url.pathname.startsWith('/api/')) return reply({ ok: false, error: 'Test backend is not configured' }, 503);
       return env.ASSETS.fetch(request);
     }
+    if (cloudCheckout && url.pathname === "/api/orders") {
+      try { return await checkout(request,env,ctx); }
+      catch { console.error("Isolated checkout unavailable"); return reply({ok:false,error:"Test checkout temporarily unavailable"},503); }
+    }
+    let publication;
     if (url.pathname === '/api/test/menu/sync') {
+      if (cloudCheckout && request.method === "POST") {
+        const payload=await request.clone().json().catch(()=>null);
+        if (payload?.secret === env.TEST_ORDER_WEBHOOK_SECRET && payload.checkout) {
+          publication={...payload.checkout,bundle:{ok:true,currentBatch:payload.currentBatch,snapshots:payload.snapshots}};
+          delete payload.checkout;
+          request=new Request(request.url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        }
+      }
       url.pathname = '/api/menu/sync';
       request = new Request(url, request);
     }
@@ -38,9 +71,19 @@ export default {
     // reuse it for validation and item labels, never across customer requests.
     const kv = env.MENU_SNAPSHOT;
     const needsMenu = ['/api/admin/stock', '/api/menu', '/api/stock', '/api/orders'].includes(url.pathname);
-    const bundlePromise = needsMenu
-      ? Promise.resolve().then(() => kv?.get('isolated-test:menu-snapshots-v1', 'json')).catch(() => null)
-      : null;
+    async function readBundle() {
+      if (cloudCheckout) {
+        const db = env.PAYMENT_ORDERS;
+        const bundle = await checkoutMenu(db);
+        if (bundle) return bundle;
+        const now = Date.now();
+        const lease = await db.prepare("UPDATE checkout_baseline SET revision=? WHERE id=1 AND captured=0 AND revision<? RETURNING id")
+          .bind(now,now-60000).first();
+        if (lease) ctx.waitUntil(refreshCheckout(env));
+      }
+      return kv?.get("isolated-test:menu-snapshots-v1", "json");
+    }
+    const bundlePromise = needsMenu ? Promise.resolve().then(readBundle).catch(() => null) : null;
     // Check the authenticated target identity before any order write. A wrong
     // deployment URL fails closed instead of relaying into a production Sheet.
     if (url.pathname === '/api/orders') {
@@ -79,6 +122,7 @@ export default {
     }
     const orderRequest = url.pathname === '/api/orders' ? request.clone() : null;
     const response = await worker.fetch(request, isolated, ctx);
+    if (publication && response.ok) await publishCheckout(env.PAYMENT_ORDERS,publication);
     if (url.pathname !== '/api/orders' || !response.ok) return response;
     // Enrich only the final validated backend result, including exact replays.
     // QR failure must never disguise a successfully saved order as a failure.

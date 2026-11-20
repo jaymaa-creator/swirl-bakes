@@ -1,6 +1,8 @@
-import { PAYNOW_TEST_HOST, PAYNOW_PRODUCTION_HOST } from "./lib/paynow";
+import LoadingPreview from "./components/LoadingPreview";
+import { LOADING_SEQUENCE_MS } from "./config/checkoutLoading";
+import { receiptPayment, PAYNOW_TEST_HOST, PAYNOW_PRODUCTION_HOST } from "./lib/paynow";
 import AdminPage from "./admin/AdminPage";
-import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import PrivacySection from "./components/PrivacySection";
 import FaqSection from "./components/FaqSection";
 import Seo from "./components/Seo";
@@ -13,7 +15,8 @@ import ProcessSection from "./components/ProcessSection";
 import SiteFooter from "./components/SiteFooter";
 import InstagramReelSection from "./components/InstagramReelSection";
 import OrderReceipt from "./components/OrderReceipt";
-import { watchOrderRequest } from "./lib/orderReceipt";
+import { buildWhatsAppLink } from "./lib/orderMessaging";
+import { receiptMessage, watchOrderRequest } from "./lib/orderReceipt";
 import CinnamonLoader from "./components/ui/CinnamonLoader";
 import StockPage from "./components/StockPage";
 import BRAND from "./config/brand";
@@ -43,6 +46,7 @@ export default function App() {
   const receiptPreviewEnabled = window.location.hostname.startsWith("test-") || ["localhost", "127.0.0.1"].includes(window.location.hostname);
   if (path === "/pay" && [PAYNOW_TEST_HOST, PAYNOW_PRODUCTION_HOST, `www.${PAYNOW_PRODUCTION_HOST}`].includes(window.location.hostname)) return <React.Suspense fallback={<p className="p-8">Loading payment details…</p>}><PaymentPage testMode={window.location.hostname === PAYNOW_TEST_HOST} /></React.Suspense>;
   if (path === "/admin" || path.startsWith("/admin/")) return <AdminPage />;
+  if (path === "/loading-preview" && receiptPreviewEnabled) return <LoadingPreview />;
   if (path === "/receipt-preview" && receiptPreviewEnabled) return <ReceiptPreview />;
   if (path === "/minigame" && miniGameEnabled) {
     return <React.Suspense fallback={<p className="p-8">Loading Bun Bounce...</p>}><SwirlGame /></React.Suspense>;
@@ -100,12 +104,27 @@ function BakesLandingPage() {
     } catch { return null; }
   });
   const [activeOrderRequestId, setActiveOrderRequestId] = useState(null);
+  const [introRequestId, setIntroRequestId] = useState(null);
+  useEffect(() => {
+    if (!introRequestId) return;
+    const timer = window.setTimeout(() => setIntroRequestId(null), LOADING_SEQUENCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [introRequestId]);
+  const holdHandoff = Boolean(receipt && introRequestId === receipt.id && receiptPayment(receipt, undefined, { testMode: window.location.hostname === PAYNOW_TEST_HOST }));
+  const handoffRequest = useRef(null);
+  const phoneHandoff = navigator.userAgentData?.mobile ?? (/iPhone|Android.*Mobile/i.test(navigator.userAgent) || (mobile && window.matchMedia("(pointer: coarse)").matches));
   const [showReceipt, setShowReceipt] = useState(window.location.hash === "#receipt");
   useEffect(() => {
     if (receipt) {
       try { sessionStorage.setItem("swirl-order-receipt", JSON.stringify(receipt)); } catch { /* Receipt remains available in memory. */ }
     }
   }, [receipt]);
+  useEffect(() => {
+    if (holdHandoff || !showReceipt || !receipt || handoffRequest.current !== receipt.id || receipt.status !== "saved") return;
+    handoffRequest.current = null;
+    const message = receiptMessage(receipt, { testMode: window.location.hostname.startsWith("test-") });
+    if (message) window.location.assign(buildWhatsAppLink(BRAND.waNumberE164, message));
+  }, [receipt, showReceipt, holdHandoff]);
   useEffect(() => {
     const onHashChange = () => setShowReceipt(window.location.hash === "#receipt");
     window.addEventListener("hashchange", onHashChange);
@@ -251,6 +270,8 @@ function BakesLandingPage() {
       moneyFormatter: money,
     });
     const id = crypto.randomUUID();
+    handoffRequest.current = phoneHandoff ? id : null;
+    setIntroRequestId(id);
     setActiveOrderRequestId(id);
     setReceipt({
       ...order, id, message, status: "pending", orderNumber: "",
@@ -272,9 +293,10 @@ function BakesLandingPage() {
   };
 
   if (showReceipt && receipt) {
-    return <OrderReceipt receipt={receipt} requestPending={activeOrderRequestId === receipt.id} brand={BRAND} miniGameEnabled={miniGameEnabled} testMode={window.location.hostname.startsWith("test-")}
+    return <OrderReceipt receipt={holdHandoff ? { ...receipt, status: "pending" } : receipt} phoneHandoff={phoneHandoff} requestPending={activeOrderRequestId === receipt.id} brand={BRAND} miniGameEnabled={miniGameEnabled} testMode={window.location.hostname.startsWith("test-")}
       onOpenWhatsApp={() => setReceipt((current) => ({ ...current, whatsappOpened: true }))}
       onBrowse={() => {
+        handoffRequest.current = null;
         setShowReceipt(false);
         window.history.pushState(null, "", "#menu");
         if (receipt.status === "rejected") {
@@ -457,6 +479,7 @@ function BakesLandingPage() {
       ) : null}
 
       <PreorderModal
+        phoneHandoff={phoneHandoff}
         mobile={mobile}
         open={modalOpen}
         onClose={closePreorderModal}

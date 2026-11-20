@@ -4,10 +4,15 @@
 
 Architecture baseline and payment discovery.
 
+## In progress
+
+- Test checkout migration: explicit place-order action and automatic phone handoff after verified QR and a user-activated new WhatsApp tab on laptops. Three cinnamon buns with 40px half-second hops and six-second crossings on the receipt progress bar and eight-second waiting message added. Test-only /loading-preview exposes live animation controls, including one to six staggered left-to-right buns. The isolated test Worker now accepts orders in D1, issues the reference and QR, then synchronises to the test Sheet. Local integration tests cover stock contention, retries, and checkout with a stalled ledger. A single Chrome test order on 2026-11-20 took 75 ms from click to WhatsApp ready (24 ms Worker time). The S$10 test QR resolved, and the test Sheet acknowledgement and its published snapshot matched the order. Direct row-count verification via Sheets/Drive was unavailable. See docs/test-cloud-checkout.md.
+
+- Test receipt and loading preview now cycle through Swirling, Girling and Unfurling once per second. A new test order shows one full three-second cycle before a successful WhatsApp handoff. The real receipt is saved immediately.
+
+- Promoting the three-second receipt and WhatsApp handoff on both production hosts. Production database cutover is staged separately.
+
 ## Completed
-
-- Receipt UX: three left-to-right buns, 40px hops, 0.5s per hop and six-second crossings. Progress uses existing request state without polling.
-
 
 - Sharpened the mobile hero and poster and reduced video compression on test. The 60 fps pullback reverses into the close-up before looping.
 

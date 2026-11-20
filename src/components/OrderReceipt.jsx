@@ -1,9 +1,9 @@
 import { receiptPayment } from "../lib/paynow";
 import { buildWhatsAppLink } from "../lib/orderMessaging";
 import { receiptMessage } from "../lib/orderReceipt";
-import BunProgress from "./BunProgress";
+import BunProgress, { LoadingWords } from "./BunProgress";
 
-export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp, miniGameEnabled = false, testMode = false, requestPending = false }) {
+export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp, miniGameEnabled = false, testMode = false, requestPending = false, phoneHandoff = false }) {
   const payment = receiptPayment(receipt, undefined, { testMode });
   const pending = receipt.status === "pending";
   const loading = pending || (receipt.status === "delayed" && requestPending);
@@ -18,10 +18,11 @@ export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp,
         <div className="mt-5 rounded-2xl border border-line bg-cream p-4" role="status">
           {loading ? <>
             <div className="flex items-center gap-3 font-semibold text-brandBrown">
-              <span>{pending ? "Saving your order and preparing its QR link…" : "Still waiting for your order reference…"}</span>
+              <LoadingWords />
+              <span className="sr-only">{pending ? "Saving your order and preparing its QR link…" : "Still waiting for your order reference…"}</span>
             </div>
             <BunProgress />
-            <p className="text-sm text-inkMuted">{pending ? "When your order is ready, tap Send via WhatsApp." : "Keep this page open. Your request is still in progress."}</p>
+            <p className="text-sm text-inkMuted">{pending ? (phoneHandoff ? "WhatsApp will open when your order is ready." : "When your order is ready, open WhatsApp in a new tab.") : "Keep this page open. Your request is still in progress."}</p>
           </> : <>
           <p className="font-semibold text-ink">{saved ? `Reference: ${receipt.orderNumber}` : pending ? "Getting your order reference..." : rejected ? "This order was not recorded" : "Reference not confirmed yet"}</p>
           <p className="mt-2 text-sm leading-6 text-inkMuted">
@@ -59,7 +60,7 @@ export default function OrderReceipt({ receipt, brand, onBrowse, onOpenWhatsApp,
           <a href={payment.url} target="_blank" rel="noopener noreferrer" className="mt-3 block text-sm font-semibold text-brandBrown underline">View payment QR</a>
         </div> : null}
         {payment ? (
-          <a href={buildWhatsAppLink(brand.waNumberE164, receiptMessage(receipt, { testMode }))} target="_blank" rel="noopener noreferrer" onClick={event => {
+          <a href={buildWhatsAppLink(brand.waNumberE164, receiptMessage(receipt, { testMode }))} target={phoneHandoff ? "_self" : "_blank"} rel="noopener noreferrer" onClick={event => {
             if (!receiptPayment(receipt, undefined, { testMode })) { event.preventDefault(); return; }
             onOpenWhatsApp?.(event);
           }} className="mt-6 block rounded-button bg-brandBrown px-5 py-3 text-center font-semibold text-white">
