@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "swirl-girl",
-  "main": "./src/worker.js",
+  "main": "./src/productionWorker.js",
   "compatibility_date": "2026-07-26",
   "assets": {
     "directory": "./dist",
@@ -25,5 +25,20 @@
       "binding": "ADMIN_IMAGES",
       "bucket_name": "swirl-girl-admin-production"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "PAYMENT_ORDERS",
+      "database_name": "swirl-girl-checkout-production",
+      "database_id": "b2bb4a70-ec26-41c0-990e-48c8902a950c"
+    }
+  ],
+  "vars": {
+    "CHECKOUT_PROBE_URL": "https://script.google.com/macros/s/AKfycby4OStxPajjN6_fM1aF8dNB67CIwHg_HMSDoMjWzN6o7tc3kMZCv94hghRbcXjNClkD/exec"
+  }
 }

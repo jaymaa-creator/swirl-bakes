@@ -1,4 +1,4 @@
-import { checkout, checkoutMenu, flushCheckout, publishCheckout, refreshCheckout } from "./testCheckout.js";
+import { checkout, checkoutMenu, flushCheckout, publishCheckout, refreshCheckout } from "./cloudCheckout.js";
 import { isAdminPath } from "./admin/access.js";
 import { handleTestPayment, issueShortTestPayment, paymentItemsForOrder } from "./paynowTest.js";
 import worker from './worker.js';

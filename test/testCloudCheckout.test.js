@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
+import production from "../src/productionWorker.js";
 import worker from "../src/testWorker.js";
-import { publishCheckout, checkoutMenu, flushCheckout } from "../src/testCheckout.js";
+import { publishCheckout, checkoutMenu, flushCheckout } from "../src/cloudCheckout.js";
 import { COLLECTION_OPTION, DELIVERY_OPTION } from "../src/config/orderPolicy.js";
 import { buildTestScript, TEST_SCRIPT_ID, TEST_SHEET_ID } from "../scripts/build-test-apps-script.mjs";
 import vm from "node:vm";
@@ -47,9 +48,10 @@ const fixture = (stock = 3) => ({
     },
   },
 });
-function database() {
+function database(withSequence = false) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(sql);
+  if (withSequence) sqlite.exec(readFileSync(new URL("../test-checkout/production-schema.sql",import.meta.url), "utf8"));
   const stmt = (query, args = []) => ({
     bind: (...values) => stmt(query, values),
     run: async () => sqlite.prepare(query).run(...args),
@@ -293,4 +295,41 @@ test("test prices reject stale quotes and share tote stock across bake dates", a
   assert.equal((await checkoutMenu(f.db)).snapshots[next].products[0].remainingQuantity, 3);
   f.resume();
   await Promise.all(f.tasks);
+});
+
+test("production checkout preserves the SG sequence, replays the same QR, and reuses older short links", async t => {
+  const db = database(true);
+  const snapshot = {...fixture(5), sequence:85, writerActive:true};
+  await publishCheckout(db,snapshot);
+  const legacyTokens = new Map();
+  const env = {PAYMENT_ORDERS:db, MENU_SNAPSHOT:{get:key=>legacyTokens.get(key)}, ORDER_WEBHOOK_SECRET:"fixture",
+    ORDER_SHEET_WEBHOOK_URL:"https://script.google.com/macros/s/AKfycbzUOOucRMDQ7cIg90tXNtPrN0NmRtV1oepoVoswGwHXkTo8anTjqOsM3xUyBRBmugGs/exec"};
+  const tasks = [], calls = [];
+  t.mock.method(globalThis,"fetch",async (_,options)=>{
+    const body=JSON.parse(options.body);
+    assert.equal(body.environment,"production");
+    if(body.action==="checkoutBootstrap") return Response.json({ok:true,scriptId:"1YfNLgt5YZnDv8CwcR9zcGICM4v0jjfMCs9lzD_pWVh5M8O5Yc5xMVnhf",
+      spreadsheetId:"12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A",checkout:snapshot});
+    calls.push(body.entry);
+    return Response.json({ok:true,requestId:body.entry.requestId,orderNumber:body.entry.orderNumber});
+  });
+  const request=async(host,path,body)=>{
+    const origin="https://"+host;
+    const res=await production.fetch(new Request(origin+path,{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify(body)}),env,{waitUntil:p=>tasks.push(p)});
+    assert.equal(res.status,200);return res.json();
+  };
+  const body={requestId:crypto.randomUUID(),order:order()};
+  const [a,b]=await Promise.all([request("swirlgirl.sg","/api/orders",body),request("www.swirlgirl.sg","/api/orders",{...body,requestId:crypto.randomUUID()})]);
+  assert.deepEqual([a.orderNumber,b.orderNumber].sort(),["SG-0086","SG-0087"]);
+  const duplicate=await request("www.swirlgirl.sg","/api/orders",body);
+  assert.equal(duplicate.duplicate,true);assert.deepEqual(duplicate.paynow,a.paynow);
+  for(const receipt of [a,b]){
+    const link=new URL(receipt.paynow.url);assert.equal(link.origin,"https://swirlgirl.sg");
+    const resolved=await request("swirlgirl.sg","/api/paynow/resolve",{token:link.hash.slice(1)});
+    assert.equal(resolved.paynow.orderNumber,receipt.orderNumber);assert.equal(resolved.paynow.amountDueSgd,20);
+  }
+  const token=(await db.prepare("SELECT token FROM checkout_orders LIMIT 1").first()).token;
+  const oldId="A".repeat(22);legacyTokens.set("production:paynow-link-v1:"+oldId,token);
+  assert.equal((await request("swirlgirl.sg","/api/paynow/resolve",{token:"s."+oldId})).ok,true);
+  await Promise.all(tasks);assert.equal(calls.length,2);
 });

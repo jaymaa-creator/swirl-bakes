@@ -62,6 +62,10 @@ function doPost(event) {
       return jsonResponse({ ok: false, error: "Unauthorized" });
     }
 
+    if (["checkoutBootstrap","appendCloudOrder","checkoutSchemaProbe"].includes(payload.action)) {
+      if (payload.environment !== "production") return jsonResponse({ok:false});
+      return jsonResponse(productionCheckoutCommand(payload));
+    }
     if (payload.action === "adminBakeOrders") return jsonResponse(readAdminBakeOrders(payload));
     if (payload.action === "adminUpdateBakeOrder") return jsonResponse(updateAdminBakeOrder(payload));
     if (payload.action === "adminSalesReport") {
@@ -117,6 +121,7 @@ function doPost(event) {
           ledgerSyncDeferred, ...existing.referral });
       }
 
+      if (PropertiesService.getScriptProperties().getProperty("CLOUD_CHECKOUT_ACTIVE") === "1") return jsonResponse({ok:false,error:"Checkout writer changed. Please retry."});
       const validation = validateOrderForWrite(order, spreadsheet);
       if (!validation.ok) return jsonResponse(validation);
 
@@ -671,6 +676,10 @@ function publishMenuSnapshot() {
     return { ok: false, error: "Missing menu snapshot configuration" };
   }
 
+  if (PropertiesService.getScriptProperties().getProperty("CLOUD_CHECKOUT_ACTIVE") === "1") {
+    const checkout = productionCheckoutSnapshot(false);
+    return publishSnapshotToEndpoint(productionUrl, {secret, ...checkout.bundle, checkout: {...checkout, bundle: undefined}}, "production");
+  }
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const calendar = readBakeCalendar(spreadsheet);
   const currentBatch = getMenuBatchDate("", spreadsheet, calendar);
