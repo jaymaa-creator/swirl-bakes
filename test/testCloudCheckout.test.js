@@ -333,3 +333,18 @@ test("production checkout preserves the SG sequence, replays the same QR, and re
   assert.equal((await request("swirlgirl.sg","/api/paynow/resolve",{token:"s."+oldId})).ok,true);
   await Promise.all(tasks);assert.equal(calls.length,2);
 });
+
+test("concurrent startup menu reads share one probe and keep serving the published menu", async t => {
+  const db=database(true), baseline=fixture(), tasks=[];
+  let probes=0;
+  const env={PAYMENT_ORDERS:db,MENU_SNAPSHOT:{get:async()=>baseline.bundle},ORDER_WEBHOOK_SECRET:"fixture",
+    CHECKOUT_PROBE_URL:"https://script.google.com/macros/s/fixture/exec",
+    ORDER_SHEET_WEBHOOK_URL:"https://script.google.com/macros/s/AKfycbzUOOucRMDQ7cIg90tXNtPrN0NmRtV1oepoVoswGwHXkTo8anTjqOsM3xUyBRBmugGs/exec"};
+  t.mock.method(globalThis,"fetch",async()=>{probes++;return Response.json({ok:false});});
+  const menu=()=>production.fetch(new Request("https://swirlgirl.sg/api/menu"),env,{waitUntil:p=>tasks.push(p.catch(()=>{}))});
+  const responses=await Promise.all([menu(),menu()]);
+  assert.deepEqual(responses.map(r=>r.status),[200,200]);
+  await Promise.all(tasks);
+  assert.equal(probes,1);
+  assert.equal((await db.prepare("SELECT captured FROM checkout_baseline").first()).captured,0);
+});
