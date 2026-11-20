@@ -11,6 +11,16 @@ async function maintain(env) {
   const db = env.PAYMENT_ORDERS;
   const state = await db.prepare("SELECT captured FROM checkout_baseline WHERE id=1").first();
   if (state.captured) return flushCheckout(env);
+  await bootstrap(env);
+}
+
+async function bootstrap(env) {
+  if (env.ORDER_SHEET_WEBHOOK_URL !== ledgerUrl) throw Error("Unexpected production ledger target");
+  const db = env.PAYMENT_ORDERS;
+  const now = Date.now();
+  const lease = await db.prepare("UPDATE checkout_baseline SET revision=? WHERE id=1 AND captured=0 AND revision<? RETURNING id")
+    .bind(now,now-60000).first();
+  if (!lease) return;
   // The candidate probe uses a disposable copy before the stable web app is upgraded.
   const {probe_ok} = await db.prepare("SELECT probe_ok FROM checkout_sequence WHERE id=1").first();
   if (!probe_ok) {
@@ -64,8 +74,14 @@ export default {
     }
     if (url.pathname === "/api/menu" || url.pathname === "/api/admin/stock") {
       env.MENU_SNAPSHOT = {
-        get: async (key,...args) => key === "menu-snapshots-v1" && args[0] === "json"
-          ? (await checkoutMenu(db)) || kv.get(key,...args) : kv.get(key,...args),
+        get: async (key,...args) => {
+          if (key === "menu-snapshots-v1" && args[0] === "json") {
+            const bundle = await checkoutMenu(db);
+            if (bundle) return bundle;
+            ctx.waitUntil(bootstrap(env));
+          }
+          return kv.get(key,...args);
+        },
         put: (...args) => kv.put(...args), list: (...args) => kv.list(...args),
       };
     }
