@@ -20,6 +20,8 @@ test("checkout provides inline consent and actionable footer instead of a disabl
       ...changes,
     }));
     const html = render();
+    assert.match(html, /Place order to continue to WhatsApp/);
+    assert.match(render({ phoneHandoff: true }), /Place order &amp; open WhatsApp/);
     assert.match(html, /To continue: Enter your name/);
     const checkoutButton = html.match(/<button[^>]*aria-describedby="checkout-guidance"[^>]*>/)?.[0];
     assert.ok(checkoutButton);

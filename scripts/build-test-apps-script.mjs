@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { parse } from 'espree';
 import { pathToFileURL } from 'node:url';
@@ -19,13 +20,9 @@ export function buildTestScript(source) {
     publishMenuSnapshot: `
       const secret = PropertiesService.getScriptProperties().getProperty(SECRET_PROPERTY);
       if (!secret) throw new Error("Missing TEST_ORDER_WEBHOOK_SECRET");
-      const spreadsheet = TEST_openSpreadsheet(SPREADSHEET_ID);
-      const calendar = TEST_readBakeCalendar(spreadsheet);
-      const batch = TEST_formatBatchKey(TEST_getMenuBatchDate("", spreadsheet, calendar));
-      const keys = TEST_getSnapshotBatchKeys(calendar, batch);
-      const snapshots = TEST_buildMenuSnapshots(keys, batch, calendar, spreadsheet, true);
+      const checkout = TEST_checkoutSnapshot();
       return TEST_publishSnapshotToEndpoint(${JSON.stringify(TEST_ENDPOINT)},
-        { secret, currentBatch: batch, snapshots }, "test");`,
+        { secret, ...checkout.bundle, checkout: {...checkout, bundle: undefined} }, "test");`,
   };
   const edits = [];
   const replaced = functions.filter((node) => overrides[node.id.name]);
@@ -64,6 +61,8 @@ function doPost(event) {
     TEST_assertRequest(event);
     const payload = JSON.parse(event.postData.contents);
     if (payload.action === "testBackendInfo") return TEST_jsonResponse(TEST_checkIsolation());
+    if (payload.action === "checkoutBootstrap") return TEST_jsonResponse({ ...TEST_checkIsolation(), checkout:TEST_checkoutSnapshot() });
+    if (payload.action === "appendCloudOrder") return TEST_jsonResponse(TEST_appendCloudOrder(payload.entry));
     return TEST_doPost(event);
   } catch (error) {
     return TEST_jsonResponse({ ok: false, error: "Test request refused" });
@@ -114,6 +113,7 @@ function TEST_inspectSetup() {
 }
 `;
   if (output.includes('12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A') || output.includes('https://swirlgirl.sg')) throw new Error('Production target remains');
+  output += readFileSync(new URL('../test-checkout/ledger.gs', import.meta.url), 'utf8');
   parse(output, { ecmaVersion: 'latest' });
   return output;
 }

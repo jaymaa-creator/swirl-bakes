@@ -1,10 +1,17 @@
 import test from "node:test";
+import { LOADING_WORDS, LOADING_WORD_MS, LOADING_SEQUENCE_MS } from "../src/config/checkoutLoading.js";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 import { productionPayments } from "../src/paynowPayments.js";
 import { issueTestPayment } from "../src/paynowTest.js";
+
+test("checkout intro shows three words over three seconds", () => {
+  assert.deepEqual(LOADING_WORDS, ["Swirling", "Girling", "Unfurling"]);
+  assert.equal(LOADING_WORD_MS, 1000);
+  assert.equal(LOADING_SEQUENCE_MS, 3000);
+});
 
 test("receipt offers Bun Bounce only after recording and WhatsApp handoff", async () => {
   const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: "custom" });
@@ -49,6 +56,8 @@ test("receipt offers Bun Bounce only after recording and WhatsApp handoff", asyn
     assert.doesNotMatch(render({ status: "delayed", orderNumber: "" }, true, true), />Send via WhatsApp</);
     assert.match(render({ status: "pending", orderNumber: "" }, true, true), /Saving your order and preparing its QR link/);
     const slowLive = render({ status: "delayed", orderNumber: "" }, true, true, true);
+    assert.match(slowLive, />Swirling<\/span>/);
+    assert.doesNotMatch(render(changes, true, true), />Swirling<\/span>/);
     assert.match(slowLive, /cinnamon-loader__rotor/);
     assert.match(slowLive, /Still waiting for your order reference/);
     assert.match(slowLive, /role="progressbar"[^>]*>[\s\S]*?receipt-bun-hop/);

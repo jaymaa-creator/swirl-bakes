@@ -3,7 +3,9 @@
   "name": "test-swirl-girl",
   "main": "./src/testWorker.js",
   "compatibility_date": "2026-07-26",
+  "triggers": {"crons": ["*/5 * * * *"]},
   "vars": {
+    "TEST_D1_CHECKOUT": "1",
     "TEST_APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbzD0EMRRgCqPPRMyVMeZ6RS_5q8iw8TBKe5njr8HDDK4f7Qq1DhdztW9VdVqUQ_Xng8/exec"
   },
   "assets": {

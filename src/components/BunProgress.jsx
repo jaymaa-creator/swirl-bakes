@@ -1,4 +1,16 @@
+import { useEffect, useState } from "react";
 import CinnamonLoader from "./ui/CinnamonLoader";
+
+import { LOADING_WORDS, LOADING_WORD_MS } from "../config/checkoutLoading";
+
+export function LoadingWords() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setIndex(i => (i + 1) % LOADING_WORDS.length), LOADING_WORD_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <span aria-hidden="true" className="font-semibold text-brandBrown">{LOADING_WORDS[index]}</span>;
+}
 
 export default function BunProgress({ count = 3 }) {
   return (
