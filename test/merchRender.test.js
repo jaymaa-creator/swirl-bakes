@@ -30,3 +30,18 @@ test("Merch renders separate add-on controls, a S$10 price, and clear sold-out c
     await server.close();
   }
 });
+
+test("the three approved testimonials appear together only beneath the mobile bake carousel", async () => {
+  const server = await createServer({ optimizeDeps: { noDiscovery: true, include: [] }, server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom" });
+  try {
+    const { default: MenuSection } = await server.ssrLoadModule("/src/components/MenuSection.jsx");
+    const render = (mobile, merch) => renderToStaticMarkup(React.createElement(MenuSection, {
+      menu: [], menuStatus: "ready", mobile, merch,
+    }));
+    const html = render(true, false);
+    assert.match(html, /id="weekly-bakes"[\s\S]*?Testimonials[\s\S]*?new favorite cinnamon roll 🧡[\s\S]*?not buying more 😭😭[\s\S]*?the frosting is unreal/);
+    assert.equal((html.match(/<blockquote/g) || []).length, 3);
+    assert.doesNotMatch(render(false, false), /Testimonials/);
+    assert.doesNotMatch(render(true, true), /Testimonials/);
+  } finally { await server.close(); }
+});
