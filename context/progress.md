@@ -6,6 +6,8 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- Added the three approved customer quotes under Testimonials beneath the mobile bake carousel.
+
 - 2026-11-20. Cloudflare checkout is active on both production hosts. Release 44666736431 deployed commit ce42d2a570ae2dd3bd99b902b44fdd0a4dfeb67b, Worker 4c72f01f-c2d8-42bc-8ed7-8cb072d30699. Apps Script v39 passed the disposable Orders write and removal probe. The locked production snapshot included the sequence through SG-0076 and the 28 November menu. Both domains rejected an absent product through D1. No synthetic production order or payment was created.
 - The browser shows Swirling, Girling and Unfurling for one second each while the order saves. Desktop Chrome enabled WhatsApp at 3.01 seconds and phone-emulated Chrome handed off at 3.08 seconds with intercepted order responses. The isolated S$10 order returned its correct QR and Sheet acknowledgement, and replay returned the same reference. The loading preview is available on test and production. See docs/production-cloud-checkout.md for operations.
 

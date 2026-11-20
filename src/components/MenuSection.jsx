@@ -6,6 +6,12 @@ import BakeCarousel from "./BakeCarousel";
 import BakeQuantity from "./BakeQuantity";
 import { mobileBakeCopy } from "../lib/mobileBakeCopy";
 
+const testimonials = [
+  "I think I may have found my new favorite cinnamon roll 🧡",
+  "the only regret we have was not buying more 😭😭",
+  "Perf ratio of sweet but not too sweet and the frosting is unreal",
+];
+
 function MenuGrid({ children }) {
   return <div className="mt-8 grid gap-5 lg:grid-cols-2">{children}</div>;
 }
@@ -242,6 +248,19 @@ export default function MenuSection({
             );
           })}
         </Layout>
+        {carousel && <section aria-labelledby="testimonials-heading" className="-mx-4 mt-2 border-t border-[#e6d7c8] bg-[#fcf8f1] px-[26px] pb-8 pt-[26px]">
+          <h2 id="testimonials-heading" className="flex items-center gap-2 font-body text-[11px] font-semibold uppercase tracking-[0.14em] text-[#76543e]">
+            <span aria-hidden="true" className="h-0.5 w-6 bg-[#b07952]" />
+            Testimonials
+          </h2>
+          <div className="mt-4 divide-y divide-[#e6d7c8]">
+            {testimonials.map(quote => (
+              <blockquote key={quote} className="py-[19px] font-display text-[29px] leading-[1.17] tracking-[-0.025em] text-[#452f25] [text-wrap:pretty] first:pt-0 last:pb-0">
+                “{quote}”
+              </blockquote>
+            ))}
+          </div>
+        </section>}
         {allergenDisclaimer ? (
           <p className="mt-6 max-w-4xl text-xs leading-6 text-inkMuted">
             Baked in a home kitchen. Allergens present in the kitchen may include:{" "}
