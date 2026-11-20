@@ -4,17 +4,11 @@
 
 Architecture baseline and payment discovery.
 
-## In progress
-
-- Test checkout migration: explicit place-order action and automatic phone handoff after verified QR and a user-activated new WhatsApp tab on laptops. Three cinnamon buns with 40px half-second hops and six-second crossings on the receipt progress bar and eight-second waiting message added. Test-only /loading-preview exposes live animation controls, including one to six staggered left-to-right buns. The isolated test Worker now accepts orders in D1, issues the reference and QR, then synchronises to the test Sheet. Local integration tests cover stock contention, retries, and checkout with a stalled ledger. A single Chrome test order on 2026-11-20 took 75 ms from click to WhatsApp ready (24 ms Worker time). The S$10 test QR resolved, and the test Sheet acknowledgement and its published snapshot matched the order. Direct row-count verification via Sheets/Drive was unavailable. See docs/test-cloud-checkout.md.
-
-- Test receipt and loading preview now cycle through Swirling, Girling and Unfurling once per second. A new test order shows one full three-second cycle before a successful WhatsApp handoff. The real receipt is saved immediately.
-
-- Promoting the three-second receipt and WhatsApp handoff on both production hosts. Production database cutover is staged separately.
-
-- Production checkout migration uses a dedicated D1 database, the production Sheet and a sequential SG reference allocated atomically. The guarded release stages a disposable Orders schema probe before activating the new writer.
-
 ## Completed
+
+- 2026-11-20. Cloudflare checkout is active on both production hosts. Release 44666736431 deployed commit ce42d2a570ae2dd3bd99b902b44fdd0a4dfeb67b, Worker 4c72f01f-c2d8-42bc-8ed7-8cb072d30699. Apps Script v39 passed the disposable Orders write and removal probe. The locked production snapshot included the sequence through SG-0076 and the 28 November menu. Both domains rejected an absent product through D1. No synthetic production order or payment was created.
+- The browser shows Swirling, Girling and Unfurling for one second each while the order saves. Desktop Chrome enabled WhatsApp at 3.01 seconds and phone-emulated Chrome handed off at 3.08 seconds with intercepted order responses. The isolated S$10 order returned its correct QR and Sheet acknowledgement, and replay returned the same reference. The loading preview is available on test and production. See docs/production-cloud-checkout.md for operations.
+
 
 - Sharpened the mobile hero and poster and reduced video compression on test. The 60 fps pullback reverses into the close-up before looping.
 
