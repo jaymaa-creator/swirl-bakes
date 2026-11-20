@@ -1,11 +1,13 @@
-// Imported exclusively by the isolated test Worker.
+// Environment selection is supplied by the two dedicated Worker entry points.
 import { normalizeOrderRequest, orderFingerprint, validateOrderAgainstMenu, verifyTurnstile } from "./worker.js";
 import { getCurrentBatchKey } from "./lib/batchSelection.js";
-import { issueShortTestPayment, issueTestPayment, paymentItemsForOrder } from "./paynowTest.js";
+import { productionPayments, testPayments, paymentItemsForOrder } from "./paynowPayments.js";
 import { COLLECTION_OPTION } from "./config/orderPolicy.js";
 
+const payments = env => env.productionCheckout ? productionPayments : testPayments;
+const secret = env => env.productionCheckout ? env.ORDER_WEBHOOK_SECRET : env.TEST_ORDER_WEBHOOK_SECRET;
 const reply = (body, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
-const unavailable = () => reply({ ok: false, error: "Test checkout is refreshing. Please try again." }, 503);
+const unavailable = () => reply({ ok: false, error: "Checkout is refreshing. Please try again." }, 503);
 const bind = (db, sql, ...args) => db.prepare(sql).bind(...args);
 
 export async function publishCheckout(db, snapshot) {
@@ -41,11 +43,11 @@ export async function publishCheckout(db, snapshot) {
   ]);
 }
 
-async function readState(db, id, menuOnly = false) {
+async function readState(db, id, menuOnly = false, production = false) {
   const projection = menuOnly ? "json_object('bundle',json_extract(snapshot,'$.bundle'))" : "snapshot";
   const queries = [
     db.prepare(
-      `SELECT revision, CASE WHEN captured>0 THEN ${projection} END AS snapshot FROM checkout_baseline WHERE id=1`,
+      `SELECT revision, ${production ? "(SELECT last_number FROM checkout_sequence WHERE id=1) AS lastNumber," : ""} CASE WHEN captured>0 THEN ${projection} END AS snapshot FROM checkout_baseline WHERE id=1`,
     ),
     db.prepare("SELECT reserved FROM checkout_orders WHERE reserved IS NOT NULL ORDER BY created"),
   ];
@@ -54,6 +56,7 @@ async function readState(db, id, menuOnly = false) {
   const row = base.results[0];
   return {
     revision: row.revision,
+    lastNumber: row.lastNumber,
     snapshot: JSON.parse(row.snapshot),
     pending: pending.results.map((r) => JSON.parse(r.reserved)),
     previous: previous?.results[0],
@@ -88,26 +91,27 @@ export async function checkoutMenu(db) {
   return state.snapshot ? overlay(state).bundle : null;
 }
 
-async function relay(env, action, fields = {}) {
-  const res = await fetch(env.TEST_APPS_SCRIPT_URL, {
+export async function relay(env, action, fields = {}, endpoint = env.productionCheckout ? env.ORDER_SHEET_WEBHOOK_URL : env.TEST_APPS_SCRIPT_URL) {
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, environment: "test", secret: env.TEST_ORDER_WEBHOOK_SECRET, ...fields }),
+    body: JSON.stringify({ action, environment: env.productionCheckout ? "production" : "test", secret: secret(env), ...fields }),
     signal: AbortSignal.timeout(45000),
   });
-  if (!res.ok) throw Error("Test ledger unavailable");
+  if (!res.ok) throw Error("Checkout ledger unavailable");
   const result = await res.json();
-  if (!result.ok) throw Error("Test ledger refused request");
+  if (!result.ok) throw Error("Checkout ledger refused request");
   return result;
 }
 
 export async function refreshCheckout(env) {
   const result = await relay(env, "checkoutBootstrap");
   if (
-    result.scriptId !== "1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9" ||
-    result.spreadsheetId !== "1N18vGGPWD9u47Wr2YeWfEydA4oK9Ab-ooEfIvycUbGc"
+    result.scriptId !== (env.productionCheckout ? "1YfNLgt5YZnDv8CwcR9zcGICM4v0jjfMCs9lzD_pWVh5M8O5Yc5xMVnhf" : "1JCK71mOfjevGafjHEj14Kr0Oj_O5e0zYi4H0eIwARt3FPB0R0Uvkftj9") ||
+    result.spreadsheetId !== (env.productionCheckout ? "12YlQLXoM4yjy9dfZExeAQhEM-QMZZn_TyzbmHLN3L2A" : "1N18vGGPWD9u47Wr2YeWfEydA4oK9Ab-ooEfIvycUbGc")
   )
-    throw Error("Test ledger identity mismatch");
+    throw Error("Checkout ledger identity mismatch");
+  if (env.productionCheckout && (!result.checkout?.writerActive || !Number.isSafeInteger(result.checkout.sequence))) throw Error("Production writer not active");
   await publishCheckout(env.PAYMENT_ORDERS, result.checkout);
 }
 
@@ -129,14 +133,14 @@ export async function flushCheckout(env) {
       const entry = JSON.parse(row.ledger_row);
       const ack = await relay(env, "appendCloudOrder", { entry });
       if (ack.requestId !== row.request_id || ack.orderNumber !== entry.orderNumber)
-        throw Error("Test ledger acknowledgement mismatch");
+        throw Error("Checkout ledger acknowledgement mismatch");
       await bind(
         db,
         "UPDATE checkout_orders SET delivered=1,ledger_row=NULL WHERE request_id=?",
         row.request_id,
       ).run();
     } catch {
-      console.error("Test ledger delivery pending; scheduled retry will follow");
+      console.error("Checkout ledger delivery pending; scheduled retry will follow");
     }
   }
   // A failed refresh is retried even when every ledger append already succeeded.
@@ -159,21 +163,21 @@ async function accept(env, ctx, normalized, fingerprint) {
   const key = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(order.phone.replace(/\D/g, "")));
   const customerKey = Array.from(new Uint8Array(key), (b) => b.toString(16).padStart(2, "0")).join("");
   for (let attempt = 0; attempt < 4; attempt++) {
-    const state = await readState(db, requestId);
+    const state = await readState(db, requestId, false, env.productionCheckout);
     if (state.previous) return replay(state.previous, fingerprint);
     if (!state.snapshot) return unavailable();
     const s = overlay(state);
     // Legacy references are already committed to Sheets. Never create a second order on replay.
     const old = s.existing[requestId];
     if (old) {
-      if (old.fingerprint !== fingerprint || !/^TEST-[A-Za-z0-9-]{1,75}$/.test(old.orderNumber))
+      if (old.fingerprint !== fingerprint || !(env.productionCheckout ? /^SG-\d+$/ : /^TEST-[A-Za-z0-9-]{1,75}$/).test(old.orderNumber))
         return reply({ ok: false, error: "Request ID conflict" }, 409);
       return reply({
         ok: true,
         ...old,
         fingerprint: undefined,
         duplicate: true,
-        paynow: await issueShortTestPayment({ ok: true, ...old }, env),
+        paynow: await payments(env).issueShort({ ok: true, ...old }, env),
       });
     }
     const menu = s.bundle.snapshots[order.bakeWindow];
@@ -206,16 +210,18 @@ async function accept(env, ctx, normalized, fingerprint) {
       referralCode = "SG" + crypto.randomUUID().slice(0, 6).toUpperCase();
     const result = {
       ok: true,
-      orderNumber: "TEST-" + requestId,
+      orderNumber: env.productionCheckout
+        ? "SG-" + String(Math.max(state.lastNumber, s.sequence) + 1).padStart(4, "0")
+        : "TEST-" + requestId,
       referralCode,
       referralDiscountSgd: referrer ? 5 : 0,
       creditRedeemedSgd: credit ? 5 : 0,
       amountDueSgd: (Math.round(accepted.totalSgd * 100) - (referrer || credit ? 500 : 0)) / 100,
     };
     const now = Date.now();
-    const signed = await issueTestPayment(
+    const signed = await payments(env).issue(
       result,
-      env.TEST_ORDER_WEBHOOK_SECRET,
+      secret(env),
       Math.floor(now / 1000),
       paymentItemsForOrder(order, menu),
     );
@@ -280,7 +286,7 @@ async function accept(env, ctx, normalized, fingerprint) {
     }
     ctx.waitUntil(
       flushCheckout(env).catch(() =>
-        console.error("Test checkout ledger sync pending; scheduled retry will follow"),
+        console.error("Checkout ledger sync pending; scheduled retry will follow"),
       ),
     );
     return reply(result);

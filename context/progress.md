@@ -12,6 +12,8 @@ Architecture baseline and payment discovery.
 
 - Promoting the three-second receipt and WhatsApp handoff on both production hosts. Production database cutover is staged separately.
 
+- Production checkout migration uses a dedicated D1 database, the production Sheet and a sequential SG reference allocated atomically. The guarded release stages a disposable Orders schema probe before activating the new writer.
+
 ## Completed
 
 - Sharpened the mobile hero and poster and reduced video compression on test. The 60 fps pullback reverses into the close-up before looping.

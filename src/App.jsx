@@ -46,7 +46,7 @@ export default function App() {
   const receiptPreviewEnabled = window.location.hostname.startsWith("test-") || ["localhost", "127.0.0.1"].includes(window.location.hostname);
   if (path === "/pay" && [PAYNOW_TEST_HOST, PAYNOW_PRODUCTION_HOST, `www.${PAYNOW_PRODUCTION_HOST}`].includes(window.location.hostname)) return <React.Suspense fallback={<p className="p-8">Loading payment details…</p>}><PaymentPage testMode={window.location.hostname === PAYNOW_TEST_HOST} /></React.Suspense>;
   if (path === "/admin" || path.startsWith("/admin/")) return <AdminPage />;
-  if (path === "/loading-preview" && receiptPreviewEnabled) return <LoadingPreview />;
+  if (path === "/loading-preview" && (receiptPreviewEnabled || miniGameEnabled)) return <LoadingPreview />;
   if (path === "/receipt-preview" && receiptPreviewEnabled) return <ReceiptPreview />;
   if (path === "/minigame" && miniGameEnabled) {
     return <React.Suspense fallback={<p className="p-8">Loading Bun Bounce...</p>}><SwirlGame /></React.Suspense>;

@@ -1,0 +1,9 @@
+# Production Cloudflare checkout
+
+The production Worker accepts orders on swirlgirl.sg and www.swirlgirl.sg. Its dedicated D1 database saves the accepted receipt, sequential SG reference, exact QR link, stock reservation and pending ledger entry in one transaction. The production Sheet remains the operator ledger. Existing KV payment links still resolve.
+
+The five-minute Worker schedule runs the guarded production schema probe on a disposable copy via the candidate Apps Script deployment. The stable web app continues accepting orders during staging. Once the probe succeeds and the stable web app has been promoted, bootstrap locks the legacy writer and captures its last order number, menu and referral balances together. An order already committed to the Sheet can be replayed by its original request ID. After bootstrap, D1 allocates the next number under a revision check. Both the stored Sheet sequence and already allocated D1 numbers supply the lower bound.
+
+Use the release workflow to deploy. Check checkout_sequence.probe_ok for the successful probe and checkout_baseline.captured for completed activation. A non-zero captured value indicates that the D1 writer is serving the public order endpoint. The five-minute schedule retries pending ledger deliveries. The public receipt alone does not confirm a WhatsApp send or payment.
+
+For rollback after activation, pause order intake, drain every undelivered entry and outstanding reservation, verify the Sheet sequence covers all allocated references, and publish the current menu. Switch back to the legacy writer under the Sheet lock by clearing the CLOUD_CHECKOUT_ACTIVE property only once D1 intake has been stopped. Keep the D1 resolver available for already-issued links through expiry. Rolling back the frontend alone does not perform a ledger migration.
