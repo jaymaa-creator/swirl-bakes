@@ -35,9 +35,10 @@ export default function BakeCalendar() {
   function edit(date) {
     const prior = data.dates.filter(day=>day.date < date && day.open).at(-1);
     const old = data.dates.find(day=>day.date===date);
-    const defaults = data.products.filter(p=>p.available).map(p=>p.id);
+    const eligible = data.products.filter(p=>p.price > 0 && data.products.filter(other=>other.id===p.id).length === 1);
+    const defaults = eligible.filter(p=>p.available).map(p=>p.id);
     setDraft({date,open:old?.open ?? false,previous:JSON.stringify(old||null),
-      productIds:old?.productIds ?? prior?.productIds ?? (prior || old ? defaults : []),reservations:data.count[date] || 0});
+      productIds:(old?.productIds ?? prior?.productIds ?? (prior || old ? defaults : [])).filter(id=>eligible.some(p=>p.id===id)),reservations:data.count[date] || 0});
     setMessage('');
   }
   async function publish() {
