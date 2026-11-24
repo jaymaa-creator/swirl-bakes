@@ -1,3 +1,4 @@
+import { handleCalendar } from './calendar.js';
 import { handleAdminStock } from './stock.js';
 import { handleBakeOrders } from './bakeOrders.js';
 import { handleReports } from './reports.js';
@@ -28,6 +29,7 @@ export async function handleAdmin(request, env, loadMenu) {
     return reply({ error: 'Your admin session could not be verified. Please sign in again.' }, 401);
   }
   if (typeof payload.email !== 'string' || !emails.includes(payload.email.toLowerCase())) return reply({ error: 'This Google account does not have admin access.' }, 403);
+  if (path === '/api/admin/calendar') return handleCalendar(request, env);
   if (path === '/api/admin/stock') return handleAdminStock(request, env, loadMenu);
   if (path === '/api/admin/bake-orders') return handleBakeOrders(request, env);
   if (path === '/api/admin/reports') return handleReports(request, env);

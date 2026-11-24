@@ -66,6 +66,7 @@ function doPost(event) {
       if (payload.environment !== "production") return jsonResponse({ok:false});
       return jsonResponse(productionCheckoutCommand(payload));
     }
+    if (payload.action === "calendarRead" || payload.action === "calendarSave") return jsonResponse(adminCalendarCommand(payload));
     if (payload.action === "adminBakeOrders") return jsonResponse(readAdminBakeOrders(payload));
     if (payload.action === "adminUpdateBakeOrder") return jsonResponse(updateAdminBakeOrder(payload));
     if (payload.action === "adminSalesReport") {
@@ -1308,6 +1309,8 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTest
     .filter(Boolean);
   const soldByProductId = getSoldQuantitiesForBatch(activeSpreadsheet, productRows, batchDate);
 
+  const plan = activeCalendar.find(entry => entry.date === resolvedBatchKey);
+  const selected = plan?.productIds ? new Set(plan.productIds) : null;
   const products = values
     .map((row) => {
       const id = String(row[column.product_id] || "").trim();
@@ -1319,7 +1322,8 @@ function readMenuSettings(forceRefresh, batchKey, spreadsheet, calendar, useTest
 
       const productionAvailable = parseBoolean(row[column.available]);
       const testAvailability = parseAvailabilityOverride(row[column.test_available]);
-      const available = useTestAvailability && testAvailability !== null ? testAvailability : productionAvailable;
+      const defaultAvailable = useTestAvailability && testAvailability !== null ? testAvailability : productionAvailable;
+      const available = plan?.open === false ? false : selected ? selected.has(id) : defaultAvailable;
 
       return {
         id,
@@ -1571,7 +1575,10 @@ function readBakeCalendar(spreadsheet) {
     if (!date || date.getDay() !== 6) return;
 
     const key = formatBatchKey(date);
-    byDate.set(key, { date: key, open: parseBoolean(row[openColumn]) });
+    const entry = { date: key, open: parseBoolean(row[openColumn]) };
+    const selection = row[column.product_ids];
+    if (selection) entry.productIds = JSON.parse(selection);
+    byDate.set(key, entry);
   });
 
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
@@ -2154,4 +2161,62 @@ function updateAdminBakeOrder(payload) {
     return { ok: true, saved, referralDeferred };
   } catch (error) { return { ok: false, saved, errorCode: "ORDER_UPDATE_UNVERIFIED" }; }
   finally { lock.releaseLock(); }
+}
+
+function adminCalendarCommand(payload) {
+  const environment = adminOrdersEnvironment(payload);
+  if (!environment) return {ok:false};
+  const book = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const calendar = book.getSheetByName(BAKE_CALENDAR_SHEET_NAME);
+  if (!calendar) return {ok:false};
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const dates = readBakeCalendar(book);
+    const products = readMenuSettings(true, "", book, dates.map(d=>({date:d.date,open:d.open})), environment === "test")
+      .filter(p => p.kind !== "merch")
+      .map(p => ({id:p.id, name:p.productName, image:p.imageUrl || "", available:p.available, price:Number(p.priceSgd)}));
+    const count = {};
+    const orders = book.getSheetByName(ORDERS_SHEET_NAME).getDataRange().getValues();
+    const headers = orders.shift().map(normalizeHeader);
+    for (const row of orders) {
+      const date = adminBakeDate(valueFromRow(headers,row,"saturday_batch") || valueFromRow(headers,row,"bake_window"));
+      if (date && !isCancelledStatus(valueFromRow(headers,row,"status"))) count[date] = (count[date] || 0) + 1;
+    }
+    if (payload.action === "calendarRead") return {ok:true,dates,products,count};
+    const {date,open,productIds} = payload;
+    const today = Utilities.formatDate(new Date(),"Asia/Singapore","yyyy-MM-dd");
+    if (!adminReportDate(date) || date < today || new Date(date+"T12:00:00Z").getUTCDay() !== 6 ||
+        typeof open !== "boolean" || !Array.isArray(productIds) || productIds.length > 300 ||
+        new Set(productIds).size !== productIds.length || productIds.some(id => products.filter(p=>p.id===id && p.price>0).length !== 1) ||
+        (open && !productIds.length)) return {ok:false,error:"Invalid bake selection."};
+    const old = dates.find(d=>d.date===date) || null;
+    const desired = {date,open,productIds};
+    if (JSON.stringify(old) !== JSON.stringify(desired)) {
+      if (JSON.stringify(old) !== payload.previous || (!open && payload.reservations !== (count[date] || 0)))
+        return {ok:false,error:"The bake changed. Refresh before publishing."};
+      const rows = calendar.getDataRange().getValues();
+      const names = rows.shift().map(normalizeHeader);
+      const d = names.indexOf("date"), o = names.indexOf("open");
+      if (d < 0 || o < 0) return {ok:false,error:"Check the Calendar date and open headings."};
+      let ids = names.indexOf("product_ids");
+      if (ids < 0) { ids = names.length; calendar.getRange(1,ids+1).setValue("product_ids"); }
+      const matches = rows.map((row,i)=>adminBakeDate(row[d])===date ? i+2 : 0).filter(Boolean);
+      if (matches.length > 1) return {ok:false,error:"Duplicate Calendar dates need review."};
+      const row = matches[0] || calendar.getLastRow()+1;
+      if (!matches.length) calendar.getRange(row,d+1).setValue(new Date(date+"T12:00:00+08:00"));
+      calendar.getRange(row,ids+1).setValue(JSON.stringify(productIds));
+      calendar.getRange(row,o+1).setValue(open ? "yes" : "no");
+      SpreadsheetApp.flush();
+    }
+    clearMenuCache();
+    try {
+      const published = publishMenuSnapshot();
+      if (!published.ok) throw Error("Publication pending");
+      return {ok:true,saved:true};
+    } catch {
+      queueMenuSnapshotSync(BAKE_CALENDAR_SHEET_NAME);
+      return {ok:false,saved:true,error:"Saved in Calendar. Storefront publication is pending and will retry."};
+    }
+  } finally { lock.releaseLock(); }
 }
