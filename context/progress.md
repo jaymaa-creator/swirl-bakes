@@ -255,6 +255,8 @@ Architecture baseline and payment discovery.
 
 ## In Progress
 
+- ADMIN-006 adds per-Saturday menu selection to the existing Calendar ledger and publishes it through the production checkout menu. Release verification in progress.
+
 - Tiramisu product photo (2026-10-04): user-supplied JPEG converted to a
   1200x1600 WebP with metadata removed; original retained. Added the image fallback
   for the existing `tiramisu-swirl` product without changing prices or stock.

@@ -34,7 +34,7 @@ function inventoryHarness() {
   vm.runInContext(source, context);
   context.getMenuBatchDate = (batch) => new Date(`${batch}T04:00:00Z`);
   const stock = (batch = "2026-09-19", useTest = false) => context.readMenuSettings(true, batch, spreadsheet, [], useTest);
-  return { context, orders, stock };
+  return { context, orders, stock, spreadsheet };
 }
 
 test("cancelling restores exact quantities only for the order bake, without double restoration", () => {
@@ -75,4 +75,14 @@ test("editing an Orders status records a delta and queues snapshot publication",
   };
   context.onMenuSheetEdit(event);
   assert.deepEqual(calls, ["clear", "delta", "queue"]);
+});
+
+test("a saved Saturday selection survives a full rebuild without changing the other bake or its reserved stock", () => {
+  const {context,spreadsheet} = inventoryHarness();
+  const plans = [{date:"2026-09-19",open:true,productIds:["banana-bread"]},{date:"2026-09-26",open:true}];
+  const read = date => context.readMenuSettings(true,date,spreadsheet,plans,false);
+  assert.equal(read(plans[0].date)[0].available,false);
+  assert.equal(read(plans[0].date)[1].available,true);
+  assert.equal(read(plans[0].date)[0].remainingQuantity,1);
+  assert.equal(read(plans[1].date)[0].available,true);
 });

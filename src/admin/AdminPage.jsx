@@ -1,3 +1,4 @@
+import BakeCalendar from './BakeCalendar.jsx';
 import StockCheck from './StockCheck.jsx';
 import BakeOrders from './BakeOrders.jsx';
 import SalesReport from './SalesReport.jsx';
@@ -37,10 +38,12 @@ export default function AdminPage() {
           <p className="mt-4 break-words text-inkMuted">Signed in as {session.email}</p>
           <nav aria-label="Admin tools" className="mt-6 flex flex-wrap gap-3">
             <button className={`rounded-full px-5 py-2 ${tab === 'bake' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'bake'} onClick={() => setTab('bake')}>This coming bake</button>
+            <button className={`rounded-full px-5 py-2 ${tab === 'calendar' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'calendar'} onClick={() => setTab('calendar')}>Bake calendar</button>
             {session.reportsEnabled && <button className={`rounded-full px-5 py-2 ${tab === 'sales' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'sales'} onClick={() => setTab('sales')}>Sales & customers</button>}
             <button className={`rounded-full px-5 py-2 ${tab === 'menu' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'menu'} onClick={() => setTab('menu')}>Menu & photos</button>
             <button className={`rounded-full px-5 py-2 ${tab === 'stock' ? 'bg-brandBrown text-white' : 'border border-line'}`} aria-pressed={tab === 'stock'} onClick={() => setTab('stock')}>Stock check</button>
           </nav>
+          {tab === 'calendar' && <BakeCalendar />}
           {tab === 'stock' && <StockCheck environment={session.environment} />}
           {tab === 'bake' && <BakeOrders />}
           {session.reportsEnabled && <div hidden={tab !== 'sales'}><SalesReport environment={session.environment} /></div>}
