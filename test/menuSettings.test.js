@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { MENU } from "../src/config/products.js";
 import { mergeMenuSettings } from "../src/lib/menuSettings.js";
 
 const baseMenu = [
@@ -33,13 +34,11 @@ test("mergeMenuSettings overlays price, availability, and max quantity", () => {
   const cinnamonRolls = menu.find((item) => item.id === "cinnamon-rolls");
   const bananaBread = menu.find((item) => item.id === "banana-bread");
 
-  assert.equal(cinnamonRolls.priceSgd, null);
-  assert.equal(cinnamonRolls.available, true);
-  assert.deepEqual(cinnamonRolls.quantityOptions, [1, 2, 3]);
+  assert.equal(cinnamonRolls, undefined);
   assert.equal(bananaBread, undefined);
 });
 
-test("mergeMenuSettings ignores unknown product ids and invalid values", () => {
+test("mergeMenuSettings hides unavailable and unpriced products", () => {
   const menu = mergeMenuSettings(baseMenu, {
     products: [
       { id: "unknown", priceSgd: "99", available: "No", maxQuantity: "1" },
@@ -47,10 +46,21 @@ test("mergeMenuSettings ignores unknown product ids and invalid values", () => {
     ],
   });
 
-  assert.equal(menu[0].priceSgd, null);
-  assert.equal(menu[0].available, true);
-  assert.deepEqual(menu[0].quantityOptions, [1, 2, 3]);
-  assert.equal(menu[1].priceSgd, null);
+  assert.deepEqual(menu, []);
+});
+
+test("the live cinnamon swirls replace the outdated unpriced storefront card", () => {
+  const cinnamonSwirls = {
+    id: "cinnamon-swirls", productName: "Cinnamon Swirls", priceSgd: 15.5,
+    per: "Box of 3", available: true, maxQuantity: 3, batchLimit: 6, remainingQuantity: 5,
+  };
+  const menu = mergeMenuSettings(MENU, { products: [cinnamonSwirls] });
+  assert.deepEqual(menu.map(({ id }) => id), ["cinnamon-swirls"]);
+  assert.equal(menu[0].name, "Cinnamon Swirls");
+  assert.equal(menu[0].unitLabel, "per box of 3");
+  assert.equal(menu[0].priceSgd, 15.5);
+  assert.equal(menu[0].image, "/cinnamon-rolls-opt.webp");
+  assert.deepEqual(mergeMenuSettings(MENU, { products: [{ ...cinnamonSwirls, available: false }] }), []);
 });
 
 test("mergeMenuSettings caps order quantities by remaining batch stock", () => {
@@ -68,11 +78,11 @@ test("mergeMenuSettings caps order quantities by remaining batch stock", () => {
     ],
   });
 
-  assert.equal(menu[1].available, true);
-  assert.equal(menu[1].batchLimit, 6);
-  assert.equal(menu[1].soldQuantity, 4);
-  assert.equal(menu[1].remainingQuantity, 2);
-  assert.deepEqual(menu[1].quantityOptions, [1, 2]);
+  assert.equal(menu[0].available, true);
+  assert.equal(menu[0].batchLimit, 6);
+  assert.equal(menu[0].soldQuantity, 4);
+  assert.equal(menu[0].remainingQuantity, 2);
+  assert.deepEqual(menu[0].quantityOptions, [1, 2]);
 });
 
 test("mergeMenuSettings marks a product unavailable when no batch stock remains", () => {
@@ -80,6 +90,7 @@ test("mergeMenuSettings marks a product unavailable when no batch stock remains"
     products: [
       {
         id: "banana-bread",
+        priceSgd: "25",
         available: true,
         maxQuantity: "3",
         batchLimit: "6",
@@ -89,8 +100,8 @@ test("mergeMenuSettings marks a product unavailable when no batch stock remains"
     ],
   });
 
-  assert.equal(menu[1].available, false);
-  assert.deepEqual(menu[1].quantityOptions, []);
+  assert.equal(menu[0].available, false);
+  assert.deepEqual(menu[0].quantityOptions, []);
 });
 
 test("mergeMenuSettings adds available products from the sheet", () => {
@@ -110,14 +121,14 @@ test("mergeMenuSettings adds available products from the sheet", () => {
     ],
   });
 
-  assert.equal(menu[2].name, "Country Sourdough");
-  assert.equal(menu[2].category, "Staples");
-  assert.equal(menu[2].priceSgd, 15);
-  assert.equal(menu[2].note, "Homemade sourdough, baked fresh for Saturday.");
-  assert.equal(menu[2].unitLabel, "per loaf");
-  assert.equal(menu[2].quantityLabel, "loaf");
-  assert.deepEqual(menu[2].quantityOptions, [1]);
-  assert.equal(menu[2].image, "/sourdough.webp");
+  assert.equal(menu[0].name, "Country Sourdough");
+  assert.equal(menu[0].category, "Staples");
+  assert.equal(menu[0].priceSgd, 15);
+  assert.equal(menu[0].note, "Homemade sourdough, baked fresh for Saturday.");
+  assert.equal(menu[0].unitLabel, "per loaf");
+  assert.equal(menu[0].quantityLabel, "loaf");
+  assert.deepEqual(menu[0].quantityOptions, [1]);
+  assert.equal(menu[0].image, "/sourdough.webp");
 });
 
 test("mergeMenuSettings uses sheet product names and per labels for existing products", () => {
@@ -165,7 +176,7 @@ test("mergeMenuSettings uses the sheet allergen statement", () => {
     products: [{ id: "banana-bread", priceSgd: 20, allergens: "Contains banana, gluten, dairy and eggs." }],
   });
 
-  assert.equal(menu[1].allergens, "Contains banana, gluten, dairy and eggs.");
+  assert.equal(menu[0].allergens, "Contains banana, gluten, dairy and eggs.");
 });
 
 test("mergeMenuSettings treats a blank sheet allergen cell as authoritative", () => {

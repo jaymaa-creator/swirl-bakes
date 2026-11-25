@@ -1,5 +1,7 @@
 const DEFAULT_MAX_QUANTITY = 3;
 const DEFAULT_PRODUCT_IMAGES = {
+  "cinnamon-swirls": "/cinnamon-rolls-opt.webp",
+  "banana-cake": "/banana-bread-slices.webp",
   "tote-bag": "/tote-bag.webp",
   "kimche-cheese-swirl": "/kimchi-cheese-swirl.webp",
   "chocolate-chip-cookies": "/chocolate-chip-cookies.webp",
@@ -153,35 +155,36 @@ export function mergeMenuSettings(baseMenu, settings) {
 
   const menu = baseMenu.map((item) => {
     const productSettings = settingsById.get(item.id);
-    if (productSettings && productSettings.available === false) return null;
+    // Bundled product details are only used for priced products on the live menu.
+    if (!productSettings?.priceSgd || !productSettings.available) return null;
 
-    const unitMeta = getUnitMeta(productSettings?.per, item.id);
-    const customerMaxQuantity = productSettings?.maxQuantity || DEFAULT_MAX_QUANTITY;
+    const unitMeta = getUnitMeta(productSettings.per, item.id);
+    const customerMaxQuantity = productSettings.maxQuantity || DEFAULT_MAX_QUANTITY;
     const effectiveMaxQuantity =
-      productSettings?.remainingQuantity === null || productSettings?.remainingQuantity === undefined
+      productSettings.remainingQuantity === null
         ? customerMaxQuantity
         : Math.min(customerMaxQuantity, productSettings.remainingQuantity);
-    const isAvailable = (productSettings?.available ?? true) && effectiveMaxQuantity > 0;
+    const isAvailable = effectiveMaxQuantity > 0;
 
     return {
       ...item,
-      kind: productSettings?.kind || "bake",
-      name: productSettings?.productName || item.name,
-      unitLabel: productSettings?.per ? unitMeta.unitLabel : item.unitLabel,
-      quantityLabel: productSettings?.per ? unitMeta.quantityLabel : item.quantityLabel,
-      quantityLabelPlural: productSettings?.per ? unitMeta.quantityLabelPlural : item.quantityLabelPlural,
-      orderDescription: productSettings?.per ? unitMeta.orderDescription : item.orderDescription,
-      imageAlt: productSettings?.productName || item.imageAlt,
+      kind: productSettings.kind,
+      name: productSettings.productName || item.name,
+      unitLabel: productSettings.per ? unitMeta.unitLabel : item.unitLabel,
+      quantityLabel: productSettings.per ? unitMeta.quantityLabel : item.quantityLabel,
+      quantityLabelPlural: productSettings.per ? unitMeta.quantityLabelPlural : item.quantityLabelPlural,
+      orderDescription: productSettings.per ? unitMeta.orderDescription : item.orderDescription,
+      imageAlt: productSettings.productName || item.imageAlt,
       available: isAvailable,
-      special: Boolean(productSettings?.special) && isAvailable,
-      batchLimit: productSettings?.batchLimit,
+      special: productSettings.special && isAvailable,
+      batchLimit: productSettings.batchLimit,
       // Prices only come from the live Products sheet. There is intentionally no static fallback.
-      priceSgd: productSettings?.priceSgd ?? null,
-      note: productSettings?.description || item.note,
-      allergens: productSettings ? productSettings.allergens : item.allergens,
-      image: productSettings?.imageUrl || item.image,
-      remainingQuantity: productSettings?.remainingQuantity,
-      soldQuantity: productSettings?.soldQuantity,
+      priceSgd: productSettings.priceSgd,
+      note: productSettings.description || item.note,
+      allergens: productSettings.allergens,
+      image: productSettings.imageUrl || item.image,
+      remainingQuantity: productSettings.remainingQuantity,
+      soldQuantity: productSettings.soldQuantity,
       quantityOptions: toQuantityOptions(effectiveMaxQuantity),
     };
   }).filter(Boolean);
