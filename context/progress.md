@@ -6,6 +6,11 @@ Architecture baseline and payment discovery.
 
 ## Completed
 
+- 2026-11-25. The storefront only shows bundled product cards when the live
+  menu supplies a positive price and lists the product as available. This fixes
+  the obsolete six-roll card and restores checkout for priced bakes. Local
+  verification covered the current three-roll catalog entry and all 206 tests.
+
 - Added the three approved customer quotes under Testimonials beneath the mobile bake carousel.
 
 - 2026-11-20. Cloudflare checkout is active on both production hosts. Release 44666736431 deployed commit ce42d2a570ae2dd3bd99b902b44fdd0a4dfeb67b, Worker 4c72f01f-c2d8-42bc-8ed7-8cb072d30699. Apps Script v39 passed the disposable Orders write and removal probe. The locked production snapshot included the sequence through SG-0076 and the 28 November menu. Both domains rejected an absent product through D1. No synthetic production order or payment was created.
